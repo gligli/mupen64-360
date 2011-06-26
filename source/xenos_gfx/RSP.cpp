@@ -26,7 +26,7 @@
 #include "3DMath.h"
 #include "VI.h"
 //#include "Combiner.h"
-#include "textures.h"
+#include "Textures.h"
 //#include "Config.h"
 //#include "FrameBuffer.h"
 #include "DepthBuffer.h"

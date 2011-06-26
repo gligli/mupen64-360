@@ -23,6 +23,8 @@
 #ifndef RECOMPILE_H
 #define RECOMPILE_H
 
+#include "../../main/main.h"
+
 #include "MIPS-to-PPC.h"
 
 typedef unsigned int uint;
@@ -86,7 +88,12 @@ typedef struct {
 MIPS_instr get_next_src(void);
 MIPS_instr peek_next_src(void);
 int        has_next_src(void);
+
 void       set_next_dst(PowerPC_instr);
+
+void dbg_dst(int line,const char * func);
+#define DBG_DST dbg_dst(__LINE__,__FUNCTION__);
+
 int        add_jump(int old_jump, int is_j, int is_out);
 int        is_j_out(int branch, int is_aa);
 // Use these for jumps that won't be known until later in compile time

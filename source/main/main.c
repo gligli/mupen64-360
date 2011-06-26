@@ -191,14 +191,18 @@ int main ()
 //   strcpy(romfile, "dvd:/Mario Kart 64.zip");
 //   strcpy(romfile, "dvd:/Legend of Zelda, The - Ocarina of Time.zip");
 
+//   strcpy(romfile, "uda:/n64rom.zip");
 //   strcpy(romfile, "uda:/sm64.v64");
 //   strcpy(romfile, "uda:/Mario Kart 64.zip");
 
 //   strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
-   strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
+//   strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
 //   strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
-
-
+//	strcpy(romfile, "sda:/n64roms/Star Fox 64.zip");
+//	strcpy(romfile, "sda:/n64roms/F-Zero X.zip");
+// 	strcpy(romfile, "sda:/n64roms/Quest 64.zip"); // bug fps mosntrueuses
+ 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
+	
 #if 0
    {
 			float time0,timecur;
@@ -309,9 +313,9 @@ void getKeys(int Control, BUTTONS *Keys)
     }
 
     if (c.select){
-	printf("shutdown!\n");
-	xenon_smc_power_shutdown();
-	for(;;);
+		printf("shutdown!\n");
+		xenon_smc_power_shutdown();
+		for(;;);
     }
 
     b.START_BUTTON=c.start;
@@ -331,8 +335,8 @@ void getKeys(int Control, BUTTONS *Keys)
     b.X_AXIS=HANDLE_STICK_DEAD_ZONE(c.s1_x)/256;
     b.Y_AXIS=HANDLE_STICK_DEAD_ZONE(c.s1_y)/256;
 
-    b.U_CBUTTON=c.s2_y<-STICK_THRESHOLD;
-    b.D_CBUTTON=c.s2_y>STICK_THRESHOLD;
+    b.D_CBUTTON=c.s2_y<-STICK_THRESHOLD;
+    b.U_CBUTTON=c.s2_y>STICK_THRESHOLD;
     b.L_CBUTTON=c.s2_x<-STICK_THRESHOLD;
     b.R_CBUTTON=c.s2_x>STICK_THRESHOLD;
 

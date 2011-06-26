@@ -97,7 +97,7 @@ void dyna_jump();
 void dyna_start();
 void dyna_stop();
 
-extern precomp_instr *dst;
+//extern precomp_instr *dst;
 
 #include "x86/regcache.h"
 

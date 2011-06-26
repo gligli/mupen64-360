@@ -134,9 +134,10 @@
         <in>hle.h</in>
         <in>jpeg.c</in>
         <in>main_rsp.c</in>
-        <in>ucode1.c</in>
-        <in>ucode2.c</in>
-        <in>ucode3.c</in>
+        <in>ucode1.cpp</in>
+        <in>ucode2.cpp</in>
+        <in>ucode3.cpp</in>
+        <in>ucode3mp3.cpp</in>
         <in>wintypes.h</in>
       </df>
       <df name="xenos_audio">
@@ -235,11 +236,13 @@
             </incDir>
             <preprocessorList>
               <Elem>__BIG_ENDIAN__</Elem>
+              <Elem>FASTMEM</Elem>
             </preprocessorList>
           </cTool>
           <ccTool>
             <preprocessorList>
               <Elem>__BIG_ENDIAN__</Elem>
+              <Elem>FASTMEM</Elem>
             </preprocessorList>
           </ccTool>
         </makeTool>

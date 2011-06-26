@@ -319,7 +319,7 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 
 	GEN_LIS(*(src_instr-16), DYNAREG_FUNC, (unsigned int)dst_func>>16);
 	GEN_ORI(*(src_instr-15), DYNAREG_FUNC,DYNAREG_FUNC, (unsigned int)dst_func);
-	
+
 	if (abs(dst_instr-src_instr)>8*1024*1024){
 		GEN_LIS(*(src_instr-3), 12, (unsigned int)dst_instr>>16);
 		GEN_ORI(*(src_instr-2), 12, 12, (unsigned int)dst_instr);

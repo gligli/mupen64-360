@@ -3366,11 +3366,34 @@ static int ROUND_L_FP(MIPS_instr mips, int dbl){
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// round
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &round : &roundf, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &round : &roundf))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &round : &roundf));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
+	
 	// convert
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
 	
 	int addr = 5; // Use r5 for the addr (to not clobber r3/r4)
 	// addr = reg_cop1_double[fd]
@@ -3408,8 +3431,19 @@ static int TRUNC_L_FP(MIPS_instr mips, int dbl){
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// convert
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
 	
 	int addr = 5; // Use r5 for the addr (to not clobber r3/r4)
 	// addr = reg_cop1_double[fd]
@@ -3447,11 +3481,33 @@ static int CEIL_L_FP(MIPS_instr mips, int dbl){
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// ceil
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &ceil : &ceilf, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &ceil : &ceilf))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &ceil : &ceilf));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
 	// convert
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
 	
 	int addr = 5; // Use r5 for the addr (to not clobber r3/r4)
 	// addr = reg_cop1_double[fd]
@@ -3489,11 +3545,33 @@ static int FLOOR_L_FP(MIPS_instr mips, int dbl){
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// round
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &floor : &floorf, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &floor : &floorf))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &floor : &floorf));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
 	// convert
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
 	
 	int addr = 5; // Use r5 for the addr (to not clobber r3/r4)
 	// addr = reg_cop1_double[fd]
@@ -3740,8 +3818,19 @@ static int CVT_L_FP(MIPS_instr mips, int dbl){
 
 	// FIXME: I'm fairly certain this will always trunc
 	// convert
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
 	
 	int addr = 5; // Use r5 for the addr (to not clobber r3/r4)
 	// addr = reg_cop1_double[fd]
@@ -4416,8 +4505,19 @@ static int CVT_FP_L(MIPS_instr mips, int dbl){
 	set_next_dst(ppc);
 
 	// convert
+#if 0
 	GEN_B(ppc, add_jump(dbl ? &__floatdidf : &__floatdisf, 1, 1), 0, 1);
 	set_next_dst(ppc);
+#else
+	GEN_LIS(ppc, 12, ((unsigned int)(dbl ? &__floatdidf : &__floatdisf))>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)(dbl ? &__floatdidf : &__floatdisf));
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+#endif
 	
 	// Load old LR
 	GEN_LWZ(ppc, 0, DYNAOFF_LR, 1);
@@ -4577,7 +4677,7 @@ static void genJumpTo(unsigned int loc, unsigned int type){
 		GEN_ORI(ppc, 0, 0, 0);
 		set_next_dst(ppc);
 		set_next_dst(ppc);
-		//GEN_MTCTR(ppc, 12);
+		GEN_MTCTR(ppc, 12);
 		set_next_dst(ppc);
 	}
 

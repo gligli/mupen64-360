@@ -35,7 +35,6 @@
    by code using this module           */
 extern MIPS_instr get_next_src(void);
 extern MIPS_instr peek_next_src(void);
-extern void       set_next_dst(PowerPC_instr);
 // These are unfortunate hacks necessary for jumping to delay slots
 extern PowerPC_instr* get_curr_dst(void);
 extern void unget_last_src(void);

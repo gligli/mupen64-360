@@ -20,6 +20,8 @@
 #include "xenos_gfx.h"
 #include <debug.h>
 
+#define FIXED_TEXTURE_COST 16384
+
 TextureCache	cache;
 
 typedef u32 (*GetTexelFunc)( u64 *src, u16 x, u16 i, u8 palette );
@@ -290,7 +292,7 @@ void TextureCache_Init()
     cache.dummy->xeSurface=xeGfx_createTexture(2,2);
     xeGfx_setTextureData(cache.dummy->xeSurface,dummyTexture);
 
-	cache.cachedBytes = cache.dummy->textureBytes;
+	cache.cachedBytes = cache.dummy->textureBytes+FIXED_TEXTURE_COST;
 
 	TextureCache_ActivateDummy( 0 );
 	TextureCache_ActivateDummy( 1 );
@@ -330,7 +332,7 @@ void TextureCache_RemoveBottom()
 
     xeGfx_destroyTexture(cache.bottom->xeSurface);
 
-	cache.cachedBytes -= cache.bottom->textureBytes;
+	cache.cachedBytes -= cache.bottom->textureBytes+FIXED_TEXTURE_COST;
 
 #if 0
     if (cache.bottom->frameBufferTexture)
@@ -380,7 +382,7 @@ void TextureCache_Remove( CachedTexture *texture )
 
 	xeGfx_destroyTexture(texture->xeSurface);
 
-	cache.cachedBytes -= texture->textureBytes;
+	cache.cachedBytes -= texture->textureBytes+FIXED_TEXTURE_COST;
 	free( texture );
 
 	cache.numCached--;
@@ -633,12 +635,12 @@ void TextureCache_Load( CachedTexture *texInfo )
 u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
 {
 	u32 crc;
-	u32 y, /*i,*/ bpl, lineBytes, line;
+	u32 y, /*i,*/ bpl, /*lineBytes,*/ line;
 	u64 *src;
 
 	src = (u64*)&TMEM[gSP.textureTile[t]->tmem];
 	bpl = width << gSP.textureTile[t]->size >> 1;
-	lineBytes = gSP.textureTile[t]->line << 3;
+//	lineBytes = gSP.textureTile[t]->line << 3;
 
 	line = gSP.textureTile[t]->line;
  	if (gSP.textureTile[t]->size == G_IM_SIZ_32b)
@@ -753,7 +755,7 @@ void TextureCache_UpdateBackground()
 	TextureCache_LoadBackground( cache.current[0] );
 	TextureCache_ActivateTexture( 0, cache.current[0] );
 
-	cache.cachedBytes += cache.current[0]->textureBytes;
+	cache.cachedBytes += cache.current[0]->textureBytes+FIXED_TEXTURE_COST;
 }
 
 void TextureCache_Update( u32 t )
@@ -1008,7 +1010,7 @@ void TextureCache_Update( u32 t )
 	TextureCache_Load( cache.current[t] );
 	TextureCache_ActivateTexture( t, cache.current[t] );
 
-	cache.cachedBytes += cache.current[t]->textureBytes;
+	cache.cachedBytes += cache.current[t]->textureBytes+FIXED_TEXTURE_COST;
 }
 
 void TextureCache_ActivateNoise( u32 t )

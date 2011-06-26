@@ -56,7 +56,7 @@ char		*screenDirectory;
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 
-#define MAX_VERTEX_COUNT 16384
+#define MAX_VERTEX_COUNT 32768
 
 const struct XenosVBFFormat VertexBufferFormat = {
     4, {
