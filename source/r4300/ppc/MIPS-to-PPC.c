@@ -31,6 +31,7 @@
 #include "Register-Cache.h"
 #include "Interpreter.h"
 #include "Wrappers.h"
+#include "../../memory/memory.h"
 #include <math.h>
 
 #include <assert.h>
@@ -48,6 +49,7 @@ static void genJumpTo(unsigned int loc, unsigned int type);
 static void genUpdateCount(int checkCount);
 static void genCheckFP(void);
 void genCallDynaMem(memType type, int base, short immed);
+void genCallDynaMem2(int type, int base, short immed);
 void RecompCache_Update(PowerPC_func*);
 static int inline mips_is_jump(MIPS_instr);
 void jump_to(unsigned int);
@@ -329,6 +331,8 @@ static int branch(int offset, condition cond, int link, int likely){
 #endif
 }
 
+unsigned int op_usage[64]={};
+
 
 static int (*gen_ops[64])(MIPS_instr);
 
@@ -339,6 +343,8 @@ int convert(void){
 
 	MIPS_instr mips = get_next_src();
 	int result = gen_ops[MIPS_GET_OPCODE(mips)](mips);
+	
+	++op_usage[MIPS_GET_OPCODE(mips)];
 
 	if(needFlush) flushRegisters();
 	return result;
@@ -1230,7 +1236,7 @@ static int SB(MIPS_instr mips){
 
 	invalidateRegisters();
 
-	genCallDynaMem(MEM_SB, base, MIPS_GET_IMMED(mips));
+	genCallDynaMem2(MEM_WRITE_BYTE, base, MIPS_GET_IMMED(mips));
 
 	return CONVERT_SUCCESS;
 #endif
@@ -1257,7 +1263,7 @@ static int SH(MIPS_instr mips){
 
 	invalidateRegisters();
 
-	genCallDynaMem(MEM_SH, base, MIPS_GET_IMMED(mips));
+	genCallDynaMem2(MEM_WRITE_HALF, base, MIPS_GET_IMMED(mips));
 
 	return CONVERT_SUCCESS;
 #endif
@@ -1295,7 +1301,7 @@ static int SW(MIPS_instr mips){
 
 	invalidateRegisters();
 
-	genCallDynaMem(MEM_SW, base, MIPS_GET_IMMED(mips));
+	genCallDynaMem2(MEM_WRITE_WORD, base, MIPS_GET_IMMED(mips));
 
 	return CONVERT_SUCCESS;
 #endif
@@ -1599,15 +1605,27 @@ static int SWC1(MIPS_instr mips){
 
 	int rd = mapRegisterTemp(); // r3 = rd
 	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
+	int addr = mapRegisterTemp(); // r5 = fpr_addr
 
 	invalidateRegisters();
 
+#if 1
+	// addr = reg_cop1_simple[frt]
+	GEN_LWZ(ppc, addr, MIPS_GET_RT(mips)*4, DYNAREG_FPR_32);
+	set_next_dst(ppc);
+	// frs = *addr
+	GEN_LWZ(ppc, 3, 0, addr);
+	set_next_dst(ppc);
+	
+	genCallDynaMem2(MEM_WRITE_WORD, base, MIPS_GET_IMMED(mips));
+#else
 	// store from rt
 	GEN_LI(ppc, 3, 0, MIPS_GET_RT(mips));
 	set_next_dst(ppc);
-
+	
 	genCallDynaMem(MEM_SWC1, base, MIPS_GET_IMMED(mips));
-
+#endif
+	
 	return CONVERT_SUCCESS;
 #endif
 }
@@ -4864,6 +4882,131 @@ void genCallDynaMem(memType type, int base, short immed){
 	// If so, return to trampoline
 	GEN_BNELR(ppc, 6, 0);
 	set_next_dst(ppc);
+}
+
+extern unsigned long delay_slot, interp_addr;
+extern unsigned char invalid_code[0x100000];
+
+void genCallDynaMem2(int type, int base, short immed){
+	PowerPC_instr ppc;
+
+//	genCallDynaMem(type,base,immed);return;
+	
+	// addr (must be first)
+	GEN_ADDI(ppc, 6, base, immed);
+	set_next_dst(ppc);
+	GEN_LIS(ppc, 4, ((unsigned int)&address)>>16);
+	set_next_dst(ppc);
+	GEN_STW(ppc,6,((unsigned int)&address),4);
+	set_next_dst(ppc);
+	// value
+	switch(type){
+		case MEM_WRITE_BYTE:
+			GEN_LIS(ppc, 4, ((unsigned int)&byte)>>16);
+			set_next_dst(ppc);
+			GEN_STB(ppc,3,((unsigned int)&byte),4);
+			set_next_dst(ppc);
+			break;
+		case MEM_WRITE_HALF:
+			GEN_LIS(ppc, 4, ((unsigned int)&hword)>>16);
+			set_next_dst(ppc);
+			GEN_STH(ppc,3,((unsigned int)&hword),4);
+			set_next_dst(ppc);
+			break;
+		case MEM_WRITE_WORD:
+			GEN_LIS(ppc, 4, ((unsigned int)&word)>>16);
+			set_next_dst(ppc);
+			GEN_STW(ppc,3,((unsigned int)&word),4);
+			set_next_dst(ppc);
+			break;
+	}
+	// pc
+	GEN_LIS(ppc, 5, (get_src_pc()+4)>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 5, 5, get_src_pc()+4);
+	set_next_dst(ppc);
+	GEN_LIS(ppc, 4,((unsigned int)&interp_addr)>>16);
+	set_next_dst(ppc);
+	GEN_STW(ppc,5,((unsigned int)&interp_addr),4);
+	set_next_dst(ppc);
+	// delay slot
+	GEN_LI(ppc, 5, 0, isDelaySlot ? 1 : 0);
+	set_next_dst(ppc);
+	GEN_LIS(ppc, 4, ((unsigned int)&delay_slot)>>16);
+	set_next_dst(ppc);
+	GEN_STW(ppc,5,((unsigned int)&delay_slot),4);
+	set_next_dst(ppc);
+	// rwmem
+	GEN_LIS(ppc, 12, ((unsigned int)&rwmem)>>16);
+	set_next_dst(ppc);
+	GEN_RLWINM(ppc, 5, 6, 18, 14, 29);
+	set_next_dst(ppc);
+	GEN_ADD(ppc, 12, 12, 5);
+	set_next_dst(ppc);
+	GEN_LWZ(ppc,12,((unsigned int)&rwmem),12);
+	set_next_dst(ppc);
+	GEN_LWZ(ppc,12,type*4,12);
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+	
+	// test invalid code
+	GEN_LIS(ppc, 4, ((unsigned int)&address)>>16);
+	set_next_dst(ppc);
+	GEN_LWZ(ppc,3,((unsigned int)&address),4);
+	set_next_dst(ppc);
+	GEN_LIS(ppc, 12, ((unsigned int)&invalid_code)>>16);
+	set_next_dst(ppc);
+	GEN_RLWINM(ppc, 5, 3, 20, 12, 31);
+	set_next_dst(ppc);
+	GEN_ADD(ppc, 12, 12, 5);
+	set_next_dst(ppc);
+	GEN_LBZ(ppc,12,((unsigned int)&invalid_code),12);
+	set_next_dst(ppc);
+	GEN_CMPI(ppc,12,0,6);
+	set_next_dst(ppc);
+	GEN_BNE(ppc,6,5,0,0);
+	set_next_dst(ppc);
+
+	GEN_LIS(ppc, 12, ((unsigned int)&invalidate_func)>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 12, 12, (unsigned int)&invalidate_func);
+	set_next_dst(ppc);
+	GEN_MTCTR(ppc, 12);
+	set_next_dst(ppc);
+	GEN_BCTRL(ppc);
+	set_next_dst(ppc);
+	
+	GEN_LI(ppc, 3, 0, 0);
+	set_next_dst(ppc);
+	// clear delay_slot
+	GEN_LIS(ppc, 4, ((unsigned int)&delay_slot)>>16);
+	set_next_dst(ppc);
+	GEN_STW(ppc,3,((unsigned int)&delay_slot),4);
+	set_next_dst(ppc);
+
+	// Load old LR
+	GEN_LWZ(ppc, 0, DYNAOFF_LR, 1);
+	set_next_dst(ppc);
+
+#if 1
+	// Restore LR
+	GEN_MTLR(ppc, 0);
+	set_next_dst(ppc);
+#else
+	// Check whether we need to take an interrupt
+	GEN_CMPI(ppc, 3, 0, 6);
+	set_next_dst(ppc);
+	// Restore LR
+	GEN_MTLR(ppc, 0);
+	set_next_dst(ppc);
+	// If so, return to trampoline
+	GEN_BNELR(ppc, 6, 0);
+	set_next_dst(ppc);
+#endif
+
 }
 
 static int mips_is_jump(MIPS_instr instr){

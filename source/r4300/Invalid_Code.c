@@ -19,7 +19,7 @@ void inline invalid_code_set(int block_num, int value){
 //gli #include "../memory/MEM2.h"
 //gli static unsigned char *invalid_code = (unsigned char *)(INVCODE_LO);
 
-static unsigned char invalid_code[0x100000];
+unsigned char invalid_code[0x100000];
 
 int inline invalid_code_get(int block_num){
 	return invalid_code[block_num];

@@ -233,7 +233,9 @@ unsigned int dyna_check_cop1_unusable(unsigned int pc, int isDelaySlot){
 	return interp_addr;
 }
 
-static void invalidate_func(unsigned int addr){
+void invalidate_func(unsigned int addr){
+//	printf("invalidate_func %08x %d\n",address,invalid_code_get(address>>12));
+
 	PowerPC_block* block = blocks_get(addr>>12);
 	PowerPC_func* func = find_func(&block->funcs, addr);
 	if(func)
@@ -245,13 +247,17 @@ static void invalidate_func(unsigned int addr){
 	   blocks[address>>12]->code_addr[(address&0xfff)>>2]*/) \
 		invalidate_func(address);
 
+unsigned int dyna_mem_usage[16]={};
+
 unsigned int dyna_mem(unsigned int value, unsigned int addr,
                       memType type, unsigned int pc, int isDelaySlot){
 	static unsigned long long dyna_rdword;
+	
+	++dyna_mem_usage[type];
 
 	address = addr;
 	rdword = &dyna_rdword;
-	PC->addr = interp_addr = pc;
+	/*PC->addr =*/ interp_addr = pc;
 	delay_slot = isDelaySlot;
 
 	switch(type){
@@ -332,3 +338,8 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 	return interp_addr != pc ? interp_addr : 0;
 }
 
+void mem_sw(){
+//	printf("mem_sw %08x %08x %08x\n",address,word,interp_addr);
+//	write_word_in_memory();
+	check_memory();
+}

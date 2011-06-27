@@ -26,10 +26,21 @@
 #define XECOMB_F_COL  3
 #define XECOMB_F_COMB 4
 
+#define XECOMB_COMBINER_SIZE 16
+#define XECOMB_OP_SIZE 16
+
 
 struct TxeCombiner
 {
-    Combiner color,alpha;
+    Combiner color,alpha;    
+	float floats[2][XECOMB_COMBINER_SIZE][4];
+	int numOps[2];
+	
+    bool flags[2][64];
+	float signs[2][4];
+	int op[2];
+	
+	BOOL usesT0,usesT1,usesSlow;
 };
 
 void xeComb_init();

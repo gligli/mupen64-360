@@ -56,7 +56,7 @@ char		*screenDirectory;
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 
-#define MAX_VERTEX_COUNT 32768
+#define MAX_VERTEX_COUNT 16384
 
 const struct XenosVBFFormat VertexBufferFormat = {
     4, {
@@ -828,6 +828,12 @@ void xeGfx_render()
 		frames = 0;
 		rendered_frames = 0;
 	    lastTick = nowTick;
+		
+		extern unsigned int op_usage[64];
+		int i;
+//		for(i=0;i<64;++i) printf("%02d %8d\n",i,op_usage[i]);
+		extern unsigned int dyna_mem_usage[16];
+//		for(i=0;i<16;++i) printf("%02d %8d\n",i,dyna_mem_usage[i]);
     }
 
 	if (!drawPrepared || !hadTriangles) return;

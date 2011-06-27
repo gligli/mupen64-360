@@ -310,7 +310,7 @@ extern struct CombinerInfo
 
 	int compiler;
 
-	BOOL usesT0, usesT1, usesNoise, usesSlow, usesOneColorOp, usesOneAlphaOp;
+	BOOL usesT0, usesT1, usesNoise;
 } combiner;
 
 #define SetConstant( constant, color, alpha ) \

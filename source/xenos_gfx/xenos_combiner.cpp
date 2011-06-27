@@ -1,4 +1,5 @@
 #include "../main/winlnxdefs.h"
+#include "../main/main.h"
 #include <stdlib.h>
 #include <string.h>
 #include "fakegl.h"
@@ -167,32 +168,28 @@ void combinerDump(const char *name, Combiner * c){
 	}
 }
 
-#define COMBINER_SIZE 16
-#define OP_SIZE 16
-
-int simplifiedInput(int idx, int in){
+int simplifiedInput(int idx, int in, TxeCombiner * xc){
     int res=XECOMB_ZERO;
 
     if (in>=0 && in<(int)(sizeof(xeComb_input)/sizeof(int)))
         res=xeComb_input[idx][in];
     
-    combiner.usesT0|=(in==TEXEL0);
-    combiner.usesT0|=(in==TEXEL0_ALPHA);
-    combiner.usesT1|=(in==TEXEL1);
-    combiner.usesT1|=(in==TEXEL1_ALPHA);
+    xc->usesT0|=(in==TEXEL0);
+    xc->usesT0|=(in==TEXEL0_ALPHA);
+    xc->usesT1|=(in==TEXEL1);
+    xc->usesT1|=(in==TEXEL1_ALPHA);
 
-    combiner.usesSlow|=(in==COMBINED);
-    combiner.usesSlow|=(in==COMBINED_ALPHA);
+    xc->usesSlow|=(in==COMBINED);
+    xc->usesSlow|=(in==COMBINED_ALPHA);
 
     return res;
 }
 
 
 
-int combinerUpload(int idx, Combiner * c){
-    float t[COMBINER_SIZE][4];
+void combinerCompile(int idx, Combiner * c, TxeCombiner * xc){
+    float t[XECOMB_COMBINER_SIZE][4];
     int i,j;
-    int start=idx*COMBINER_SIZE;
     int numOps;
     static int numColOps=0;
 
@@ -207,37 +204,37 @@ int combinerUpload(int idx, Combiner * c){
                     t[numOps][0]=1;
                     t[numOps][1]=0;
                     t[numOps][2]=0;
-                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param1);
+                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param1,xc);
                     break;
                 case MUL:
                     t[numOps][0]=0;
                     t[numOps][1]=0;
                     t[numOps][2]=1;
-                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param1);
+                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param1,xc);
                     break;
                 case ADD:
                     t[numOps][0]=1;
                     t[numOps][1]=1;
                     t[numOps][2]=0;
-                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param1);
+                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param1,xc);
                     break;
                 case SUB:
                     t[numOps][0]=-1;
                     t[numOps][1]=1;
                     t[numOps][2]=0;
-                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param1);
+                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param1,xc);
                     break;
                 case INTER:
 			        t[numOps][0]=42;
-                    t[numOps][1]=simplifiedInput(idx,c->stage[i].op[j].param1);
-                    t[numOps][2]=simplifiedInput(idx,c->stage[i].op[j].param2);
-                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param3);
+                    t[numOps][1]=simplifiedInput(idx,c->stage[i].op[j].param1,xc);
+                    t[numOps][2]=simplifiedInput(idx,c->stage[i].op[j].param2,xc);
+                    t[numOps][3]=simplifiedInput(idx,c->stage[i].op[j].param3,xc);
                     break;
             }
         }
 	}
 
-    combiner.usesSlow|=numOps>4;
+    xc->usesSlow|=numOps>4;
 
     if (idx==XECOMB_COLOR_IDX)
         numColOps=numOps;
@@ -258,9 +255,13 @@ int combinerUpload(int idx, Combiner * c){
 		t[numOps][3]=XECOMB_ZERO;
 	}
 
-    xeGfx_setCombinerConstantF(start,t[0],numOps+1);
+	xc->numOps[idx]=numOps;
+	memcpy(xc->floats[idx],t,sizeof(t));
 
-    if (combiner.usesSlow) return 0;
+    if (xc->usesSlow){
+		xc->op[idx]=0;
+		return;
+	}
 
     bool flags[128];
     int op=0,tmp;
@@ -273,45 +274,59 @@ int combinerUpload(int idx, Combiner * c){
             
             tmp=xeComb_fastParam[c->stage[i].op[j].param1];
 
-            flags[op*OP_SIZE+ 4]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_T1;
-            flags[op*OP_SIZE+ 5]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_COL;
+            flags[op*XECOMB_OP_SIZE+ 4]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_T1;
+            flags[op*XECOMB_OP_SIZE+ 5]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_COL;
             //flags[op*OP_SIZE+ 6]=
-            flags[op*OP_SIZE+ 7]=xeComb_fastAlpha[c->stage[i].op[j].param1];
+            flags[op*XECOMB_OP_SIZE+ 7]=xeComb_fastAlpha[c->stage[i].op[j].param1];
             
             tmp=c->stage[i].op[j].op;
 
             signs[op]=(tmp==SUB)?-1.0f:1.0f;
 
-            flags[op*OP_SIZE+ 0]=true;
-            flags[op*OP_SIZE+ 1]=tmp==LOAD || tmp==ADD || tmp==SUB;
-            flags[op*OP_SIZE+ 2]=tmp==LOAD || tmp==MUL;
+            flags[op*XECOMB_OP_SIZE+ 0]=true;
+            flags[op*XECOMB_OP_SIZE+ 1]=tmp==LOAD || tmp==ADD || tmp==SUB;
+            flags[op*XECOMB_OP_SIZE+ 2]=tmp==LOAD || tmp==MUL;
             //flags[op*OP_SIZE+ 3]=
 
             if (tmp==INTER){
                 tmp=xeComb_fastParam[c->stage[i].op[j].param2];
 
-                flags[op*OP_SIZE+ 8]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_T1;
-                flags[op*OP_SIZE+ 9]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_COL;
+                flags[op*XECOMB_OP_SIZE+ 8]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_T1;
+                flags[op*XECOMB_OP_SIZE+ 9]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_COL;
                 //flags[op*OP_SIZE+10]=
-                flags[op*OP_SIZE+11]=xeComb_fastAlpha[c->stage[i].op[j].param2];
+                flags[op*XECOMB_OP_SIZE+11]=xeComb_fastAlpha[c->stage[i].op[j].param2];
             
                 tmp=xeComb_fastParam[c->stage[i].op[j].param3];
 
-                flags[op*OP_SIZE+12]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_T1;
-                flags[op*OP_SIZE+13]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_COL;
+                flags[op*XECOMB_OP_SIZE+12]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_T1;
+                flags[op*XECOMB_OP_SIZE+13]=tmp==XECOMB_F_T0 || tmp==XECOMB_F_COL;
                 //flags[op*OP_SIZE+14]=
-                flags[op*OP_SIZE+15]=xeComb_fastAlpha[c->stage[i].op[j].param3];
+                flags[op*XECOMB_OP_SIZE+15]=xeComb_fastAlpha[c->stage[i].op[j].param3];
             }
 
             op++;
         }
     }
 
-    xeGfx_setCombinerConstantF(128+16*idx,signs,1);
-    for(i=0;i<64;++i) xeGfx_setCombinerConstantB(i+idx*64,flags[i]);
-
-    return op;
+	memcpy(xc->signs[idx],signs,sizeof(signs));
+	memcpy(xc->flags[idx],flags,sizeof(flags)/2);
+	
+    xc->op[idx]=op;
  }
+
+int combinerUpload(int idx, TxeCombiner * xc){
+    int start=idx*XECOMB_COMBINER_SIZE;
+	int i;
+
+	xeGfx_setCombinerConstantF(start,xc->floats[idx][0],xc->numOps[idx]+1);
+   
+	if (!xc->op[idx]) return 0;
+	
+	xeGfx_setCombinerConstantF(128+16*idx,xc->signs[2],1);
+    for(i=0;i<64;++i) xeGfx_setCombinerConstantB(i+idx*64,xc->flags[idx][i]);
+	
+	return xc->op[idx];
+}
 
 void combinerUploadColorConstants(int idx, Combiner * c){
     int i,j,op=0;
@@ -376,28 +391,36 @@ void xeComb_uninit(){
 
 TxeCombiner *xeComb_compile( Combiner *color, Combiner *alpha ){
 	TxeCombiner *xeComb = (TxeCombiner*)malloc( sizeof( TxeCombiner ) );
+	memset(xeComb,0,sizeof( TxeCombiner ));
+	
     xeComb->color=*color;
     xeComb->alpha=*alpha;
-
-    combinerDump("color",color);
+	
+#ifndef DEBUG_COMBINERS
+	combinerDump("color",color);
     combinerDump("alpha",alpha);
+#endif
 
+	combinerCompile(XECOMB_COLOR_IDX,color,xeComb);
+	combinerCompile(XECOMB_ALPHA_IDX,alpha,xeComb);
+	
     return xeComb;
 }
 
 void xeComb_setCombiner( TxeCombiner *envCombiner ){
-    combiner.usesNoise=FALSE;
-    combiner.usesT0=FALSE;
-    combiner.usesT1=FALSE;
-    combiner.usesSlow=FALSE;
+	BOOL oneColorOp,oneAlphaOp;
+	
+	combiner.usesNoise=FALSE;
+    combiner.usesT0=envCombiner->usesT0;
+    combiner.usesT1=envCombiner->usesT1;
 
-    combiner.usesOneColorOp=combinerUpload(XECOMB_COLOR_IDX,&envCombiner->color)<=2;
-    combiner.usesOneAlphaOp=combinerUpload(XECOMB_ALPHA_IDX,&envCombiner->alpha)<=2;
+    oneColorOp=combinerUpload(XECOMB_COLOR_IDX,envCombiner)<=2;
+    oneAlphaOp=combinerUpload(XECOMB_ALPHA_IDX,envCombiner)<=2;
 
     xeGfx_setCombinerConstantB(0,combiner.usesT0);
     xeGfx_setCombinerConstantB(64,combiner.usesT1);
 
-    xeGfx_setCombinerShader(combiner.usesOneColorOp,combiner.usesOneAlphaOp,combiner.usesSlow);
+	xeGfx_setCombinerShader(oneColorOp,oneAlphaOp,envCombiner->usesSlow);
 
 //    combinerDump("color",&envCombiner->color);
 //    combinerDump("alpha",&envCombiner->alpha);
@@ -421,7 +444,7 @@ void xeComb_updateColors( TxeCombiner* c ){
     t[2][2]=gDP.primColor.l;
     t[2][3]=gDP.primColor.l;
 
-    xeGfx_setCombinerConstantF(COMBINER_SIZE*2,t[0],3);
+    xeGfx_setCombinerConstantF(XECOMB_COMBINER_SIZE*2,t[0],3);
 
     combinerUploadColorConstants(XECOMB_COLOR_IDX,&c->color);
     combinerUploadColorConstants(XECOMB_ALPHA_IDX,&c->alpha);

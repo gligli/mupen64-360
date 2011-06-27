@@ -197,11 +197,11 @@ int main ()
 
 //   strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
 //   strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
-//   strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
+   strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
 //	strcpy(romfile, "sda:/n64roms/Star Fox 64.zip");
 //	strcpy(romfile, "sda:/n64roms/F-Zero X.zip");
 // 	strcpy(romfile, "sda:/n64roms/Quest 64.zip"); // bug fps mosntrueuses
- 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
+// 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
 	
 #if 0
    {

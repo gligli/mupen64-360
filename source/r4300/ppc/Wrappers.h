@@ -60,6 +60,9 @@ unsigned int dyna_check_cop1_unusable(unsigned int pc, int isDelaySlot);
 unsigned int dyna_mem(unsigned int value, unsigned int addr,
                       memType type, unsigned int pc, int isDelaySlot);
 
+void mem_sw();
+void invalidate_func();
+
 //cop0 macros
 #define Index reg_cop0[0]
 #define Random reg_cop0[1]
