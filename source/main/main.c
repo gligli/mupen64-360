@@ -186,23 +186,26 @@ int main ()
    dvd_init();
    xenon_ata_init();
    
-   strcpy(cwd, "uda:/mupen64-360/");
-//   strcpy(romfile, "dvd:/Super Mario 64.zip");
-//   strcpy(romfile, "dvd:/Mario Kart 64.zip");
-//   strcpy(romfile, "dvd:/Legend of Zelda, The - Ocarina of Time.zip");
+	strcpy(cwd, "uda:/mupen64-360/");
+	
+//	strcpy(romfile, "dvd:/Super Mario 64.zip");
+//	strcpy(romfile, "dvd:/Mario Kart 64.zip");
+//	strcpy(romfile, "dvd:/Legend of Zelda, The - Ocarina of Time.zip");
 
-//   strcpy(romfile, "uda:/n64rom.zip");
-//   strcpy(romfile, "uda:/sm64.v64");
-//   strcpy(romfile, "uda:/Mario Kart 64.zip");
+//	strcpy(romfile, "uda:/n64rom.zip");
+//	strcpy(romfile, "uda:/sm64.v64");
+//	strcpy(romfile, "uda:/Mario Kart 64.zip");
 
-//   strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
-//   strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
-   strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
+//	strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
+//	strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
+//	strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
 //	strcpy(romfile, "sda:/n64roms/Star Fox 64.zip");
 //	strcpy(romfile, "sda:/n64roms/F-Zero X.zip");
-// 	strcpy(romfile, "sda:/n64roms/Quest 64.zip"); // bug fps mosntrueuses
-// 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
-	
+//	strcpy(romfile, "sda:/n64roms/Quest 64.zip"); // bug fps mosntrueuses
+// 	strcpy(romfile, "sda:/n64roms/Wave Race 64.zip");
+ 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
+// 	strcpy(romfile, "sda:/n64roms/Perfect Dark.zip");
+
 #if 0
    {
 			float time0,timecur;
@@ -234,12 +237,6 @@ int main ()
    
    printf("\nMupen64 version : %s\n", VERSION);
 
-#ifdef USE_TLB_CACHE
-	TLBCache_init();
-#else
-	tlb_mem2_init();
-#endif
-	
 	if (rom_read(romfile))
      {
 	if(rom) free(rom);
@@ -249,9 +246,9 @@ int main ()
    printf("Goodname:%s\n", ROM_SETTINGS.goodname);
    printf("16kb eeprom=%d\n", ROM_SETTINGS.eeprom_16kb);
 
-   //dynacore=0; // interpreter
-   //dynacore=2; // pure interpreter
-   dynacore=1; //  dynamic recompiler
+   //dynacore=CORE_INTERPRETER; // interpreter
+   //dynacore=CORE_PURE_INTERPRETER; // pure interpreter
+   dynacore=CORE_DYNAREC; //  dynamic recompiler
    
    console_close();
    
@@ -264,11 +261,17 @@ int main ()
    romOpen_input();
    // ------------------------------------------------------------
 
-   cpu_init();
+#ifdef USE_TLB_CACHE
+	TLBCache_init();
+#else
+	tlb_mem2_init();
+#endif
+
+	cpu_init();
    
    go();
    
-   cpu_deinit();
+BP   cpu_deinit();
    
    romClosed_RSP();
    romClosed_input();

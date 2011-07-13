@@ -154,18 +154,18 @@ void RSP_ProcessDList()
 	RSP.halt = FALSE;
 	RSP.busy = TRUE;
 
-	gSP.matrix.stackSize = min( 32, *(u32*)&DMEM[0x0FE4] >> 6 );
-	gSP.matrix.modelViewi = 0;
+	gSPAligned.matrix.stackSize = min( 32, *(u32*)&DMEM[0x0FE4] >> 6 );
+	gSPAligned.matrix.modelViewi = 0;
 	gSP.changed |= CHANGED_MATRIX;
 
 	for (int i = 0; i < 4; i++)
 		for (int j = 0; j < 4; j++)
-			gSP.matrix.modelView[0][i][j] = 0.0f;
+			gSPAligned.matrix.modelView[0][i][j] = 0.0f;
 
-	gSP.matrix.modelView[0][0][0] = 1.0f;
-	gSP.matrix.modelView[0][1][1] = 1.0f;
-	gSP.matrix.modelView[0][2][2] = 1.0f;
-	gSP.matrix.modelView[0][3][3] = 1.0f;
+	gSPAligned.matrix.modelView[0][0][0] = 1.0f;
+	gSPAligned.matrix.modelView[0][1][1] = 1.0f;
+	gSPAligned.matrix.modelView[0][2][2] = 1.0f;
+	gSPAligned.matrix.modelView[0][3][3] = 1.0f;
 
 	u32 uc_start = *(u32*)&DMEM[0x0FD0];
 	u32 uc_dstart = *(u32*)&DMEM[0x0FD8];

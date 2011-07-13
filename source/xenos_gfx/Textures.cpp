@@ -238,7 +238,7 @@ void TextureCache_Init()
 	cache.cachedBytes = 0;
 	cache.enable2xSaI = FALSE;
 	cache.bitDepth = 32;
-    cache.maxBytes = 32*1024*1024;
+    cache.maxBytes = 16*1024*1024;
 
 #if 0
     glGenTextures( 32, cache.glNoiseNames );

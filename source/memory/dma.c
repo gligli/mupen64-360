@@ -321,7 +321,7 @@ void dma_si_write()
    int i;
    if (si_register.si_pif_addr_wr64b != 0x1FC007C0)
      {
-//	printf("unknown SI use\n");
+	printf("unknown SI use\n");
 	stop=1;
      }
    for (i=0; i<(64/4); i++)
@@ -336,7 +336,7 @@ void dma_si_read()
    int i;
    if (si_register.si_pif_addr_rd64b != 0x1FC007C0)
      {
-//	printf("unknown SI use\n");
+	printf("unknown SI use\n");
 	stop=1;
      }
    update_pif_read();

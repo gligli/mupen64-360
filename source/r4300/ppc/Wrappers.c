@@ -114,10 +114,10 @@ void dynarec(unsigned int address){
 		PowerPC_block* dst_block = blocks_get(address>>12);
 		unsigned long paddr = update_invalid_addr(address);
 
-//		sprintf(txtbuffer, "trampolining to 0x%08x\n", address);
-//		DEBUG_print(txtbuffer, DBG_USBGECKO);
+		//sprintf(txtbuffer, "trampolining to 0x%08x\n", address);
+		//DEBUG_print(txtbuffer, DBG_USBGECKO);
 		
-		if(!paddr){ stop=1; return; }
+		if(!paddr){ printf("dynarec !paddr\n"); stop=1; return; }
 		
 		if(!dst_block){
 			sprintf(txtbuffer, "block at %08x doesn't exist\n", address&~0xFFF);
@@ -257,7 +257,7 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 
 	address = addr;
 	rdword = &dyna_rdword;
-	/*PC->addr =*/ interp_addr = pc;
+	PC->addr = interp_addr = pc;
 	delay_slot = isDelaySlot;
 
 	switch(type){
@@ -328,6 +328,7 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 			check_memory();
 			break;
 		default:
+			printf("dyna_mem bad type\n");
 			stop = 1;
 			break;
 	}
@@ -336,10 +337,4 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 	if(interp_addr != pc) noCheckInterrupt = 1;
 
 	return interp_addr != pc ? interp_addr : 0;
-}
-
-void mem_sw(){
-//	printf("mem_sw %08x %08x %08x\n",address,word,interp_addr);
-//	write_word_in_memory();
-	check_memory();
 }

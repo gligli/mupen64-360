@@ -49,7 +49,7 @@ void F3DDKR_DMA_Vtx( u32 w0, u32 w1 )
 {
 	if ((w0 & F3DDKR_VTX_APPEND))
 	{
-		if (gSP.matrix.billboard)
+		if (gSPAligned.matrix.billboard)
 			gSP.vertexi = 1;
 	}
 	else
@@ -83,10 +83,10 @@ void F3DDKR_MoveWord( u32 w0, u32 w1 )
 	switch (_SHIFTR( w0, 0, 8 ))
 	{
 		case 0x02:
-			gSP.matrix.billboard = w1 & 1;
+			gSPAligned.matrix.billboard = w1 & 1;
 			break;
 		case 0x0A:
-			gSP.matrix.modelViewi = _SHIFTR( w1, 6, 2 );
+			gSPAligned.matrix.modelViewi = _SHIFTR( w1, 6, 2 );
 			gSP.changed |= CHANGED_MATRIX;
 			break;
 		default:

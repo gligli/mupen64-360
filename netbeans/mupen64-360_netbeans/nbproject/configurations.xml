@@ -237,12 +237,14 @@
             <preprocessorList>
               <Elem>__BIG_ENDIAN__</Elem>
               <Elem>FASTMEM</Elem>
+              <Elem>_BIG_ENDIAN</Elem>
             </preprocessorList>
           </cTool>
           <ccTool>
             <preprocessorList>
               <Elem>__BIG_ENDIAN__</Elem>
               <Elem>FASTMEM</Elem>
+              <Elem>_BIG_ENDIAN</Elem>
             </preprocessorList>
           </ccTool>
         </makeTool>

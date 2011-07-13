@@ -267,7 +267,6 @@ static void thread_loop()
 	}
 }
 
-extern int rendered_frames_ratio;
 #define MIN_RATIO 2
 #define MAX_RATIO 4
 
@@ -285,14 +284,6 @@ AiLenChanged( void )
 //	printf("thread_enqueue %d\n",length);
 	thread_enqueue(stream,length);
 #else
-	if (buffer_offset==0){
-		buffer_size = is_60Hz ? BUFFER_SIZE_48_60 : BUFFER_SIZE_48_50;
-		int ratio=rendered_frames_ratio;
-		if (ratio<MIN_RATIO) ratio=MIN_RATIO;
-		if (ratio>MAX_RATIO) ratio=MAX_RATIO;
-		buffer_size *= ratio;
-	}
-	
 	add_to_buffer(stream, length);
 #endif
 }

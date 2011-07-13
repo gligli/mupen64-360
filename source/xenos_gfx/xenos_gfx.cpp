@@ -56,7 +56,8 @@ char		*screenDirectory;
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 
-#define MAX_VERTEX_COUNT 16384
+#define MAX_VERTEX_COUNT 6000
+#define MAX_VB_COUNT 20
 
 const struct XenosVBFFormat VertexBufferFormat = {
     4, {
@@ -89,7 +90,7 @@ TVertex rect[] = {
 
 struct XenosDevice _xe, *xe;
 struct XenosShader *sh_ps_combiner, *sh_ps_combiner_1c, *sh_ps_combiner_1a, *sh_ps_combiner_1c1a, *sh_ps_combiner_slow, *sh_ps_fb, *sh_vs;
-struct XenosVertexBuffer *vertexBuffer;
+struct XenosVertexBuffer *vertexBuffers[MAX_VB_COUNT];
 struct XenosVertexBuffer *screenRectVB;
 
 extern char inc_vs[];
@@ -101,9 +102,12 @@ extern char inc_ps_combiner_1c1a[];
 extern char inc_ps_combiner_slow[];
 
 
+int currentVertexBuffer;
+
 TVertex * firstVertex;
 TVertex * currentVertex;
 int prevVertexCount;
+
 bool drawPrepared=false;
 bool hadTriangles=false;
 float tmpTmr=0;
@@ -166,7 +170,7 @@ void updateDepthUpdate()
 }
 
 void updateStates(){
-    drawVB();
+	drawVB();
 
 	if (gSP.changed & CHANGED_GEOMETRYMODE)
 	{
@@ -180,13 +184,14 @@ void updateStates(){
 */
 
 		gSP.changed &= ~CHANGED_GEOMETRYMODE;
+
 	}
 
 	if (gSP.geometryMode & G_ZBUFFER)
-        Xe_SetZEnable(xe,1);
+		Xe_SetZEnable(xe,1);
 	else
-        Xe_SetZEnable(xe,0);
-
+		Xe_SetZEnable(xe,0);
+	
 	if (gDP.changed & CHANGED_RENDERMODE)
 	{
 		if (gDP.otherMode.depthCompare)
@@ -234,7 +239,6 @@ void updateStates(){
 
 	if (gDP.changed & CHANGED_SCISSOR)
 	{
-//		printf("clipplane %f %f %f %f\n",gDP.scissor.ulx,gDP.scissor.uly,gDP.scissor.lrx,gDP.scissor.lry);
 		updateScissor();
 	}
 
@@ -247,7 +251,7 @@ void updateStates(){
 		else
 			Combiner_SetCombine( gDP.combine.mux );
 	}
-
+	
 	if (gDP.changed & CHANGED_COMBINE_COLORS)
 	{
 		Combiner_UpdateCombineColors();
@@ -360,7 +364,8 @@ void updateStates(){
             Xe_SetBlendOpAlpha(xe,XE_BLENDOP_ADD);
 		}
 	}
-    gDP.changed &= CHANGED_TILE | CHANGED_TMEM;
+
+	gDP.changed &= CHANGED_TILE | CHANGED_TMEM;
 	gSP.changed &= CHANGED_TEXTURE | CHANGED_MATRIX;
 }
 
@@ -369,17 +374,25 @@ int vertexCount(){
 }
 
 #ifndef USE_VB_POOL
-void resetLockVB(){
-    firstVertex=currentVertex=(TVertex *)Xe_VB_Lock(xe,vertexBuffer,0,MAX_VERTEX_COUNT*sizeof(TVertex),XE_LOCK_WRITE);
-    prevVertexCount=0;
+void resetLockVB(int idx){
+	if (idx>=MAX_VB_COUNT){
+		printf("[xenos_gfx] too many vertices !\n");
+		exit(1);
+	}
+	currentVertexBuffer=idx;
+	Xe_SetStreamSource(xe, 0, vertexBuffers[currentVertexBuffer], 0, 4);
+	firstVertex=currentVertex=(TVertex *)Xe_VB_Lock(xe,vertexBuffers[currentVertexBuffer],0,MAX_VERTEX_COUNT*sizeof(TVertex),XE_LOCK_WRITE);
+	prevVertexCount=0;
 }
 #endif
 
 void nextVertex(){
-    ++currentVertex;
-    if (vertexCount()>=MAX_VERTEX_COUNT-1){
-        printf("[xenos_gfx] too many vertices !\n");
-        exit(1);
+	++currentVertex;
+	
+    if (vertexCount()>=MAX_VERTEX_COUNT){
+        drawVB();
+		Xe_VB_Unlock(xe,vertexBuffers[currentVertexBuffer]);
+		resetLockVB(currentVertexBuffer+1);
     }
 }
 
@@ -388,15 +401,12 @@ void prepareDraw(){
 
 	Xe_Sync(xe); // wait for background render to finish !
  
-//	printf("time %f\n",(float)mftb()/(PPC_TIMEBASE_FREQ/1000)-tmpTmr);
-
 	Xe_InvalidateState(xe);
 
     //updateViewport();
 
 #ifndef USE_VB_POOL
-    Xe_SetStreamSource(xe, 0, vertexBuffer, 0, 4);
-    resetLockVB();
+    resetLockVB(0);
 #endif
 
 	drawPrepared=true;
@@ -410,12 +420,12 @@ void drawVB(){
 		Xe_VBBegin(xe,sizeof(TVertex)/sizeof(float));
 		Xe_VBPut(xe,firstVertex,vertexCount()*sizeof(TVertex)/sizeof(float));
 
-		vertexBuffer=Xe_VBEnd(xe);
-		Xe_VBPoolAdd(xe,vertexBuffer);
+		struct XenosVertexBuffer * vb=Xe_VBEnd(xe);
+		Xe_VBPoolAdd(xe,vb);
 
-		while (vertexBuffer){
-			Xe_Draw(xe, vertexBuffer, NULL);
-			vertexBuffer=vertexBuffer->next;
+		while (vb){
+			Xe_Draw(xe, vb, NULL);
+			vb=vb->next;
 		}
 		
 		currentVertex=firstVertex;
@@ -423,6 +433,7 @@ void drawVB(){
 	}
 #else
 	if (vertexCount()>prevVertexCount){
+		printf("vc %d\n",vertexCount()-prevVertexCount);
         Xe_DrawPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST,prevVertexCount,(vertexCount()-prevVertexCount)/3);
         prevVertexCount=vertexCount();
 		hadTriangles=true;
@@ -505,18 +516,15 @@ void doDrawRect(){
 
     Xe_SetVertexShaderConstantF(xe,0,(float*)ortho,4);
 
-    gSP.changed |= CHANGED_GEOMETRYMODE;
+    gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
     gDP.changed |= CHANGED_RENDERMODE;
-    drawVB();
-
-    updateViewport();
 }
 
 void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
     //printf("xeGfx_drawRect %d %d %d %d\n",ulx,uly,lrx,lry);
 
-    prepareDraw();
-    updateStates();
+	prepareDraw();
+	updateStates();
 
     TVertex v[6];
 
@@ -555,8 +563,8 @@ void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,
     TVertex v[6];
     int i;
      
-    prepareDraw();
-    updateStates();
+	prepareDraw();
+	updateStates();
 
     for(i=0;i<2;++i){
         if ((i==0 && !combiner.usesT0) || (i==1 && !combiner.usesT1)) continue;
@@ -713,8 +721,8 @@ void xeGfx_addTriangle( SPVertex *vertices, int v0, int v1, int v2 ){
     int v[] = { v0, v1, v2 };
     int i;
 
-    prepareDraw();
-
+	prepareDraw();
+	
     if (gSP.changed || gDP.changed) updateStates();
 
     for(i=0;i<3;++i){
@@ -791,7 +799,9 @@ void xeGfx_init(){
 #ifdef USE_VB_POOL
 	currentVertex=firstVertex=(TVertex*)malloc(MAX_VERTEX_COUNT*sizeof(TVertex));
 #else
-	vertexBuffer=Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
+	int i;
+	for(i=0;i<MAX_VB_COUNT;++i)
+		vertexBuffers[i]=Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
 #endif
    
     screenRectVB = Xe_CreateVertexBuffer(xe, sizeof(rect));
@@ -829,10 +839,12 @@ void xeGfx_render()
 		rendered_frames = 0;
 	    lastTick = nowTick;
 		
-		extern unsigned int op_usage[64];
+/*
+   		extern unsigned int op_usage_fp[64];
 		int i;
-//		for(i=0;i<64;++i) printf("%02d %8d\n",i,op_usage[i]);
-		extern unsigned int dyna_mem_usage[16];
+		for(i=0;i<64;++i) printf("%02d %8d\n",i,op_usage_fp[i]);
+*/
+//		extern unsigned int dyna_mem_usage[16];
 //		for(i=0;i<16;++i) printf("%02d %8d\n",i,dyna_mem_usage[i]);
     }
 
@@ -843,7 +855,7 @@ void xeGfx_render()
 	drawVB();
 
 #ifndef USE_VB_POOL
-    Xe_VB_Unlock(xe,vertexBuffer);
+    Xe_VB_Unlock(xe,vertexBuffers[currentVertexBuffer]);
 #endif	
 
     Xe_Resolve(xe);

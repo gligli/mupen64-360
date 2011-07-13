@@ -9,7 +9,12 @@
  *
 **/
 
+#include <ppc/cache.h>
+
 # include "../main/winlnxdefs.h"
+
+#include "assert.h"
+#include <ppc/cache.h>
 
 #define CRC32_POLYNOMIAL     0x04C11DB7
 
@@ -44,7 +49,7 @@ void CRC_BuildTable()
     }
 }
 
-DWORD CRC_Calculate( DWORD crc, void *buffer, DWORD count )
+DWORD CRC_GBI_Calculate( DWORD crc, void *buffer, DWORD count )
 {
     BYTE *p;
 	DWORD orig = crc;
@@ -58,6 +63,28 @@ DWORD CRC_Calculate( DWORD crc, void *buffer, DWORD count )
 #endif // _BIG_ENDIAN
 
     return crc ^ orig;
+}
+
+DWORD CRC_Calculate( DWORD crc, void *buffer, DWORD count )
+{
+    BYTE *p;
+	DWORD orig = crc;
+
+    p = (BYTE*) buffer;
+
+	if(count&3){
+		while (count--)	crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
+	}else{
+		count>>=2;
+		while (count--){
+			crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
+			crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
+			crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
+			crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
+		}
+	}
+
+	return crc ^ orig;
 }
 
 DWORD CRC_CalculatePalette( DWORD crc, void *buffer, DWORD count )

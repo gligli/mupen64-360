@@ -331,9 +331,6 @@ static int branch(int offset, condition cond, int link, int likely){
 #endif
 }
 
-unsigned int op_usage[64]={};
-
-
 static int (*gen_ops[64])(MIPS_instr);
 
 int convert(void){
@@ -344,8 +341,6 @@ int convert(void){
 	MIPS_instr mips = get_next_src();
 	int result = gen_ops[MIPS_GET_OPCODE(mips)](mips);
 	
-	++op_usage[MIPS_GET_OPCODE(mips)];
-
 	if(needFlush) flushRegisters();
 	return result;
 }
@@ -1437,6 +1432,8 @@ static int SD(MIPS_instr mips){
 #endif
 }
 
+extern long long int reg_cop1_fgr_64[32];
+
 static int LWC1(MIPS_instr mips){
 	PowerPC_instr ppc;
 #ifdef INTERPRET_LWC1
@@ -1484,12 +1481,21 @@ static int LWC1(MIPS_instr mips){
 	// Perform the actual load
 	GEN_LWZ(ppc, 3, MIPS_GET_IMMED(mips), base);
 	set_next_dst(ppc);
+#if 1
 	// addr = reg_cop1_simple[frt]
 	GEN_LWZ(ppc, addr, MIPS_GET_RT(mips)*4, DYNAREG_FPR_32);
 	set_next_dst(ppc);
 	// *addr = frs
 	GEN_STW(ppc, 3, 0, addr);
 	set_next_dst(ppc);
+#else
+	unsigned int copregaddr=((unsigned int)reg_cop1_fgr_64)+(MIPS_GET_RT(mips)>>1)*8+4-(MIPS_GET_RT(mips)&1);
+	GEN_LIS(ppc,addr,HA(copregaddr));
+	set_next_dst(ppc);
+	// *addr = frs
+	GEN_STW(ppc, 3, copregaddr , addr);
+	set_next_dst(ppc);
+#endif
 	// Skip over else
 	int not_fastmem_id = add_jump_special(1);
 	GEN_B(ppc, not_fastmem_id, 0, 0);
@@ -4889,55 +4895,66 @@ extern unsigned char invalid_code[0x100000];
 
 void genCallDynaMem2(int type, int base, short immed){
 	PowerPC_instr ppc;
+	unsigned int pc;
 
-//	genCallDynaMem(type,base,immed);return;
+#if 0
+	switch(type){
+		case MEM_WRITE_BYTE:
+			genCallDynaMem(MEM_SB,base,immed);return;
+		case MEM_WRITE_HALF:
+			genCallDynaMem(MEM_SH,base,immed);return;
+		case MEM_WRITE_WORD:
+			genCallDynaMem(MEM_SW,base,immed);return;
+	}
+#endif
 	
 	// addr (must be first)
 	GEN_ADDI(ppc, 6, base, immed);
 	set_next_dst(ppc);
-	GEN_LIS(ppc, 4, ((unsigned int)&address)>>16);
+	GEN_LIS(ppc, 4, HA((unsigned int)&address));
 	set_next_dst(ppc);
 	GEN_STW(ppc,6,((unsigned int)&address),4);
 	set_next_dst(ppc);
 	// value
 	switch(type){
 		case MEM_WRITE_BYTE:
-			GEN_LIS(ppc, 4, ((unsigned int)&byte)>>16);
+			GEN_LIS(ppc, 4, HA((unsigned int)&byte));
 			set_next_dst(ppc);
 			GEN_STB(ppc,3,((unsigned int)&byte),4);
 			set_next_dst(ppc);
 			break;
 		case MEM_WRITE_HALF:
-			GEN_LIS(ppc, 4, ((unsigned int)&hword)>>16);
+			GEN_LIS(ppc, 4, HA((unsigned int)&hword));
 			set_next_dst(ppc);
 			GEN_STH(ppc,3,((unsigned int)&hword),4);
 			set_next_dst(ppc);
 			break;
 		case MEM_WRITE_WORD:
-			GEN_LIS(ppc, 4, ((unsigned int)&word)>>16);
+			GEN_LIS(ppc, 4, HA((unsigned int)&word));
 			set_next_dst(ppc);
 			GEN_STW(ppc,3,((unsigned int)&word),4);
 			set_next_dst(ppc);
 			break;
 	}
 	// pc
-	GEN_LIS(ppc, 5, (get_src_pc()+4)>>16);
+	pc=get_src_pc()+4;
+	GEN_LIS(ppc, 5, (pc)>>16);
 	set_next_dst(ppc);
-	GEN_ORI(ppc, 5, 5, get_src_pc()+4);
+	GEN_ORI(ppc, 5, 5, pc);
 	set_next_dst(ppc);
-	GEN_LIS(ppc, 4,((unsigned int)&interp_addr)>>16);
+	GEN_LIS(ppc, 4,HA((unsigned int)&interp_addr));
 	set_next_dst(ppc);
 	GEN_STW(ppc,5,((unsigned int)&interp_addr),4);
 	set_next_dst(ppc);
 	// delay slot
 	GEN_LI(ppc, 5, 0, isDelaySlot ? 1 : 0);
 	set_next_dst(ppc);
-	GEN_LIS(ppc, 4, ((unsigned int)&delay_slot)>>16);
+	GEN_LIS(ppc, 4, HA((unsigned int)&delay_slot));
 	set_next_dst(ppc);
 	GEN_STW(ppc,5,((unsigned int)&delay_slot),4);
 	set_next_dst(ppc);
 	// rwmem
-	GEN_LIS(ppc, 12, ((unsigned int)&rwmem)>>16);
+	GEN_LIS(ppc, 12, HA((unsigned int)&rwmem));
 	set_next_dst(ppc);
 	GEN_RLWINM(ppc, 5, 6, 18, 14, 29);
 	set_next_dst(ppc);
@@ -4953,11 +4970,11 @@ void genCallDynaMem2(int type, int base, short immed){
 	set_next_dst(ppc);
 	
 	// test invalid code
-	GEN_LIS(ppc, 4, ((unsigned int)&address)>>16);
+	GEN_LIS(ppc, 4, HA((unsigned int)&address));
 	set_next_dst(ppc);
 	GEN_LWZ(ppc,3,((unsigned int)&address),4);
 	set_next_dst(ppc);
-	GEN_LIS(ppc, 12, ((unsigned int)&invalid_code)>>16);
+	GEN_LIS(ppc, 12, HA((unsigned int)&invalid_code));
 	set_next_dst(ppc);
 	GEN_RLWINM(ppc, 5, 3, 20, 12, 31);
 	set_next_dst(ppc);
@@ -4982,7 +4999,7 @@ void genCallDynaMem2(int type, int base, short immed){
 	GEN_LI(ppc, 3, 0, 0);
 	set_next_dst(ppc);
 	// clear delay_slot
-	GEN_LIS(ppc, 4, ((unsigned int)&delay_slot)>>16);
+	GEN_LIS(ppc, 4, HA((unsigned int)&delay_slot));
 	set_next_dst(ppc);
 	GEN_STW(ppc,3,((unsigned int)&delay_slot),4);
 	set_next_dst(ppc);
@@ -4991,19 +5008,33 @@ void genCallDynaMem2(int type, int base, short immed){
 	GEN_LWZ(ppc, 0, DYNAOFF_LR, 1);
 	set_next_dst(ppc);
 
-#if 1
 	// Restore LR
 	GEN_MTLR(ppc, 0);
 	set_next_dst(ppc);
-#else
-	// Check whether we need to take an interrupt
-	GEN_CMPI(ppc, 3, 0, 6);
+
+#if 0
+	GEN_LIS(ppc, 4,HA((unsigned int)&interp_addr));
 	set_next_dst(ppc);
-	// Restore LR
-	GEN_MTLR(ppc, 0);
+	GEN_LWZ(ppc,5,((unsigned int)&interp_addr),4);
 	set_next_dst(ppc);
-	// If so, return to trampoline
-	GEN_BNELR(ppc, 6, 0);
+	GEN_LIS(ppc, 6, (pc)>>16);
+	set_next_dst(ppc);
+	GEN_ORI(ppc, 6, 6, pc);
+	set_next_dst(ppc);
+	GEN_CMP(ppc,5,6,6);
+	set_next_dst(ppc);
+	GEN_BEQ(ppc,6,5,0,0);
+	set_next_dst(ppc);
+	
+	GEN_LI(ppc, 3, 0, 1);
+	set_next_dst(ppc);
+	// set noCheckInterrupt
+	GEN_LIS(ppc, 4, HA((unsigned int)&noCheckInterrupt));
+	set_next_dst(ppc);
+	GEN_STW(ppc,3,((unsigned int)&noCheckInterrupt),4);
+	set_next_dst(ppc);
+	// return to trampoline
+	GEN_BLR(ppc, 0);
 	set_next_dst(ppc);
 #endif
 

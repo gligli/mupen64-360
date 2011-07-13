@@ -65,6 +65,10 @@ unsigned long interp_addr;
 unsigned long op;
 static long skip;
 
+unsigned int op_usage[64]={};
+unsigned int op_usage_spec[64]={};
+unsigned int op_usage_fp[64]={};
+
 void prefetch();
 
 /*static*/ void (*interp_ops[64])(void);
@@ -2212,12 +2216,14 @@ static void BC()
 
 static void S()
 {
-   interp_cop1_s[(op & 0x3F)]();
+	++op_usage_fp[op & 0x3F];
+	interp_cop1_s[(op & 0x3F)]();
 }
 
 static void D()
 {
-   interp_cop1_d[(op & 0x3F)]();
+	++op_usage_fp[op & 0x3F];
+	interp_cop1_d[(op & 0x3F)]();
 }
 
 static void W()
@@ -2240,7 +2246,8 @@ static void (*interp_cop1[32])(void) =
 
 static void SPECIAL()
 {
-   interp_special[(op & 0x3F)]();
+	++op_usage_spec[(op & 0x3F)];
+	interp_special[(op & 0x3F)]();
 }
 
 static void REGIMM()
@@ -3348,6 +3355,8 @@ void pure_interpreter()
 	//if (Count > 0x2000000) printf("inter:%x,%x\n", interp_addr,op);
 	//if ((Count+debug_count) > 0xabaa2c) stop=1;
 	interp_ops[((op >> 26) & 0x3F)]();
+
+	++op_usage[((op >> 26) & 0x3F)];
 
 	//Count = (unsigned long)Count + 2;
 	//if (interp_addr == 0x80000180) last_addr = interp_addr;

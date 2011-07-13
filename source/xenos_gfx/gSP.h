@@ -15,18 +15,19 @@
 #include "Types.h"
 #include "GBI.h"
 #include "gDP.h"
+#include "3DMath.h"
 
 #define CHANGED_VIEWPORT		0x01
 #define CHANGED_MATRIX			0x02
 #define CHANGED_COLORBUFFER		0x04
 #define CHANGED_GEOMETRYMODE	0x08
 #define CHANGED_TEXTURE			0x10
-#define CHANGED_FOGPOSITION		0x10
+#define CHANGED_FOGPOSITION		0x20
 
 struct SPVertex
 {
 	f32		x, y, z, w;
-	f32		nx, ny, nz;
+	f32		nx, ny, nz, ndummy;
 	f32		r, g, b, a;
 	f32		s, t;
 	f32		xClip, yClip, zClip;
@@ -34,7 +35,7 @@ struct SPVertex
 #ifdef __GX__
 	f32		zPrime;
 #endif //__GX__
-};
+}ALIGNED16;
 
 typedef SPVertex SPTriangle[3];
 
@@ -44,20 +45,10 @@ struct gSPInfo
 
 	struct
 	{
-		u32 modelViewi, stackSize, billboard;
-		f32 modelView[32][4][4];
-		f32 projection[4][4];
-		f32 combined[4][4];
-	} matrix;
-
-	struct
-	{
 		f32 A, B, C, D;
 		f32 X, Y;
 		f32 baseScaleX, baseScaleY;
 	} objMatrix;
-
-	SPVertex vertices[80];
 
 	u32 vertexColorBase;
 	u32 vertexi;
@@ -107,6 +98,20 @@ struct gSPInfo
 	} DMAOffsets;
 };
 
+
+struct gSPAlignedInfo{
+	struct
+	{
+		u32 modelViewi, stackSize, billboard;
+		f32 ALIGNED16 modelView[32][4][4];
+		f32 ALIGNED16 projection[4][4];
+		f32 ALIGNED16 combined[4][4];
+	} matrix;
+
+	SPVertex vertices[80] ALIGNED16;
+};
+
+extern gSPAlignedInfo gSPAligned;
 extern gSPInfo gSP;
 extern f32 identityMatrix[4][4];
 

@@ -20,7 +20,7 @@
 //#define USE_FRAMELIMIT
 //#define USE_VB_POOL
 #define USE_THREADED_AUDIO
-#define DEBUG_COMBINERS
+//#define DEBUG_COMBINERS
 
 #define CORE_INTERPRETER		(0)
 #define CORE_DYNAREC			(1)

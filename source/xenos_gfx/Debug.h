@@ -6,8 +6,7 @@
  * Wii64 homepage: http://www.emulatemii.com
  *
 **/
-
-#if !defined( DEBUGGFX_H ) && defined( DEBUG )
+#if !defined( DEBUGGFX_H ) && defined(DEBUG)
 #define DEBUGGFX_H
 
 #include "../main/winlnxdefs.h"
@@ -35,6 +34,9 @@
 #define DebugRSPState(pci, pc, cmd, w0, w1 )
 static inline void DebugMsg( WORD type, const char * format, ... ){
   va_list args;
+  
+  if (type&DEBUG_DETAIL) return;
+  
   va_start (args, format);
   printf("[xenos_gfx] ");
   vprintf (format, args);

@@ -10,12 +10,147 @@
  *
 **/
 
+/* parts taken from http://freevec.org/ */
+
 #ifndef _3DMATH_H
 #define _3DMATH_H
 
 #include <string.h>
 #include <math.h>
+#include <altivec.h>
 
+#define ALIGNED16 __attribute__((aligned(16)))
+
+typedef float Mat44[4][4] ALIGNED16;
+typedef float Vec4f[4] ALIGNED16;
+typedef float Vec3f[3] ALIGNED16;
+
+#define LOAD_ALIGNED_VECTOR(vr, vs)                     \
+{                                                       \
+        vr = vec_ld(0, (float *)vs);                    \
+}
+
+#define STORE_ALIGNED_VECTOR(vr, vs)                    \
+{                                                       \
+        vec_st(vr,  0, (float *)vs);                    \
+}
+#define LOAD_ALIGNED_MATRIX(m, vm1, vm2, vm3, vm4)  \
+{                                                   \
+        vm1 = vec_ld(0,  (float *)m);               \
+        vm2 = vec_ld(16, (float *)m);               \
+        vm3 = vec_ld(32, (float *)m);               \
+        vm4 = vec_ld(48, (float *)m);               \
+}
+
+#define STORE_ALIGNED_MATRIX(m, vm1, vm2, vm3, vm4)  \
+{                                                    \
+        vec_st(vm1,  0, (float *)m);                 \
+        vec_st(vm2, 16, (float *)m);                 \
+        vec_st(vm3, 32, (float *)m);                 \
+        vec_st(vm4, 48, (float *)m);                 \
+}
+
+inline void Mat44Copy(Mat44 dst, Mat44 src)
+{
+        vector float v1, v2, v3, v4;
+        LOAD_ALIGNED_MATRIX(src, v1, v2, v3, v4);
+        STORE_ALIGNED_MATRIX(dst, v1, v2, v3, v4);
+}
+
+inline void Mat44MulTo(Mat44 m1, Mat44 m2, Mat44 m3)
+{
+		vector float zero;
+        vector float vA1, vA2, vA3, vA4, vB1, vB2, vB3, vB4;
+        vector float vC1, vC2, vC3, vC4;
+ 
+        // Load matrices and multiply the first row while we wait for the next row
+        zero = (vector float) vec_splat_u32(0);
+ 
+        LOAD_ALIGNED_MATRIX(m3, vA1, vA2, vA3, vA4);
+        LOAD_ALIGNED_MATRIX(m2, vB1, vB2, vB3, vB4);
+ 
+        // Calculate the first column of m1
+        vC1 = vec_madd( vec_splat( vA1, 0 ), vB1, zero );
+        vC2 = vec_madd( vec_splat( vA2, 0 ), vB1, zero );
+        vC3 = vec_madd( vec_splat( vA3, 0 ), vB1, zero );
+        vC4 = vec_madd( vec_splat( vA4, 0 ), vB1, zero );
+ 
+        // By now we should have loaded both matrices and be done with the first row
+        // Multiply vA x vB2, add to previous results, vC
+        vC1 = vec_madd( vec_splat( vA1, 1 ), vB2, vC1 );
+        vC2 = vec_madd( vec_splat( vA2, 1 ), vB2, vC2 );
+        vC3 = vec_madd( vec_splat( vA3, 1 ), vB2, vC3 );
+        vC4 = vec_madd( vec_splat( vA4, 1 ), vB2, vC4 );
+ 
+        // Multiply vA x vB3, add to previous results, vC
+        vC1 = vec_madd( vec_splat( vA1, 2 ), vB3, vC1 );
+        vC2 = vec_madd( vec_splat( vA2, 2 ), vB3, vC2 );
+        vC3 = vec_madd( vec_splat( vA3, 2 ), vB3, vC3 );
+        vC4 = vec_madd( vec_splat( vA4, 2 ), vB3, vC4 );
+ 
+        // Multiply vA x vB3, add to previous results, vC
+        vC1 = vec_madd( vec_splat( vA1, 3 ), vB4, vC1 );
+        vC2 = vec_madd( vec_splat( vA2, 3 ), vB4, vC2 );
+        vC3 = vec_madd( vec_splat( vA3, 3 ), vB4, vC3 );
+        vC4 = vec_madd( vec_splat( vA4, 3 ), vB4, vC4 );
+ 
+        // Store back the result
+        STORE_ALIGNED_MATRIX(m1, vC1, vC2, vC3, vC4);
+}
+
+inline void Mat44Transp(Mat44 m)
+{
+        vector float vm_1, vm_2, vm_3, vm_4,
+                     vr_1, vr_2, vr_3, vr_4;
+        // Load matrix
+        LOAD_ALIGNED_MATRIX(m, vm_1, vm_2, vm_3, vm_4);
+ 
+        // Do the transpose, first set of moves
+        vr_1 = vec_mergeh(vm_1, vm_3);
+        vr_2 = vec_mergel(vm_1, vm_3);
+        vr_3 = vec_mergeh(vm_2, vm_4);
+        vr_4 = vec_mergel(vm_2, vm_4);
+        // Get the resulting vectors
+        vm_1 = vec_mergeh(vr_1, vr_3);
+        vm_2 = vec_mergel(vr_1, vr_3);
+        vm_3 = vec_mergeh(vr_2, vr_4);
+        vm_4 = vec_mergel(vr_2, vr_4);
+ 
+        // Store back the result
+        STORE_ALIGNED_MATRIX(m, vm_1, vm_2, vm_3, vm_4);
+}
+
+inline void Mat44TransformVertex(Vec4f v,Mat44 m)
+{
+		vector float vo,vv,v1,v2,v3,v4;
+
+		LOAD_ALIGNED_MATRIX(m,v1,v2,v3,v4);
+		LOAD_ALIGNED_VECTOR(vv,v);
+
+		vo = vec_madd( vec_splat( vv, 0 ), v1, v4 );
+		vo = vec_madd( vec_splat( vv, 1 ), v2, vo );
+		vo = vec_madd( vec_splat( vv, 2 ), v3, vo );
+
+		STORE_ALIGNED_VECTOR(vo,v);
+}
+
+inline void Mat44TransformVector( Vec3f v,Mat44 m )
+{
+		vector float vo,vv,v1,v2,v3,zero;
+
+        zero = (vector float) vec_splat_u32(0);
+
+		LOAD_ALIGNED_MATRIX(m,v1,v2,v3,vv); //vv is dummy
+		LOAD_ALIGNED_VECTOR(vv,v);
+
+		vo = vec_madd( vec_splat( vv, 0 ), v1, zero );
+		vo = vec_madd( vec_splat( vv, 1 ), v2, vo );
+		vo = vec_madd( vec_splat( vv, 2 ), v3, vo );
+		
+		STORE_ALIGNED_VECTOR(vo,v);
+}
+
+#if 0
 inline void CopyMatrix( float m0[4][4], float m1[4][4] )
 {
 	memcpy( m0, m1, 16 * sizeof( float ) );
@@ -179,6 +314,18 @@ inline void TransformVertex( float vtx[4], float mtx[4][4] )//, float perspNorm 
 	y = vtx[1];
 	z = vtx[2];
 
+#if 1
+	int i;
+	for(i=0;i<4;++i){
+		vtx[i] = x * mtx[0][i] +
+				 y * mtx[1][i] +
+				 z * mtx[2][i];
+	}	
+
+	for(i=0;i<4;++i){
+		vtx[i] += mtx[3][i];
+	}	
+#else
 	vtx[0] = x * mtx[0][0] +
 	         y * mtx[1][0] +
 	         z * mtx[2][0];
@@ -199,6 +346,7 @@ inline void TransformVertex( float vtx[4], float mtx[4][4] )//, float perspNorm 
 	vtx[1] += mtx[3][1];
 	vtx[2] += mtx[3][2];
 	vtx[3] += mtx[3][3];
+#endif
 # endif // !( X86_ASM || GEKKO )
 }
 
@@ -247,18 +395,19 @@ inline void TransformVector( float vec[3], float mtx[4][4] )
 		   + mtx[2][2] * vec[2];
 # endif // !( X86_ASM || GEKKO )
 }
+#endif
 
 inline void Normalize( float v[3] )
 {
 	float len;
 
-	len = (float)(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+	len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
 	if (len != 0.0)
 	{
-		len = (float)sqrt( len );
-		v[0] /= (float)len;
-		v[1] /= (float)len;
-		v[2] /= (float)len;
+		len = 1.0f/sqrtf( len );
+		v[0] *= len;
+		v[1] *= len;
+		v[2] *= len;
 	}
 }
 

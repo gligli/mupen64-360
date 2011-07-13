@@ -257,10 +257,13 @@ void F3D_SetOtherMode_H( u32 w0, u32 w1 )
 			u32 length = _SHIFTR( w0, 0, 8 );
 			u32 mask = ((1 << length) - 1) << shift;
 
+			u32 prev=gDP.otherMode.h;
+			
 			gDP.otherMode.h &= ~mask;
 			gDP.otherMode.h |= w1 & mask;
 
-			gDP.changed |= CHANGED_CYCLETYPE;
+			if (gDP.otherMode.h!=prev)
+				gDP.changed |= CHANGED_CYCLETYPE;
 			break;
 	}
 }

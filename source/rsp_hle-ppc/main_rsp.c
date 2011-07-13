@@ -22,6 +22,7 @@
 #include "Audio_#1.1.h"
 #include <malloc.h>
 #include <string.h>
+#include <debug.h>
 RSP_INFO rsp;
 
 unsigned long inst1, inst2;
@@ -160,7 +161,8 @@ static int audio_ucode(OSTask_t *task)
 
 __declspec(dllexport) DWORD DoRspCycles ( DWORD Cycles )
 {
-   OSTask_t *task = (OSTask_t*)(rsp.DMEM + 0xFC0);
+#if 0
+	OSTask_t *task = (OSTask_t*)(rsp.DMEM + 0xFC0);
    unsigned int i, sum=0;
    
    if( task->type == 1 && task->data_ptr != 0 && GraphicsHle) {
@@ -264,6 +266,109 @@ __declspec(dllexport) DWORD DoRspCycles ( DWORD Cycles )
 
    
    return Cycles;
+#else
+   OSTask_t *task = (OSTask_t*)(rsp.DMEM + 0xFC0);
+   unsigned int i, sum=0;
+
+   if( task->type == 1 && task->data_ptr != 0 && GraphicsHle) {
+      if (rsp.ProcessDlistList != NULL) {
+     rsp.ProcessDlistList();
+      }
+      *rsp.SP_STATUS_REG |= 0x0203;
+      if ((*rsp.SP_STATUS_REG & 0x40) != 0 ) {
+     *rsp.MI_INTR_REG |= 0x1;
+     rsp.CheckInterrupts();
+      }
+
+      *rsp.DPC_STATUS_REG &= ~0x0002;
+      return Cycles;
+   } else if (task->type == 2 && AudioHle) {
+      if (rsp.ProcessAlistList != NULL) {
+     rsp.ProcessAlistList();
+      }
+      *rsp.SP_STATUS_REG |= 0x0203;
+      if ((*rsp.SP_STATUS_REG & 0x40) != 0 ) {
+     *rsp.MI_INTR_REG |= 0x1;
+     rsp.CheckInterrupts();
+      }
+      return Cycles;
+   } else if (task->type == 7) {
+      rsp.ShowCFB();
+   }
+
+   *rsp.SP_STATUS_REG |= 0x203;
+   if ((*rsp.SP_STATUS_REG & 0x40) != 0 )
+     {
+    *rsp.MI_INTR_REG |= 0x1;
+    rsp.CheckInterrupts();
+     }
+
+   if (task->ucode_size <= 0x1000)
+     for (i=0; i<(task->ucode_size/2); i++)
+       sum += *(rsp.RDRAM + task->ucode + i);
+   else
+     for (i=0; i<(0x1000/2); i++)
+       sum += *(rsp.IMEM + i);
+
+
+   if (task->ucode_size > 0x1000)
+     {
+    switch(sum)
+      {
+       case 0x9E2: // banjo tooie (U) boot code
+           {
+          int i,j;
+          memcpy(rsp.IMEM + 0x120, rsp.RDRAM + 0x1e8, 0x1e8);
+          for (j=0; j<0xfc; j++)
+            for (i=0; i<8; i++)
+              *(rsp.RDRAM+((0x2fb1f0+j*0xff0+i)^S8))=*(rsp.IMEM+((0x120+j*8+i)^S8));
+           }
+         return Cycles;
+         break;
+       case 0x9F2: // banjo tooie (E) + zelda oot (E) boot code
+           {
+          int i,j;
+          memcpy(rsp.IMEM + 0x120, rsp.RDRAM + 0x1e8, 0x1e8);
+          for (j=0; j<0xfc; j++)
+            for (i=0; i<8; i++)
+              *(rsp.RDRAM+((0x2fb1f0+j*0xff0+i)^S8))=*(rsp.IMEM+((0x120+j*8+i)^S8));
+           }
+         return Cycles;
+         break;
+      }
+     }
+   else
+     {
+    switch(task->type)
+      {
+       case 2: // audio
+         if (audio_ucode(task) == 0)
+           return Cycles;
+         break;
+       case 4: // jpeg
+         switch(sum)
+           {
+        case 0x278: // used by zelda during boot
+          *rsp.SP_STATUS_REG |= 0x200;
+          return Cycles;
+          break;
+        case 0x2e4fc: // uncompress
+          jpg_uncompress(task);
+          return Cycles;
+          break;
+        default:
+            {
+               printf("unknown jpeg task:  sum:%x", sum);
+            }
+        }
+         break;
+      }
+     }
+
+    printf("unknown task:  type:%d  sum:%x  PC:%lx", (int)task->type, sum, (unsigned long) rsp.SP_PC_REG);
+
+    return Cycles;
+#endif   
 }
 
  void GetDllInfo ( PLUGIN_INFO * PluginInfo )

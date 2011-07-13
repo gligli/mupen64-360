@@ -11,6 +11,8 @@
 #define GBI_H
 #include "Types.h"
 
+//#define DEBUG
+
 // Microcode Types
 #define F3D			0
 #define F3DEX		1

@@ -396,7 +396,7 @@ TxeCombiner *xeComb_compile( Combiner *color, Combiner *alpha ){
     xeComb->color=*color;
     xeComb->alpha=*alpha;
 	
-#ifndef DEBUG_COMBINERS
+#ifdef DEBUG_COMBINERS
 	combinerDump("color",color);
     combinerDump("alpha",alpha);
 #endif
@@ -446,8 +446,8 @@ void xeComb_updateColors( TxeCombiner* c ){
 
     xeGfx_setCombinerConstantF(XECOMB_COMBINER_SIZE*2,t[0],3);
 
-    combinerUploadColorConstants(XECOMB_COLOR_IDX,&c->color);
-    combinerUploadColorConstants(XECOMB_ALPHA_IDX,&c->alpha);
+	combinerUploadColorConstants(XECOMB_COLOR_IDX,&c->color);
+	combinerUploadColorConstants(XECOMB_ALPHA_IDX,&c->alpha);
 
 /*	printf("prim %f %f %f %f\n",gDP.primColor.r,gDP.primColor.g,gDP.primColor.b,gDP.primColor.a);
 	printf("env %f %f %f %f\n",gDP.envColor.r,gDP.envColor.g,gDP.envColor.b,gDP.envColor.a);*/
