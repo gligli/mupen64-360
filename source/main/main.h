@@ -18,7 +18,6 @@
 #define __MAIN_H__
 
 //#define USE_FRAMELIMIT
-//#define USE_VB_POOL
 #define USE_THREADED_AUDIO
 //#define DEBUG_COMBINERS
 

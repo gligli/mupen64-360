@@ -56,8 +56,8 @@ char		*screenDirectory;
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 
-#define MAX_VERTEX_COUNT 6000
-#define MAX_VB_COUNT 20
+#define MAX_VERTEX_COUNT 16384
+#define MAX_INDICE_COUNT 32768
 
 const struct XenosVBFFormat VertexBufferFormat = {
     4, {
@@ -79,19 +79,24 @@ typedef struct
     float r,g,b,a;
 } TVertex;
 
+typedef u16 TIndice;
+
 TVertex rect[] = {        
     {-1,  1, 1, 1, 0.0f, 0.0f, 0, 0, 0, 0, 0, 0},
     {1,  1,  1, 1, 1.0f, 0.0f, 0, 0, 0, 0, 0, 0},
     {-1, -1, 1, 1, 0.0f, 1.0f, 0, 0, 0, 0, 0, 0},
-    {-1, -1, 1, 1, 0.0f, 1.0f, 0, 0, 0, 0, 0, 0},
-    {1,  1,  1, 1, 1.0f, 0.0f, 0, 0, 0, 0, 0, 0},
+//    {-1, -1, 1, 1, 0.0f, 1.0f, 0, 0, 0, 0, 0, 0},
+//    {1,  1,  1, 1, 1.0f, 0.0f, 0, 0, 0, 0, 0, 0},
 	{1, -1,  1, 1, 1.0f, 1.0f, 0, 0, 0, 0, 0, 0},
 };
 
+TIndice recti[] = {0,1,2,2,1,3};
+
 struct XenosDevice _xe, *xe;
 struct XenosShader *sh_ps_combiner, *sh_ps_combiner_1c, *sh_ps_combiner_1a, *sh_ps_combiner_1c1a, *sh_ps_combiner_slow, *sh_ps_fb, *sh_vs;
-struct XenosVertexBuffer *vertexBuffers[MAX_VB_COUNT];
-struct XenosVertexBuffer *screenRectVB;
+struct XenosVertexBuffer *vertexBuffer;
+
+struct XenosIndexBuffer *indexBuffer;
 
 extern char inc_vs[];
 extern char inc_ps_fb[];
@@ -106,7 +111,13 @@ int currentVertexBuffer;
 
 TVertex * firstVertex;
 TVertex * currentVertex;
-int prevVertexCount;
+
+TIndice * firstIndice;
+TIndice * currentIndice;
+int prevIndiceCount;
+TIndice pendingIndices[MAX_VERTEX_COUNT];
+int pendingIndicesCount=0;
+
 
 bool drawPrepared=false;
 bool hadTriangles=false;
@@ -170,7 +181,20 @@ void updateDepthUpdate()
 }
 
 void updateStates(){
-	drawVB();
+	if ((gSP.changed & CHANGED_GEOMETRYMODE) ||
+		(gSP.changed & CHANGED_TEXTURE) ||
+		(gSP.changed & CHANGED_VIEWPORT) ||
+		(gDP.changed & CHANGED_RENDERMODE) ||
+		(gDP.changed & CHANGED_ALPHACOMPARE) || 
+		(gDP.changed & CHANGED_SCISSOR) ||
+		(gDP.changed & CHANGED_COMBINE) ||
+		(gDP.changed & CHANGED_COMBINE_COLORS) ||
+		(gDP.changed & CHANGED_TILE) ||
+		(gDP.changed & CHANGED_TMEM) ||
+		(gDP.changed & CHANGED_CYCLETYPE)){
+	
+		drawVB();
+	}
 
 	if (gSP.changed & CHANGED_GEOMETRYMODE)
 	{
@@ -369,30 +393,71 @@ void updateStates(){
 	gSP.changed &= CHANGED_TEXTURE | CHANGED_MATRIX;
 }
 
+void processVertex(SPVertex * spv,TVertex * v){
+        v->x=spv->x;
+        v->y=spv->y;
+        v->z=gDP.otherMode.depthSource == G_ZS_PRIM ? gDP.primDepth.z * spv->w : spv->z;
+        if (gDP.otherMode.depthMode == ZMODE_DEC) v->z*=0.999f; // GL_POLYGON_OFFSET_FILL emulation
+        v->w=spv->w;
+        v->r=spv->r;
+        v->g=spv->g;
+        v->b=spv->b;
+        v->a=spv->a;
+        if (combiner.usesT0){
+            v->u0 = (spv->s * cache.current[0]->shiftScaleS * gSP.texture.scales - gSP.textureTile[0]->fuls + cache.current[0]->offsetS) * cache.current[0]->scaleS; 
+            v->v0 = (spv->t * cache.current[0]->shiftScaleT * gSP.texture.scalet - gSP.textureTile[0]->fult + cache.current[0]->offsetT) * cache.current[0]->scaleT;
+        }
+        else
+        {
+            v->u0 = 0;
+            v->v0 = 0;
+        }
+        
+        if (combiner.usesT1){
+			v->u1 = (spv->s * cache.current[1]->shiftScaleS * gSP.texture.scales - gSP.textureTile[1]->fuls + cache.current[1]->offsetS) * cache.current[1]->scaleS; 
+			v->v1 = (spv->t * cache.current[1]->shiftScaleT * gSP.texture.scalet - gSP.textureTile[1]->fult + cache.current[1]->offsetT) * cache.current[1]->scaleT;
+        }
+        else
+        {
+            v->u1 = 0;
+            v->v1 = 0;
+        }
+}
+
 int vertexCount(){
     return currentVertex-firstVertex;
 }
 
-#ifndef USE_VB_POOL
-void resetLockVB(int idx){
-	if (idx>=MAX_VB_COUNT){
-		printf("[xenos_gfx] too many vertices !\n");
-		exit(1);
-	}
-	currentVertexBuffer=idx;
-	Xe_SetStreamSource(xe, 0, vertexBuffers[currentVertexBuffer], 0, 4);
-	firstVertex=currentVertex=(TVertex *)Xe_VB_Lock(xe,vertexBuffers[currentVertexBuffer],0,MAX_VERTEX_COUNT*sizeof(TVertex),XE_LOCK_WRITE);
-	prevVertexCount=0;
+void resetLockVB(){
+	Xe_SetStreamSource(xe, 0, vertexBuffer, 0, 4);
+	firstVertex=currentVertex=(TVertex *)Xe_VB_Lock(xe,vertexBuffer,0,MAX_VERTEX_COUNT*sizeof(TVertex),XE_LOCK_WRITE);
 }
-#endif
 
 void nextVertex(){
 	++currentVertex;
 	
     if (vertexCount()>=MAX_VERTEX_COUNT){
-        drawVB();
-		Xe_VB_Unlock(xe,vertexBuffers[currentVertexBuffer]);
-		resetLockVB(currentVertexBuffer+1);
+		printf("[xenos_gfx] too many vertices !\n");
+		exit(1);
+    }
+}
+
+int indiceCount(){
+    return currentIndice-firstIndice;
+}
+
+void resetLockIB(){
+	Xe_SetIndices(xe,indexBuffer);
+	firstIndice=currentIndice=(TIndice *)Xe_IB_Lock(xe,indexBuffer,0,MAX_INDICE_COUNT*sizeof(TIndice),XE_LOCK_WRITE);
+	prevIndiceCount=0;
+}
+
+void nextIndice(){
+	++currentIndice;
+	
+    if (indiceCount()>=MAX_INDICE_COUNT){
+		printf("[xenos_gfx] too many indices !\n");
+		exit(1);
     }
 }
 
@@ -405,40 +470,21 @@ void prepareDraw(){
 
     //updateViewport();
 
-#ifndef USE_VB_POOL
-    resetLockVB(0);
-#endif
+    resetLockVB();
+	resetLockIB();
 
 	drawPrepared=true;
 }
 
+int dps=0;
+
 void drawVB(){
-#ifdef USE_VB_POOL
-	if (vertexCount()){
-//		printf("vc %d\n",vertexCount());
-
-		Xe_VBBegin(xe,sizeof(TVertex)/sizeof(float));
-		Xe_VBPut(xe,firstVertex,vertexCount()*sizeof(TVertex)/sizeof(float));
-
-		struct XenosVertexBuffer * vb=Xe_VBEnd(xe);
-		Xe_VBPoolAdd(xe,vb);
-
-		while (vb){
-			Xe_Draw(xe, vb, NULL);
-			vb=vb->next;
-		}
-		
-		currentVertex=firstVertex;
-		hadTriangles=true;
-	}
-#else
-	if (vertexCount()>prevVertexCount){
-		printf("vc %d\n",vertexCount()-prevVertexCount);
-        Xe_DrawPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST,prevVertexCount,(vertexCount()-prevVertexCount)/3);
-        prevVertexCount=vertexCount();
+	if (indiceCount()>prevIndiceCount){
+		++dps;
+		Xe_DrawIndexedPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST,0,0,vertexCount(),prevIndiceCount,(indiceCount()-prevIndiceCount)/3);
+        prevIndiceCount=indiceCount();
 		hadTriangles=true;
     }
-#endif
 }
 
 void xeGfx_matrixDump(const char *name, float m[4][4])
@@ -454,15 +500,21 @@ void xeGfx_matrixDump(const char *name, float m[4][4])
 }
 
 void xeGfx_clearDepthBuffer(){
-    //printf("xeGfx_clearDepthBuffer\n");
+	//printf("xeGfx_clearDepthBuffer\n");
 
 	prepareDraw();
     drawVB();
 
     int i;
-    for(i=0;i<6;++i){
+
+	for(i=0;i<6;++i){
+		*currentIndice=vertexCount()+recti[i];
+		nextIndice();
+    }
+	
+	for(i=0;i<4;++i){
         *currentVertex=rect[i];
-        nextVertex();
+       nextVertex();
     }
 
 
@@ -483,7 +535,12 @@ void xeGfx_clearColorBuffer(float *color){
     drawVB();
 
     int i;
-    for(i=0;i<6;++i){
+	for(i=0;i<6;++i){
+		*currentIndice=vertexCount()+recti[i];
+		nextIndice();
+    }
+	
+	for(i=0;i<4;++i){
         *currentVertex=rect[i];
 
         currentVertex->r=color[0];
@@ -521,23 +578,29 @@ void doDrawRect(){
 }
 
 void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
-    //printf("xeGfx_drawRect %d %d %d %d\n",ulx,uly,lrx,lry);
+	//printf("xeGfx_drawRect %d %d %d %d\n",ulx,uly,lrx,lry);
 
 	prepareDraw();
 	updateStates();
 
-    TVertex v[6];
+    TVertex v[4];
 
     memset(v,0,sizeof(rect));
     
-    v[0].x=v[2].x=v[3].x=ulx;
-    v[1].x=v[4].x=v[5].x=lrx;
+    v[0].x=v[2].x=ulx;
+    v[1].x=v[3].x=lrx;
     
-    v[2].y=v[3].y=v[5].y=uly;
-    v[0].y=v[1].y=v[4].y=lry;
+    v[2].y=v[3].y=uly;
+    v[0].y=v[1].y=lry;
 
     int i;
-    for(i=0;i<6;++i){
+
+	for(i=0;i<6;++i){
+		*currentIndice=vertexCount()+recti[i];
+		nextIndice();
+    }
+	
+    for(i=0;i<4;++i){
         v[i].r=color[0];
         v[i].g=color[1];
         v[i].b=color[2];
@@ -547,6 +610,7 @@ void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
         v[i].w=1.0f;
 
         *currentVertex=v[i];
+		
         nextVertex();
     }
     
@@ -560,7 +624,7 @@ void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,
           ulv[2]={ult,ult},
           lru[2]={lrs,lrs},
           lrv[2]={lrt,lrt};
-    TVertex v[6];
+    TVertex v[4];
     int i;
      
 	prepareDraw();
@@ -617,23 +681,28 @@ void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,
 
     memset(v,0,sizeof(rect));
     
-    v[0].x=v[2].x=v[3].x=ulx;
-    v[1].x=v[4].x=v[5].x=lrx;
+    v[0].x=v[2].x=ulx;
+    v[1].x=v[3].x=lrx;
 
-    v[0].u0=v[2].u0=v[3].u0=ulu[0];
-    v[0].u1=v[2].u1=v[3].u1=ulu[1];
-    v[1].u0=v[4].u0=v[5].u0=lru[0];
-    v[1].u1=v[4].u1=v[5].u1=lru[1];
+    v[0].u0=v[2].u0=ulu[0];
+    v[0].u1=v[2].u1=ulu[1];
+    v[1].u0=v[3].u0=lru[0];
+    v[1].u1=v[3].u1=lru[1];
 
-    v[2].y=v[3].y=v[5].y=uly;
-    v[0].y=v[1].y=v[4].y=lry;
+    v[2].y=v[3].y=uly;
+    v[0].y=v[1].y=lry;
 
-    v[2].v0=v[3].v0=v[5].v0=ulv[0];
-    v[2].v1=v[3].v1=v[5].v1=ulv[1];
-    v[0].v0=v[1].v0=v[4].v0=lrv[0];
-    v[0].v1=v[1].v1=v[4].v1=lrv[1];
+    v[2].v0=v[3].v0=ulv[0];
+    v[2].v1=v[3].v1=ulv[1];
+    v[0].v0=v[1].v0=lrv[0];
+    v[0].v1=v[1].v1=lrv[1];
 
-    for(i=0;i<6;++i){
+	for(i=0;i<6;++i){
+		*currentIndice=vertexCount()+recti[i];
+		nextIndice();
+    }
+	
+    for(i=0;i<4;++i){
         v[i].r=1.0f;
         v[i].g=1.0f;
         v[i].b=1.0f;
@@ -643,6 +712,7 @@ void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,
         v[i].w=1.0f;
 
         *currentVertex=v[i];
+
         nextVertex();
     }
     
@@ -716,52 +786,71 @@ void xeGfx_activateFrameBufferTexture(int index){
 	Xe_SetTexture(xe,index,Xe_GetFramebufferSurface(xe));
 }
 
-void xeGfx_addTriangle( SPVertex *vertices, int v0, int v1, int v2 ){
-    SPVertex * spv;
-    int v[] = { v0, v1, v2 };
-    int i;
-
-	prepareDraw();
+void xeGfx_addTriangle( SPVertex *vertices, int v0, int v1, int v2, int direct){
 	
-    if (gSP.changed || gDP.changed) updateStates();
+	if(direct){
+		SPVertex * spv;
+		int v[] = { v0, v1, v2 };
+		int i;
 
-    for(i=0;i<3;++i){
-        spv=&vertices[v[i]];
+		prepareDraw();
+		if (gSP.changed || gDP.changed) updateStates();
 
-        currentVertex->x=spv->x;
-        currentVertex->y=spv->y;
-        currentVertex->z=gDP.otherMode.depthSource == G_ZS_PRIM ? gDP.primDepth.z * spv->w : spv->z;
-        if (gDP.otherMode.depthMode == ZMODE_DEC) currentVertex->z*=0.999f; // GL_POLYGON_OFFSET_FILL emulation
-        currentVertex->w=spv->w;
-        currentVertex->r=spv->r;
-        currentVertex->g=spv->g;
-        currentVertex->b=spv->b;
-        currentVertex->a=spv->a;
-        if (combiner.usesT0){
-            currentVertex->u0 = (spv->s * cache.current[0]->shiftScaleS * gSP.texture.scales - gSP.textureTile[0]->fuls + cache.current[0]->offsetS) * cache.current[0]->scaleS; 
-            currentVertex->v0 = (spv->t * cache.current[0]->shiftScaleT * gSP.texture.scalet - gSP.textureTile[0]->fult + cache.current[0]->offsetT) * cache.current[0]->scaleT;
-        }
-        else
-        {
-            currentVertex->u0 = 0;
-            currentVertex->v0 = 0;
-        }
-        
-        if (combiner.usesT1){
-			currentVertex->u1 = (spv->s * cache.current[1]->shiftScaleS * gSP.texture.scales - gSP.textureTile[1]->fuls + cache.current[1]->offsetS) * cache.current[1]->scaleS; 
-			currentVertex->v1 = (spv->t * cache.current[1]->shiftScaleT * gSP.texture.scalet - gSP.textureTile[1]->fult + cache.current[1]->offsetT) * cache.current[1]->scaleT;
-        }
-        else
-        {
-            currentVertex->u1 = 0;
-            currentVertex->v1 = 0;
-        }
+		for(i=0;i<3;++i){
+			spv=&vertices[v[i]];
 
-        nextVertex();
-    }
+			processVertex(spv,currentVertex);		
+
+			*currentIndice=vertexCount();
+			nextIndice();
+
+			nextVertex();
+		}
+	}else{
+		pendingIndices[pendingIndicesCount++]=v0;
+		pendingIndices[pendingIndicesCount++]=v1;
+		pendingIndices[pendingIndicesCount++]=v2;
+	}
 }
 
 void xeGfx_drawTriangles(){
+
+	if (pendingIndicesCount>0){
+		TIndice	ind[80];
+		int i;
+		int numvert=0;
+		
+		prepareDraw();
+		if (gSP.changed || gDP.changed) updateStates();
+		
+		memset(ind,0xff,sizeof(ind));
+		
+		// add vertices to the vb and get indice for each one
+		for(i=0;i<pendingIndicesCount;++i){
+			TIndice pi=pendingIndices[i];
+			
+			if (ind[pi]==0xffff){
+				processVertex(&gSPAligned.vertices[pi],currentVertex);
+
+				ind[pi]=vertexCount();
+				
+				nextVertex();
+				
+				++numvert;
+			}
+		}
+		
+		// finally add indices to ib
+		for(i=0;i<pendingIndicesCount;++i){
+			*currentIndice=ind[pendingIndices[i]];
+			nextIndice();
+		}
+				
+//		printf("pic %5d %5d\n",pendingIndicesCount,numvert);
+
+		pendingIndicesCount=0;
+	}
+	
 }
 
 void xeGfx_init(){
@@ -796,18 +885,8 @@ void xeGfx_init(){
     Xe_InstantiateShader(xe, sh_vs, 0);
     Xe_ShaderApplyVFetchPatches(xe, sh_vs, 0, &VertexBufferFormat);
 
-#ifdef USE_VB_POOL
-	currentVertex=firstVertex=(TVertex*)malloc(MAX_VERTEX_COUNT*sizeof(TVertex));
-#else
-	int i;
-	for(i=0;i<MAX_VB_COUNT;++i)
-		vertexBuffers[i]=Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
-#endif
-   
-    screenRectVB = Xe_CreateVertexBuffer(xe, sizeof(rect));
-    void *v = Xe_VB_Lock(xe, screenRectVB, 0, sizeof(rect), XE_LOCK_WRITE);
-    memcpy(v, rect, sizeof(rect));
-    Xe_VB_Unlock(xe, screenRectVB);
+	vertexBuffer=Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
+	indexBuffer = Xe_CreateIndexBuffer(xe, MAX_INDICE_COUNT*sizeof(TIndice),XE_FMT_INDEX16);
 	
     Xe_SetShader(xe, SHADER_TYPE_VERTEX, sh_vs, 0);
     Xe_SetShader(xe, SHADER_TYPE_PIXEL, sh_ps_combiner, 0);
@@ -833,8 +912,10 @@ void xeGfx_render()
 		else
 			rendered_frames_ratio=0;
 		
-	    printf("%d fps, rfr=%d\n",frames,rendered_frames_ratio);
-
+	    printf("%d fps, rfr=%d, %d dps\n",frames,rendered_frames_ratio,dps);
+		
+		
+		dps = 0;
 		frames = 0;
 		rendered_frames = 0;
 	    lastTick = nowTick;
@@ -854,9 +935,8 @@ void xeGfx_render()
 	
 	drawVB();
 
-#ifndef USE_VB_POOL
-    Xe_VB_Unlock(xe,vertexBuffers[currentVertexBuffer]);
-#endif	
+    Xe_VB_Unlock(xe,vertexBuffer);
+	Xe_IB_Unlock(xe,indexBuffer);
 
     Xe_Resolve(xe);
     Xe_Execute(xe); // render everything in background !

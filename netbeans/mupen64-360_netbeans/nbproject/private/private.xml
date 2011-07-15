@@ -17,4 +17,10 @@
             <line>2249</line>
         </file>
     </editor-bookmarks>
+    <preferences xmlns="http://www.netbeans.org/ns/auxiliary-configuration-preferences/1">
+        <module name="org-netbeans-modules-cnd-discovery">
+            <property name="folder" value="C:\X360 Hack\x360dev\ppc\mupen64-360\"/>
+            <property name="rootFolder" value="C:\X360 Hack\x360dev\ppc\mupen64-360\*C:\X360 Hack\x360dev\ppc\mupen64-360\files"/>
+        </module>
+    </preferences>
 </project-private>

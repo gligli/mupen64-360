@@ -198,12 +198,12 @@ int main ()
 
 //	strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
 //	strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
-//	strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
+	strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
 //	strcpy(romfile, "sda:/n64roms/Star Fox 64.zip");
 //	strcpy(romfile, "sda:/n64roms/F-Zero X.zip");
 //	strcpy(romfile, "sda:/n64roms/Quest 64.zip"); // bug fps mosntrueuses
 // 	strcpy(romfile, "sda:/n64roms/Wave Race 64.zip");
- 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
+// 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
 // 	strcpy(romfile, "sda:/n64roms/Perfect Dark.zip");
 
 #if 0
@@ -316,9 +316,11 @@ void getKeys(int Control, BUTTONS *Keys)
     }
 
     if (c.select){
-		printf("shutdown!\n");
+		/*printf("shutdown!\n");
 		xenon_smc_power_shutdown();
-		for(;;);
+		for(;;);*/
+		atexit(xenon_smc_power_shutdown);
+		exit(0);
     }
 
     b.START_BUTTON=c.start;

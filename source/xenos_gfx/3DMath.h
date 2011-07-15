@@ -122,14 +122,14 @@ inline void Mat44Transp(Mat44 m)
 
 inline void Mat44TransformVertex(Vec4f v,Mat44 m)
 {
-		vector float vo,vv,v1,v2,v3,v4;
+		vector float vo,vv,m1,m2,m3,m4;
 
-		LOAD_ALIGNED_MATRIX(m,v1,v2,v3,v4);
+		LOAD_ALIGNED_MATRIX(m,m1,m2,m3,m4);
 		LOAD_ALIGNED_VECTOR(vv,v);
 
-		vo = vec_madd( vec_splat( vv, 0 ), v1, v4 );
-		vo = vec_madd( vec_splat( vv, 1 ), v2, vo );
-		vo = vec_madd( vec_splat( vv, 2 ), v3, vo );
+		vo = vec_madd( vec_splat( vv, 0 ), m1, m4 );
+		vo = vec_madd( vec_splat( vv, 1 ), m2, vo );
+		vo = vec_madd( vec_splat( vv, 2 ), m3, vo );
 
 		STORE_ALIGNED_VECTOR(vo,v);
 }

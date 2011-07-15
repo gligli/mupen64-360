@@ -34,7 +34,7 @@ void xeGfx_destroyTexture(void * tex);
 void xeGfx_setTextureData(void * tex,void * buffer);
 void xeGfx_activateTexture(void * tex,int index, int filter, int clamps, int clampt);
 void xeGfx_activateFrameBufferTexture(int index);
-void xeGfx_addTriangle(SPVertex *vertices,int v0,int v1,int v2);
+void xeGfx_addTriangle(SPVertex *vertices,int v0,int v1,int v2,int direct);
 void xeGfx_drawTriangles();
 void xeGfx_init();
 void xeGfx_render();

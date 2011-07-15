@@ -39,16 +39,16 @@ extern u32 uc_crc, uc_dcrc;
 extern char uc_str[256];
 #endif
 
-/*#define gSPFlushTriangles() \
-	if ((OGL.numTriangles > 0) && \
+#define gSPFlushTriangles() \
+	if (/*(OGL.numTriangles > 0) &&*/ \
 		(RSP.nextCmd != G_TRI1) && \
 		(RSP.nextCmd != G_TRI2) && \
 		(RSP.nextCmd != G_TRI4) && \
 		(RSP.nextCmd != G_QUAD) && \
 		(RSP.nextCmd != G_DMA_TRI)) \
-                xeGfx_drawTriangles()*/
+                xeGfx_drawTriangles()
 
-#define gSPFlushTriangles() xeGfx_drawTriangles()
+//#define gSPFlushTriangles() xeGfx_drawTriangles()
 
 gSPInfo gSP;
 gSPAlignedInfo gSPAligned;
@@ -154,7 +154,7 @@ void gSPProcessVertex( u32 v )
 	if (gSP.changed & CHANGED_MATRIX)
 		gSPCombineMatrices();
 
-	Mat44TransformVertex( &gSPAligned.vertices[v].x, gSPAligned.matrix.combined );
+	Mat44TransformVertex( &gSPAligned.vertices[v].x, gSPAligned.matrix.combined);
 
 #ifdef __GX__
 	OGL.GXnumVtxMP++;
@@ -1036,10 +1036,10 @@ void gSPTriangle( s32 v0, s32 v1, s32 v2, s32 flag )
 				}
 			}
 
-                        xeGfx_addTriangle( clippedVertices, 0, 1, 2 );
+                        xeGfx_addTriangle( clippedVertices, 0, 1, 2, 1);
 
 			if (clippedIndex == 4)
-				xeGfx_addTriangle( clippedVertices, 0, 2, 3 );
+				xeGfx_addTriangle( clippedVertices, 0, 2, 3, 1);
 
 #if 0
 			glDisable( GL_POLYGON_OFFSET_FILL );
@@ -1047,9 +1047,9 @@ void gSPTriangle( s32 v0, s32 v1, s32 v2, s32 flag )
 
 //			glDepthFunc( GL_LEQUAL );
 
-			xeGfx_addTriangle( nearVertices, 0, 1, 2 );
+			xeGfx_addTriangle( nearVertices, 0, 1, 2, 1);
 			if (nearIndex == 4)
-				xeGfx_addTriangle( nearVertices, 0, 2, 3 );
+				xeGfx_addTriangle( nearVertices, 0, 2, 3, 1);
 
 #if 0
 			if (gDP.otherMode.depthMode == ZMODE_DEC)
@@ -1060,7 +1060,7 @@ void gSPTriangle( s32 v0, s32 v1, s32 v2, s32 flag )
 //				glDepthFunc( GL_LEQUAL );
 		}
 		else
-			xeGfx_addTriangle( gSPAligned.vertices, v0, v1, v2 );
+			xeGfx_addTriangle( gSPAligned.vertices, v0, v1, v2, 0);
 
 #else // !__GX__
 		if(1)

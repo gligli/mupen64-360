@@ -13,7 +13,10 @@
 #include "gDP.h"
 #include "gSP.h"
 #include "N64.h"
+
 #include "CRC.h"
+#include <zlib.h>
+
 #include "convert.h"
 #include "2xSAI.h"
 //#include "FrameBuffer.h"
@@ -646,6 +649,7 @@ u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
  	if (gSP.textureTile[t]->size == G_IM_SIZ_32b)
 		line <<= 1;
 
+#if 0
 	crc = 0xFFFFFFFF;
  	for (y = 0; y < height; y++)
 	{
@@ -654,13 +658,31 @@ u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
 		src += line;
 	}
 
-   	if (gSP.textureTile[t]->format == G_IM_FMT_CI)
+	if (gSP.textureTile[t]->format == G_IM_FMT_CI)
 	{
 		if (gSP.textureTile[t]->size == G_IM_SIZ_4b)
 			crc = CRC_Calculate( crc, &gDP.paletteCRC16[gSP.textureTile[t]->palette], 4 );
 		else if (gSP.textureTile[t]->size == G_IM_SIZ_8b)
 			crc = CRC_Calculate( crc, &gDP.paletteCRC256, 4 );
 	}
+#else
+	crc = adler32(0L,Z_NULL,0);
+	for (y = 0; y < height; y++)
+	{
+		crc = adler32(crc,(unsigned char *)src,bpl);
+
+		src += line;
+	}
+
+	if (gSP.textureTile[t]->format == G_IM_FMT_CI)
+	{
+		if (gSP.textureTile[t]->size == G_IM_SIZ_4b)
+			crc = adler32( crc, (unsigned char *)&gDP.paletteCRC16[gSP.textureTile[t]->palette], 4 );
+		else if (gSP.textureTile[t]->size == G_IM_SIZ_8b)
+			crc = adler32( crc, (unsigned char *)&gDP.paletteCRC256, 4 );
+	}
+#endif
+
 	return crc;
 }
 
@@ -687,14 +709,15 @@ void TextureCache_UpdateBackground()
 	u32 numBytes = gSP.bgImage.width * gSP.bgImage.height << gSP.bgImage.size >> 1;
 	u32 crc;
 
-	crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[gSP.bgImage.address], numBytes );
+	crc = adler32(0L,Z_NULL,0);
+	crc = adler32( crc, (unsigned char *)&RDRAM[gSP.bgImage.address], numBytes );
 
    	if (gSP.bgImage.format == G_IM_FMT_CI)
 	{
 		if (gSP.bgImage.size == G_IM_SIZ_4b)
-			crc = CRC_Calculate( crc, &gDP.paletteCRC16[gSP.bgImage.palette], 4 );
+			crc = adler32( crc, (unsigned char *)&gDP.paletteCRC16[gSP.bgImage.palette], 4 );
 		else if (gSP.bgImage.size == G_IM_SIZ_8b)
-			crc = CRC_Calculate( crc, &gDP.paletteCRC256, 4 );
+			crc = adler32( crc, (unsigned char *)&gDP.paletteCRC256, 4 );
 	}
 
 	CachedTexture *current = cache.top;
