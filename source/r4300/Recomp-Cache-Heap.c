@@ -140,7 +140,7 @@ static void unlink_func(PowerPC_func* func){
 		GEN_ORI(*(link->branch-16), 0, 0, 0);
 		GEN_ORI(*(link->branch-15), 0, 0, 0);
 		GEN_BLR(*link->branch, 1); // Set the linking branch to blrl
-		DCFlushRange(link->branch-16, 17*sizeof(PowerPC_instr));
+//		DCFlushRange(link->branch-16, 17*sizeof(PowerPC_instr));
 		ICInvalidateRange(link->branch-16, 17*sizeof(PowerPC_instr));
 		
 		remove_func(&link->func->links_out, func);
@@ -329,7 +329,7 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 		GEN_B(*(src_instr), (PowerPC_instr*)dst_instr-src_instr, 0, 0);
 	}
 
-	DCFlushRange(src_instr-16, 17*sizeof(PowerPC_instr));
+//	DCFlushRange(src_instr-16, 17*sizeof(PowerPC_instr));
 	ICInvalidateRange(src_instr-16, 17*sizeof(PowerPC_instr));
 	
 	//end_section(LINK_SECTION);
