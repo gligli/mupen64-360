@@ -179,8 +179,8 @@ int main ()
    console_init();
 
    xenon_make_it_faster(XENON_SPEED_FULL);  
-   usb_init();
 
+   usb_init();
    usb_do_poll();
 
    dvd_init();
@@ -196,9 +196,9 @@ int main ()
 //	strcpy(romfile, "uda:/sm64.v64");
 //	strcpy(romfile, "uda:/Mario Kart 64.zip");
 
-//	strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
+	strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
 //	strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
-	strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
+//	strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
 //	strcpy(romfile, "sda:/n64roms/Star Fox 64.zip");
 //	strcpy(romfile, "sda:/n64roms/F-Zero X.zip");
 //	strcpy(romfile, "sda:/n64roms/Quest 64.zip"); // bug fps mosntrueuses
@@ -206,32 +206,6 @@ int main ()
 // 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
 // 	strcpy(romfile, "sda:/n64roms/Perfect Dark.zip");
 
-#if 0
-   {
-			float time0,timecur;
-//			FILE * f=fopen("sda:/n64roms/Resident Evil 2.zip","rb");
-			FILE * f=fopen("dvd:/Resident Evil 2.zip","rb");
-			if (f){
-				//setvbuf (f , NULL, _IOFBF, 65536);
-				char * buf=malloc(128*1024*1024);
-				
-				fseek(f,0,SEEK_END);
-				int size=ftell(f);
-				fseek(f,0,SEEK_SET);
-
-				printf("ok %d\n",size);
-
-				time0=(float)mftb()/(float)PPC_TIMEBASE_FREQ;
-
-				fread(buf,size,1,f);
-				timecur=(float)mftb()/(float)PPC_TIMEBASE_FREQ-time0;
-				printf("%f KB/s\n",(size*1.0f/1024.0f)/timecur);
-				free(buf);
-				fclose(f);
-			}
-   }			
-#endif
-      
    while(cwd[strlen(cwd)-1] != '/') cwd[strlen(cwd)-1] = '\0';
    strcpy(g_WorkingDir, cwd);
    
@@ -310,7 +284,7 @@ void getKeys(int Control, BUTTONS *Keys)
     static struct controller_data_s c;
     BUTTONS b;
 
-    usb_do_poll();
+	usb_do_poll();
 
     if(get_controller_data(&c, 0)){
     }
@@ -322,7 +296,7 @@ void getKeys(int Control, BUTTONS *Keys)
 		atexit(xenon_smc_power_shutdown);
 		exit(0);
     }
-
+	
     b.START_BUTTON=c.start;
         
     b.A_BUTTON=c.a;
