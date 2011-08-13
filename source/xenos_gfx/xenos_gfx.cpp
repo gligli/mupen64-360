@@ -181,20 +181,7 @@ void updateDepthUpdate()
 }
 
 void updateStates(){
-	if ((gSP.changed & CHANGED_GEOMETRYMODE) ||
-		(gSP.changed & CHANGED_TEXTURE) ||
-		(gSP.changed & CHANGED_VIEWPORT) ||
-		(gDP.changed & CHANGED_RENDERMODE) ||
-		(gDP.changed & CHANGED_ALPHACOMPARE) || 
-		(gDP.changed & CHANGED_SCISSOR) ||
-		(gDP.changed & CHANGED_COMBINE) ||
-		(gDP.changed & CHANGED_COMBINE_COLORS) ||
-		(gDP.changed & CHANGED_TILE) ||
-		(gDP.changed & CHANGED_TMEM) ||
-		(gDP.changed & CHANGED_CYCLETYPE)){
-	
-		drawVB();
-	}
+	drawVB();
 
 	if (gSP.changed & CHANGED_GEOMETRYMODE)
 	{

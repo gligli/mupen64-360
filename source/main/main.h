@@ -17,7 +17,8 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-//#define USE_FRAMELIMIT
+#define USE_ALTIVEC
+#define USE_FRAMELIMIT
 #define USE_THREADED_AUDIO
 //#define DEBUG_COMBINERS
 
