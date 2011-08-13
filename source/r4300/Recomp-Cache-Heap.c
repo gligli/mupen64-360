@@ -5,6 +5,7 @@
 #include "ppc/Recompile.h"
 #include "ppc/Wrappers.h"
 #include "Recomp-Cache.h"
+#include <malloc.h>
 
 #include <ppc/cache.h>
 #include <debug.h>
@@ -250,7 +251,7 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 	
 	// We have the necessary space for this alloc, so just call malloc
 	cacheSize += size;
-	newBlock->func->code = malloc(size);
+	newBlock->func->code = memalign(128,size);
 	newBlock->func->code_addr = malloc(num_instrs * sizeof(void*));
 	// Add it to the heap
 	heapPush(newBlock);
