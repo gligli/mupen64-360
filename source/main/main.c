@@ -194,9 +194,9 @@ int main ()
 
 //	strcpy(romfile, "uda:/n64rom.zip");
 //	strcpy(romfile, "uda:/sm64.v64");
-//	strcpy(romfile, "uda:/Mario Kart 64.zip");
+	strcpy(romfile, "uda:/Mario Kart 64.zip");
 
-	strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
+//	strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
 //	strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
 //	strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
 //	strcpy(romfile, "sda:/n64roms/Star Fox 64.zip");
@@ -290,10 +290,7 @@ void getKeys(int Control, BUTTONS *Keys)
     }
 
     if (c.select){
-		/*printf("shutdown!\n");
-		xenon_smc_power_shutdown();
-		for(;;);*/
-		atexit(xenon_smc_power_shutdown);
+		romClosed_audio();
 		exit(0);
     }
 	

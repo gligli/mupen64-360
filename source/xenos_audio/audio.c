@@ -65,6 +65,8 @@ static unsigned int thread_lock  __attribute__ ((aligned (128))) =0;
 static volatile void * thread_buffer=NULL;
 static volatile int thread_bufsize=0;
 static int thread_bufmaxsize=0;
+static volatile int thread_terminate=0;
+
 
 #ifdef AIDUMP
 FILE *AIdump=NULL;
@@ -245,7 +247,7 @@ static void thread_loop()
 	int local_bufsize=0;
 	int k;
 
-	for(;;){
+	while(!thread_terminate){
 		lock(&thread_lock);
 
 		if (thread_bufsize){
@@ -346,6 +348,8 @@ EXPORT void CALL RomOpen()
 EXPORT void CALL
 RomClosed( void )
 {
+	thread_terminate=1;
+	while(xenon_is_thread_task_running(2));
 //	AUDIO_StopDMA(); // So we don't have a buzzing sound when we exit the game
 }
 
