@@ -33,39 +33,45 @@
 
 // Emulateur Nintendo 64, MUPEN64, Fichier Principal 
 // main.c
-#define VERSION "0.5\0"
+#define VERSION "0.91 Beta"
+
+#define MUPEN_DIR "uda:/mupen64-360/"
 
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "main.h"
-#include "guifuncs.h"
-#include "rom.h"
-#include "../r4300/r4300.h"
-#include "../r4300/recomph.h"
-#include "../memory/memory.h"
-#include "winlnxdefs.h"
-#include "plugin.h"
-#include "savestates.h"
-
+extern "C" {
+	#include "main.h"
+	#include "guifuncs.h"
+	#include "rom.h"
+	#include "../r4300/r4300.h"
+	#include "../r4300/recomph.h"
+	#include "../memory/memory.h"
+	#include "winlnxdefs.h"
+	#include "plugin.h"
+	#include "savestates.h"
+}
 
 #include <debug.h>
-#include <xenos/xenos.h>
-#include <xenos/xe.h>
-#include <xenon_sound/sound.h>
 #include <diskio/dvd.h>
 #include <diskio/ata.h>
 #include <ppc/cache.h>
 #include <ppc/timebase.h>
 #include <pci/io.h>
 #include <input/input.h>
-#include <xenon_smc/xenon_smc.h>
-#include <console/console.h>
 #include <xenon_soc/xenon_power.h>
 #include <usb/usbmain.h>
+#include <console/console.h>
+#include <xenon_sound/sound.h>
+#include <xenon_smc/xenon_smc.h>
+#include <time/time.h>
+#include <xenos/xe.h>
+#include "../xenos_gfx/Textures.h"
+#include "config.h"
 
-
-#define NOGUI_VERSION
+#undef X_OK
+#include <zlx/Browser.h>
+#include <zlx/Draw.h>
 
 #undef hi
 #undef lo
@@ -78,6 +84,13 @@
 
 #define stop_it() stop = 1
 
+ZLX::Browser Browser;
+lpBrowserActionEntry enh_action;
+lpBrowserActionEntry cpu_action;
+lpBrowserActionEntry lim_action;
+
+int use_framelimit = 1;
+
 int autoinc_slot = 0;
 int *autoinc_save_slot = &autoinc_slot;
 
@@ -87,6 +100,128 @@ int p_noask=TRUE;
 char g_WorkingDir[PATH_MAX];
 
 char txtbuffer[1024];
+
+int run_rom(char * romfile);
+
+void ActionLaunchFile(char * filename) {
+	if( run_rom(filename) ){
+		sprintf(txtbuffer,"Could not load file:\n\n%s\n\nIt is probably not a N64 rom.",filename);
+		Browser.Alert(txtbuffer);
+	}else{
+	}
+}
+
+void ActionShutdown(void * unused) {
+    xenon_smc_power_shutdown();
+	for(;;);
+}
+
+void ActionXell(void * unused) {
+    exit(0);
+}
+
+void SetEnhName(){
+	if(cache.enable2xSaI)
+        enh_action->name = "Texture enhancement: 2xSAI";
+	else
+        enh_action->name = "Texture enhancement: None";
+}
+
+void ActionToggleEnh(void * other) {
+	cache.enable2xSaI=!cache.enable2xSaI;
+	
+	SetEnhName();
+}
+
+void SetCpuName(){
+	if(dynacore==CORE_DYNAREC)
+        cpu_action->name = "CPU core: Dynarec";
+	else
+        cpu_action->name = "CPU core: Interpreter";
+}
+
+void ActionToggleCpu(void * other) {
+	if(dynacore==CORE_DYNAREC)
+		dynacore=CORE_PURE_INTERPRETER;
+	else
+		dynacore=CORE_DYNAREC;
+	
+	SetCpuName();
+}
+
+void SetLimName(){
+	if(use_framelimit)
+        lim_action->name = "Framerate limiting: Yes";
+	else
+        lim_action->name = "Framerate limiting: No";
+}
+
+void ActionToggleLim(void * other) {
+	use_framelimit=!use_framelimit;
+	
+	SetLimName();
+}
+
+void cls_GUI() {
+	Browser.Begin();
+	ZLX::Draw::DrawColoredRect(-1,-1,2,2,0xff000000);
+	Xe_SetClearColor(ZLX::g_pVideoDevice,0xff000000);
+	Browser.End();
+}
+
+void do_GUI() {
+
+    {
+        enh_action = new BrowserActionEntry();
+        enh_action->param = NULL;
+		SetEnhName();
+        enh_action->action = ActionToggleEnh;
+        Browser.AddAction(enh_action);
+    }
+
+    {
+        cpu_action = new BrowserActionEntry();
+        cpu_action->param = NULL;
+		SetCpuName();
+        cpu_action->action = ActionToggleCpu;
+        Browser.AddAction(cpu_action);
+    }
+
+    {
+        lim_action = new BrowserActionEntry();
+        lim_action->param = NULL;
+		SetLimName();
+        lim_action->action = ActionToggleLim;
+        Browser.AddAction(lim_action);
+    }
+
+	{
+        lpBrowserActionEntry action = new BrowserActionEntry();
+        action->name = "-";
+        action->action = NULL;
+        action->param = NULL;
+        Browser.AddAction(action);
+    }
+
+	{
+        lpBrowserActionEntry action = new BrowserActionEntry();
+        action->name = "Shutdown";
+        action->action = ActionShutdown;
+        action->param = NULL;
+        Browser.AddAction(action);
+    }
+    {
+        lpBrowserActionEntry action = new BrowserActionEntry();
+        action->name = "Return to Xell";
+        action->action = ActionXell;
+        action->param = NULL;
+        Browser.AddAction(action);
+    }
+
+    Browser.SetLaunchAction(ActionLaunchFile);
+    Browser.Run(MUPEN_DIR);
+}
+
 
 char *get_currentpath()
 {
@@ -110,6 +245,7 @@ void display_loading_progress(int p)
    printf("loading rom : %d%%\r", p);
    fflush(stdout);
    if (p==100) printf("\n");
+   Browser.SetProgressValue(p/100.0f);
 }
 
 void display_MD5calculating_progress(int p)
@@ -171,69 +307,26 @@ void new_vi()
 }
 
 
-int main ()
+int run_rom(char * romfile)
 {
-   char romfile[PATH_MAX];
-   
-   xenos_init(VIDEO_MODE_AUTO);
-   console_init();
+	if (rom_read(romfile)){
+		if(rom) free(rom);
+		if(ROM_HEADER) free(ROM_HEADER);
+		return 1;
+	}
 
-   xenon_make_it_faster(XENON_SPEED_FULL);  
-
-   usb_init();
-   usb_do_poll();
-
-   dvd_init();
-   xenon_ata_init();
-   
-	strcpy(cwd, "uda:/mupen64-360/");
+	cls_GUI();
 	
-//	strcpy(romfile, "dvd:/Super Mario 64.zip");
-//	strcpy(romfile, "dvd:/Mario Kart 64.zip");
-//	strcpy(romfile, "dvd:/Legend of Zelda, The - Ocarina of Time.zip");
+    printf("Goodname:%s\n", ROM_SETTINGS.goodname);
+    printf("16kb eeprom=%d\n", ROM_SETTINGS.eeprom_16kb);
 
-//	strcpy(romfile, "uda:/n64rom.zip");
-//	strcpy(romfile, "uda:/sm64.v64");
-	strcpy(romfile, "uda:/Mario Kart 64.zip");
+	init_memory();
 
-//	strcpy(romfile, "sda:/n64roms/Super Mario 64.zip");
-//	strcpy(romfile, "sda:/n64roms/Mario Kart 64.zip");
-//	strcpy(romfile, "sda:/n64roms/Legend of Zelda, The - Ocarina of Time.zip");
-//	strcpy(romfile, "sda:/n64roms/Star Fox 64.zip");
-//	strcpy(romfile, "sda:/n64roms/F-Zero X.zip");
-//	strcpy(romfile, "sda:/n64roms/Quest 64.zip"); // bug fps mosntrueuses
-// 	strcpy(romfile, "sda:/n64roms/Wave Race 64.zip");
-// 	strcpy(romfile, "sda:/n64roms/GoldenEye 007.zip");
-// 	strcpy(romfile, "sda:/n64roms/Perfect Dark.zip");
+	plugin_load_plugins(NULL,NULL,NULL,NULL);
 
-   while(cwd[strlen(cwd)-1] != '/') cwd[strlen(cwd)-1] = '\0';
-   strcpy(g_WorkingDir, cwd);
-   
-   printf("\nMupen64 version : %s\n", VERSION);
-
-	if (rom_read(romfile))
-     {
-	if(rom) free(rom);
-	if(ROM_HEADER) free(ROM_HEADER);
-	return 1;
-     }
-   printf("Goodname:%s\n", ROM_SETTINGS.goodname);
-   printf("16kb eeprom=%d\n", ROM_SETTINGS.eeprom_16kb);
-
-   //dynacore=CORE_INTERPRETER; // interpreter
-   //dynacore=CORE_PURE_INTERPRETER; // pure interpreter
-   dynacore=CORE_DYNAREC; //  dynamic recompiler
-   
-   console_close();
-   
-   init_memory();
-
-   // --------------------- loading plugins ----------------------
-   plugin_load_plugins(NULL,NULL,NULL,NULL);
-   romOpen_gfx();
-   romOpen_audio();
-   romOpen_input();
-   // ------------------------------------------------------------
+	romOpen_gfx();
+	romOpen_audio();
+	romOpen_input();
 
 #ifdef USE_TLB_CACHE
 	TLBCache_init();
@@ -243,22 +336,56 @@ int main ()
 
 	cpu_init();
    
-   go();
+	go();
    
-BP   cpu_deinit();
-   
-   romClosed_RSP();
-   romClosed_input();
-   romClosed_audio();
-   romClosed_gfx();
-   closeDLL_RSP();
-   closeDLL_input();
-   closeDLL_audio();
-   closeDLL_gfx();
-   free(rom);
-   free(ROM_HEADER);
-   free_memory();
-   return 0;
+	cpu_deinit();
+ 
+	romClosed_RSP();
+	romClosed_input();
+	romClosed_audio();
+	romClosed_gfx();
+	
+	free(rom);
+	free(ROM_HEADER);
+	rom=NULL;
+	ROM_HEADER=NULL;
+	
+	free_memory();
+
+	return 0;
+}
+
+int main ()
+{
+	ZLX::InitialiseVideo();
+	console_set_colors(0xD8444E00,0x00ffff00); // yellow on blue
+	console_init();
+
+	printf("\nMupen64-360 version : %s\n\n", VERSION);
+
+	xenon_sound_init();
+
+	xenon_make_it_faster(XENON_SPEED_FULL);  
+
+	usb_init();
+	usb_do_poll();
+
+	xenon_ata_init();
+	dvd_init();
+
+	strcpy(cwd, MUPEN_DIR);
+	while(cwd[strlen(cwd)-1] != '/') cwd[strlen(cwd)-1] = '\0';
+	strcpy(g_WorkingDir, cwd);
+
+	//dynacore=CORE_INTERPRETER; // interpreter
+	//dynacore=CORE_PURE_INTERPRETER; // pure interpreter
+	dynacore=CORE_DYNAREC; //  dynamic recompiler
+
+	console_close();
+
+	do_GUI();
+
+	return 0;
 }
 
 static CONTROL_INFO control_info;
@@ -290,9 +417,8 @@ void getKeys(int Control, BUTTONS *Keys)
     }
 
     if (c.select){
-		romClosed_audio();
-		exit(0);
-    }
+		stop_it();
+	}
 	
     b.START_BUTTON=c.start;
         

@@ -18,9 +18,8 @@
 #define __MAIN_H__
 
 #define USE_ALTIVEC
-#define USE_FRAMELIMIT
 #define USE_THREADED_AUDIO
-//#define DEBUG_COMBINERS
+#define DEBUG_COMBINERS
 
 #define CORE_INTERPRETER		(0)
 #define CORE_DYNAREC			(1)
@@ -30,5 +29,7 @@
 #  define PATH_MAX 1024
 #endif
 
+extern int use_framelimit;
 extern char g_WorkingDir[];
+
 #endif // __MAIN_H__

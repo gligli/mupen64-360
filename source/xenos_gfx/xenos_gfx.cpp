@@ -18,6 +18,7 @@
 
 #include "GFXPlugin.h"
 #include "xenos_gfx.h"
+#include "xenos_blender.h"
 #include "Debug.h"
 #include "Zilmar GFX 1.3.h"
 //#include "FrameBuffer.h"
@@ -33,9 +34,10 @@
 #include <math.h>
 
 #include <xenos/xe.h>
-#include <xenos/edram.h>
 #include <ppc/timebase.h>
 #include <time/time.h>
+
+#include <zlx/zlx.h>
 
 #ifdef DEBUGON
 extern "C" { void _break(); }
@@ -92,7 +94,7 @@ TVertex rect[] = {
 
 TIndice recti[] = {0,1,2,2,1,3};
 
-struct XenosDevice _xe, *xe;
+struct XenosDevice *xe;
 struct XenosShader *sh_ps_combiner, *sh_ps_combiner_1c, *sh_ps_combiner_1a, *sh_ps_combiner_1c1a, *sh_ps_combiner_slow, *sh_ps_fb, *sh_vs;
 struct XenosVertexBuffer *vertexBuffer;
 
@@ -107,8 +109,6 @@ extern char inc_ps_combiner_1c1a[];
 extern char inc_ps_combiner_slow[];
 
 
-int currentVertexBuffer;
-
 TVertex * firstVertex;
 TVertex * currentVertex;
 
@@ -121,7 +121,6 @@ int pendingIndicesCount=0;
 
 bool drawPrepared=false;
 bool hadTriangles=false;
-float tmpTmr=0;
 
 int rendered_frames_ratio=1;
 
@@ -131,8 +130,8 @@ void updateScissor(){
 	Xe_SetScissor(xe,1,
 		MAX(gSP.viewport.x,gDP.scissor.ulx)*Xe_GetFramebufferSurface(xe)->width/VI.width,
 		MAX(gSP.viewport.y,gDP.scissor.uly)*Xe_GetFramebufferSurface(xe)->height/VI.height,
-		MIN(gSP.viewport.x+gSP.viewport.width,gDP.scissor.lrx)*Xe_GetFramebufferSurface(xe)->width/VI.width,
-		MIN(gSP.viewport.y+gSP.viewport.height,gDP.scissor.lry)*Xe_GetFramebufferSurface(xe)->height/VI.height
+		MIN(gSP.viewport.x+gSP.viewport.width-1,gDP.scissor.lrx)*Xe_GetFramebufferSurface(xe)->width/VI.width,
+		MIN(gSP.viewport.y+gSP.viewport.height-1,gDP.scissor.lry)*Xe_GetFramebufferSurface(xe)->height/VI.height
 	); 
 }
 
@@ -220,6 +219,7 @@ void updateStates(){
     
     if ((gDP.changed & CHANGED_ALPHACOMPARE) || (gDP.changed & CHANGED_RENDERMODE))
 	{
+#if 0
 		// Enable alpha test for threshold mode
 		if ((gDP.otherMode.alphaCompare == G_AC_THRESHOLD) && !(gDP.otherMode.alphaCvgSel))
 		{
@@ -246,6 +246,9 @@ void updateStates(){
 		else
 			glDisable( GL_POLYGON_STIPPLE );
 */
+#else
+		appplyAlphaMode();
+#endif
 	}
 
 	if (gDP.changed & CHANGED_SCISSOR)
@@ -303,6 +306,7 @@ void updateStates(){
 
 	if ((gDP.changed & CHANGED_RENDERMODE) || (gDP.changed & CHANGED_CYCLETYPE))
 	{
+#if 0
 		if ((gDP.otherMode.forceBlender) &&
 			(gDP.otherMode.cycleType != G_CYC_COPY) &&
 			(gDP.otherMode.cycleType != G_CYC_FILL) &&
@@ -374,8 +378,10 @@ void updateStates(){
             Xe_SetDestBlendAlpha(xe,XE_BLEND_INVSRCALPHA);
             Xe_SetBlendOpAlpha(xe,XE_BLENDOP_ADD);
 		}
+#else
+		applyBlenderMode();
+#endif
 	}
-
 	gDP.changed &= CHANGED_TILE | CHANGED_TMEM;
 	gSP.changed &= CHANGED_TEXTURE | CHANGED_MATRIX;
 }
@@ -487,7 +493,7 @@ void xeGfx_matrixDump(const char *name, float m[4][4])
 }
 
 void xeGfx_clearDepthBuffer(){
-	//printf("xeGfx_clearDepthBuffer\n");
+	//printf("xeGfx_clearDepthBuffer\n");return;
 
 	prepareDraw();
     drawVB();
@@ -516,7 +522,7 @@ void xeGfx_clearDepthBuffer(){
 }
 
 void xeGfx_clearColorBuffer(float *color){
-    //printf("xeGfx_clearColorBuffer\n");
+    //printf("xeGfx_clearColorBuffer\n");return;
     
 	prepareDraw();
     drawVB();
@@ -565,7 +571,7 @@ void doDrawRect(){
 }
 
 void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
-	//printf("xeGfx_drawRect %d %d %d %d\n",ulx,uly,lrx,lry);
+	printf("xeGfx_drawRect %d %d %d %d\n",ulx,uly,lrx,lry);
 
 	prepareDraw();
 	updateStates();
@@ -841,48 +847,57 @@ void xeGfx_drawTriangles(){
 }
 
 void xeGfx_init(){
-    xe = &_xe;
-	    /* initialize the GPU */
-    Xe_Init(xe);
+	static int done=0;
+	
+	xe = ZLX::g_pVideoDevice;
+
+	/* initialize the GPU */
 
 	Xe_SetRenderTarget(xe, Xe_GetFramebufferSurface(xe));
+	Xe_InvalidateState(xe);
+	Xe_SetClearColor(ZLX::g_pVideoDevice,0);
 
-	/* load pixel shaders */
 
-    sh_ps_combiner = Xe_LoadShaderFromMemory(xe, inc_ps_combiner);
-    Xe_InstantiateShader(xe, sh_ps_combiner, 0);
- 
-    sh_ps_combiner_1c = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c);
-    Xe_InstantiateShader(xe, sh_ps_combiner_1c, 0);
+	if(!done){
+		/* load pixel shaders */
 
-    sh_ps_combiner_1a = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1a);
-    Xe_InstantiateShader(xe, sh_ps_combiner_1a, 0);
+		sh_ps_combiner = Xe_LoadShaderFromMemory(xe, inc_ps_combiner);
+		Xe_InstantiateShader(xe, sh_ps_combiner, 0);
 
-    sh_ps_combiner_1c1a = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c1a);
-    Xe_InstantiateShader(xe, sh_ps_combiner_1c1a, 0);
+		sh_ps_combiner_1c = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c);
+		Xe_InstantiateShader(xe, sh_ps_combiner_1c, 0);
 
-    sh_ps_combiner_slow = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_slow);
-    Xe_InstantiateShader(xe, sh_ps_combiner_slow, 0);
+		sh_ps_combiner_1a = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1a);
+		Xe_InstantiateShader(xe, sh_ps_combiner_1a, 0);
 
-    sh_ps_fb = Xe_LoadShaderFromMemory(xe, inc_ps_fb);
-    Xe_InstantiateShader(xe, sh_ps_fb, 0);
+		sh_ps_combiner_1c1a = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c1a);
+		Xe_InstantiateShader(xe, sh_ps_combiner_1c1a, 0);
 
-    /* load vertex shader */
-    sh_vs = Xe_LoadShaderFromMemory(xe, inc_vs);
-    Xe_InstantiateShader(xe, sh_vs, 0);
-    Xe_ShaderApplyVFetchPatches(xe, sh_vs, 0, &VertexBufferFormat);
+		sh_ps_combiner_slow = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_slow);
+		Xe_InstantiateShader(xe, sh_ps_combiner_slow, 0);
 
-	vertexBuffer=Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
-	indexBuffer = Xe_CreateIndexBuffer(xe, MAX_INDICE_COUNT*sizeof(TIndice),XE_FMT_INDEX16);
-	
+		sh_ps_fb = Xe_LoadShaderFromMemory(xe, inc_ps_fb);
+		Xe_InstantiateShader(xe, sh_ps_fb, 0);
+
+		/* load vertex shader */
+
+		sh_vs = Xe_LoadShaderFromMemory(xe, inc_vs);
+		Xe_InstantiateShader(xe, sh_vs, 0);
+		Xe_ShaderApplyVFetchPatches(xe, sh_vs, 0, &VertexBufferFormat);
+
+		vertexBuffer = Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
+		indexBuffer = Xe_CreateIndexBuffer(xe, MAX_INDICE_COUNT*sizeof(TIndice),XE_FMT_INDEX16);
+		
+		done=1;
+	}
+}
+
+void xeGfx_start(){
     Xe_SetShader(xe, SHADER_TYPE_VERTEX, sh_vs, 0);
     Xe_SetShader(xe, SHADER_TYPE_PIXEL, sh_ps_combiner, 0);
 
-    edram_init(xe);
-
     prepareDraw();
 }
-
 
 void xeGfx_render()
 {
@@ -930,18 +945,18 @@ void xeGfx_render()
 	drawPrepared=false;
 	hadTriangles=false;
 
-#ifdef USE_FRAMELIMIT
-	static int last_rendered_frame=0;
-	static u64 last_rendered_tb=0;
-	u64 tb=0;
+	if(use_framelimit){
+		static int last_rendered_frame=0;
+		static u64 last_rendered_tb=0;
+		u64 tb=0;
 
-	do{
-		tb=mftb();
-	}while((tb-last_rendered_tb)<(/*PPC_TIMEBASE_FREQ*/3192000000LL/64LL)*(frame_id-last_rendered_frame)/60);
+		do{
+			tb=mftb();
+		}while((tb-last_rendered_tb)<(/*PPC_TIMEBASE_FREQ*/3192000000LL/64LL)*(frame_id-last_rendered_frame)/60);
 
-	last_rendered_tb=tb;	
-	last_rendered_frame=frame_id;
-#endif
+		last_rendered_tb=tb;	
+		last_rendered_frame=frame_id;
+	}
 }
 
 
@@ -955,15 +970,6 @@ void (*CheckInterrupts)( void );
 EXPORT void CALL CaptureScreen ( char * Directory )
 {
 	screenDirectory = Directory;
-#ifdef RSPTHREAD
-	if (RSP.thread)
-	{
-		SetEvent( RSP.threadMsg[RSPMSG_CAPTURESCREEN] );
-		WaitForSingleObject( RSP.threadFinished, INFINITE );
-	}
-#else
-//	OGL_SaveScreenshot();
-#endif
 }
 
 EXPORT void CALL ChangeWindow (void)
@@ -1001,13 +1007,6 @@ EXPORT void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
 
 EXPORT BOOL CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
-//	Config_LoadConfig();
-# ifndef __GX__
-//	OGL.hScreen = NULL;
-# endif // !__GX__
-# ifdef RSPTHREAD
-	RSP.thread = NULL;
-# endif
 	DMEM = Gfx_Info.DMEM;
 	IMEM = Gfx_Info.IMEM;
 	RDRAM = Gfx_Info.RDRAM;
@@ -1038,7 +1037,7 @@ EXPORT BOOL CALL InitiateGFX (GFX_INFO Gfx_Info)
 	REG.VI_Y_SCALE = Gfx_Info.VI_Y_SCALE_REG;
 
 	CheckInterrupts = Gfx_Info.CheckInterrupts;
-
+	
 	xeGfx_init();
 
     return TRUE;
@@ -1050,33 +1049,6 @@ EXPORT void CALL MoveScreen (int xpos, int ypos)
 
 EXPORT void CALL ProcessDList(void)
 {
-#ifdef DEBUGON
-//	_break();
-#endif
-
-#ifdef RSPTHREAD
-	if (RSP.thread)
-	{
-		SetEvent( RSP.threadMsg[RSPMSG_PROCESSDLIST] );
-		WaitForSingleObject( RSP.threadFinished, INFINITE );
-	}
-#else
-#ifdef __GX__
-#ifdef GLN64_SDLOG
-	sprintf(txtbuffer,"\nPROCESS D LIST!!\n\n");
-	DEBUG_print(txtbuffer,DBG_SDGECKOPRINT);
-#endif // GLN64_SDLOG
-	if (VI.enableLoadIcon && !OGL.frameBufferTextures)
-	{
-		float color[4] = {0.0f,0.0f,0.0f,0.0f};
-		OGL_ClearColorBuffer( color );
-		OGL_ClearDepthBuffer();
-		OGL_GXclearEFB();
-//		VI_GX_clearEFB();
-	}
-	VI.enableLoadIcon = false;
-#endif // __GX__
-
 #if 0
 	static unsigned long lastTick=0;
     static int frames=0;
@@ -1092,106 +1064,31 @@ EXPORT void CALL ProcessDList(void)
 #endif
     
     RSP_ProcessDList();
-#endif
-
-#ifdef DEBUGON
-//	_break();
-#endif
-
-#ifdef __GX__
-#ifdef SHOW_DEBUG
-	sprintf(txtbuffer,"RSP: VtxMP = %d; pDcnt = %d; Zprim = %d; noZprim = %d", OGL.GXnumVtxMP, cache.GXprimDepthCnt, cache.GXZTexPrimCnt, cache.GXnoZTexPrimCnt);
-	DEBUG_print(txtbuffer,DBG_RSPINFO);
-#endif
-	VI_GX_updateDEBUG();
-#endif // __GX__
 }
 
 EXPORT void CALL ProcessRDPList(void)
 {
-	//*REG.DPC_CURRENT = *REG.DPC_START;
-/*	RSP.PCi = 0;
-	RSP.PC[RSP.PCi] = *REG.DPC_CURRENT;
-	
-	RSP.halt = FALSE;
-
-	while (RSP.PC[RSP.PCi] < *REG.DPC_END)
-	{
-		RSP.cmd0 = *(DWORD*)&RDRAM[RSP.PC[RSP.PCi]];
-		RSP.cmd1 = *(DWORD*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
-*/
-/*		if ((RSP.cmd0 >> 24) == 0xE9)
-		{
-			*REG.MI_INTR |= MI_INTR_DP;
-			CheckInterrupts();
-		}
-		if ((RSP.cmd0 >> 24) == 0xCD)
-			RSP.cmd0 = RSP.cmd0;
-
-		GFXOp[RSP.cmd0 >> 24]();*/
-		//*REG.DPC_CURRENT += 8;
-//	}
 }
 
 EXPORT void CALL RomClosed (void)
 {
-#ifdef RSPTHREAD
-	int i;
-
-	if (RSP.thread)
-	{
-//		if (OGL.fullscreen)
-//			ChangeWindow();
-
-		if (RSP.busy)
-		{
-			RSP.halt = TRUE;
-			WaitForSingleObject( RSP.threadFinished, INFINITE );
-		}
-
-		SetEvent( RSP.threadMsg[RSPMSG_CLOSE] );
-		WaitForSingleObject( RSP.threadFinished, INFINITE );
-		for (i = 0; i < 4; i++)
-			if (RSP.threadMsg[i])
-				CloseHandle( RSP.threadMsg[i] );
-		CloseHandle( RSP.threadFinished );
-		CloseHandle( RSP.thread );
-	}
-
-	RSP.thread = NULL;
-#else
     Combiner_Destroy();
     TextureCache_Destroy();
-	DepthBuffer_Destroy();
-#endif
-
-#ifdef __GX__
-	VIDEO_SetPreRetraceCallback(NULL);
-#endif // __GX__
-
-#ifdef DEBUG
-	CloseDebugDlg();
-#endif
+    DepthBuffer_Destroy();
+	
+	Xe_SetScissor(xe,0,0,0,0,0);
 }
 
 EXPORT void CALL RomOpen (void)
 {
-#ifdef RSPTHREAD
-#else
+	xeGfx_start();
+
 	RSP_Init();
     Combiner_Init();
     TextureCache_Init();
 	DepthBuffer_Init();
-#endif
 
-//	OGL_ResizeWindow();
-	
 	rendered_frames_ratio=1;
-
-#ifdef DEBUG
-	OpenDebugDlg();
-#endif
 }
 
 EXPORT void CALL ShowCFB (void)
@@ -1200,15 +1097,7 @@ EXPORT void CALL ShowCFB (void)
 
 EXPORT void CALL UpdateScreen (void)
 {
-#ifdef RSPTHREAD
-	if (RSP.thread)
-	{
-		SetEvent( RSP.threadMsg[RSPMSG_UPDATESCREEN] );
-		WaitForSingleObject( RSP.threadFinished, INFINITE );
-	}
-#else
 	VI_UpdateScreen();
-#endif
 }
 
 EXPORT void CALL ViStatusChanged (void)

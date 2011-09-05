@@ -239,7 +239,7 @@ void TextureCache_Init()
 	cache.bottom = NULL;
 	cache.numCached = 0;
 	cache.cachedBytes = 0;
-	cache.enable2xSaI = FALSE;
+//	cache.enable2xSaI = FALSE;
 	cache.bitDepth = 32;
     cache.maxBytes = 16*1024*1024;
 
@@ -328,6 +328,9 @@ BOOL TextureCache_Verify()
 
 	return TRUE;
 }
+
+#include <xenos/xe.h>
+#include <debug.h>
 
 void TextureCache_RemoveBottom()
 {
@@ -446,12 +449,6 @@ void TextureCache_Destroy()
 {
 	while (cache.bottom)
 		TextureCache_RemoveBottom();
-
-#if 0
-    glDeleteTextures( 32, cache.glNoiseNames );
-#endif
-
-    xeGfx_destroyTexture(cache.dummy->xeSurface);
 
 	cache.top = NULL;
 	cache.bottom = NULL;
@@ -709,6 +706,17 @@ void TextureCache_UpdateBackground()
 	u32 numBytes = gSP.bgImage.width * gSP.bgImage.height << gSP.bgImage.size >> 1;
 	u32 crc;
 
+#if 0
+	crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[gSP.bgImage.address], numBytes );
+
+   	if (gSP.bgImage.format == G_IM_FMT_CI)
+	{
+		if (gSP.bgImage.size == G_IM_SIZ_4b)
+			crc = CRC_Calculate( crc, &gDP.paletteCRC16[gSP.bgImage.palette], 4 );
+		else if (gSP.bgImage.size == G_IM_SIZ_8b)
+			crc = CRC_Calculate( crc, &gDP.paletteCRC256, 4 );
+	}
+#else
 	crc = adler32(0L,Z_NULL,0);
 	crc = adler32( crc, (unsigned char *)&RDRAM[gSP.bgImage.address], numBytes );
 
@@ -719,7 +727,8 @@ void TextureCache_UpdateBackground()
 		else if (gSP.bgImage.size == G_IM_SIZ_8b)
 			crc = adler32( crc, (unsigned char *)&gDP.paletteCRC256, 4 );
 	}
-
+#endif
+	
 	CachedTexture *current = cache.top;
 
  	while (current)

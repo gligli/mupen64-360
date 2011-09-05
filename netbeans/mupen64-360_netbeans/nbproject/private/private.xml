@@ -20,7 +20,9 @@
     <preferences xmlns="http://www.netbeans.org/ns/auxiliary-configuration-preferences/1">
         <module name="org-netbeans-modules-cnd-discovery">
             <property name="folder" value="C:\X360 Hack\x360dev\ppc\mupen64-360\"/>
-            <property name="rootFolder" value="C:\X360 Hack\x360dev\ppc\mupen64-360\*C:\X360 Hack\x360dev\ppc\mupen64-360\files"/>
+            <property name="rootFolder" value="C:\X360 Hack\x360dev\ppc\mupen64-360\files*C:\X360 Hack\x360dev\ppc\mupen64-360\"/>
+            <property name="libraries" value=""/>
+            <property name="executable" value="C:\X360 Hack\x360dev\ppc\mupen64-360\mupen64-360.elf*C:\X360 Hack\x360dev\ppc\mupen64-360\files"/>
         </module>
     </preferences>
 </project-private>

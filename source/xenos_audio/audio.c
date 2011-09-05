@@ -113,9 +113,9 @@ AiDacrateChanged( int SystemType )
 }
 
 static void inline play_buffer(void){
-#ifdef USE_FRAMELIMIT
-	while(xenon_sound_get_unplayed()>MAX_UNPLAYED);
-#endif
+	if(use_framelimit){
+		while(xenon_sound_get_unplayed()>MAX_UNPLAYED);
+	}
 	
 	int i;
 	for(i=0;i<buffer_size/4;++i) ((int*)buffer)[i]=bswap_32(((int*)buffer)[i]);
@@ -336,7 +336,13 @@ EXPORT BOOL CALL
 InitiateAudio( AUDIO_INFO Audio_Info )
 {
 	AudioInfo = Audio_Info;
-	xenon_sound_init();
+
+	thread_lock=0;
+	thread_buffer=NULL;
+	thread_bufsize=0;
+	thread_bufmaxsize=0;
+	thread_terminate=0;
+
 	xenon_run_thread_task(2,&thread_stack[sizeof(thread_stack)-0x100],thread_loop);
 	return TRUE;
 }
