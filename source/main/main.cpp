@@ -397,7 +397,7 @@ void initiateControllers(CONTROL_INFO ControlInfo)
    control_info.Controls[0].Plugin = PLUGIN_MEMPAK;
 }
 
-#define	STICK_DEAD_ZONE (32768*0.3)
+#define	STICK_DEAD_ZONE (32768*0.4)
 #define HANDLE_STICK_DEAD_ZONE(x) ((((x)>-STICK_DEAD_ZONE) && (x)<STICK_DEAD_ZONE)?0:(x-x/abs(x)*STICK_DEAD_ZONE))
 
 #define	TRIGGER_DEAD_ZONE (256*0.3)

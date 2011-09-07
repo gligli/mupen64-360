@@ -30,6 +30,11 @@
 #ifndef ROM_H
 #define ROM_H
 
+#define SYSTEM_NTSC					0
+#define SYSTEM_PAL					1
+#define SYSTEM_MPAL					2
+
+int getVideoSystem();
 int rom_read(const char *argv);
 int fill_header(const char *argv);
 void calculateMD5(const char *argv, unsigned char digest[16]);

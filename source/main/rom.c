@@ -459,3 +459,23 @@ void calculateMD5(const char *argv, unsigned char digest[16]) {
 	free(rom);
 	rom = NULL;
 }
+
+int getVideoSystem(){
+	switch (ROM_HEADER->Country_code >> 8) {
+		case 0x44:
+		case 0x46:
+		case 0x49:
+		case 0x50:
+		case 0x53:
+		case 0x55:
+		case 0x58:
+		case 0x59:
+			return SYSTEM_PAL;
+		case 0x37:
+		case 0x41:
+		case 0x45:
+		case 0x4a:
+			return SYSTEM_NTSC;
+	}
+	return SYSTEM_NTSC; // by default
+}

@@ -2,7 +2,7 @@
 #define	XENOS_BLENDER_H
 
 
-void appplyAlphaMode(void);
+void applyAlphaMode(void);
 void applyBlenderMode(void);
 
 #endif	/* XENOS_BLENDER_H */

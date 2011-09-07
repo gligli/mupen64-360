@@ -7,16 +7,7 @@
         <activeConfTypeElem>0</activeConfTypeElem>
         <activeConfIndexElem>0</activeConfIndexElem>
     </data>
-    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/1">
-        <file>
-            <url>file:/C:/X360%20Hack/x360dev/ppc/mupen64-360/source/r4300/ppc/MIPS-to-PPC.c</url>
-            <line>1481</line>
-        </file>
-        <file>
-            <url>file:/C:/X360%20Hack/x360dev/ppc/mupen64-360/source/r4300/pure_interp.c</url>
-            <line>2249</line>
-        </file>
-    </editor-bookmarks>
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/1"/>
     <preferences xmlns="http://www.netbeans.org/ns/auxiliary-configuration-preferences/1">
         <module name="org-netbeans-modules-cnd-discovery">
             <property name="folder" value="C:\X360 Hack\x360dev\ppc\mupen64-360\"/>

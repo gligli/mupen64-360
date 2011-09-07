@@ -19,7 +19,7 @@
 
 #define USE_ALTIVEC
 #define USE_THREADED_AUDIO
-#define DEBUG_COMBINERS
+//#define DEBUG_COMBINERS
 
 #define CORE_INTERPRETER		(0)
 #define CORE_DYNAREC			(1)

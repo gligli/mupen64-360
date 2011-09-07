@@ -13,8 +13,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../main/winlnxdefs.h"
-#include "../main/main.h"
+extern "C"{
+	#include "../main/winlnxdefs.h"
+	#include "../main/main.h"
+	#include "../main/rom.h"
+}
 
 #include "GFXPlugin.h"
 #include "xenos_gfx.h"
@@ -121,6 +124,7 @@ int pendingIndicesCount=0;
 
 bool drawPrepared=false;
 bool hadTriangles=false;
+bool drawingRects=false;
 
 int rendered_frames_ratio=1;
 
@@ -146,13 +150,13 @@ void updateViewport()
     y=gSP.viewport.y/VI.height;
     h=gSP.viewport.height/VI.height;
 
-    float persp[4][4] = {
+	float persp[4][4] = {
         {w,0,0,2*x+w-1.0f},
         {0,h,0,-2*y-h+1.0f},
         {0,0,0.5f,0.5f},
 	    {0,0,0,1},
     };
-
+	
     Xe_SetVertexShaderConstantF(xe,0,(float*)persp,4);
 	
 	updateScissor();
@@ -195,6 +199,7 @@ void updateStates(){
 
 		gSP.changed &= ~CHANGED_GEOMETRYMODE;
 
+		drawingRects=false;
 	}
 
 	if (gSP.geometryMode & G_ZBUFFER)
@@ -210,45 +215,20 @@ void updateStates(){
             Xe_SetZFunc(xe,XE_CMP_ALWAYS);
 
 		updateDepthUpdate();
+
+		drawingRects=false;
     }
 
     if (gSP.changed & CHANGED_VIEWPORT)
 	{
 		updateViewport();
+
+		drawingRects=false;
 	}
     
     if ((gDP.changed & CHANGED_ALPHACOMPARE) || (gDP.changed & CHANGED_RENDERMODE))
 	{
-#if 0
-		// Enable alpha test for threshold mode
-		if ((gDP.otherMode.alphaCompare == G_AC_THRESHOLD) && !(gDP.otherMode.alphaCvgSel))
-		{
-            Xe_SetAlphaTestEnable(xe,1);
-
-            Xe_SetAlphaFunc(xe,(gDP.blendColor.a > 0.0f) ? XE_CMP_GREATEREQUAL : XE_CMP_GREATER);
-            Xe_SetAlphaRef(xe,gDP.blendColor.a);
-		}
-		// Used in TEX_EDGE and similar render modes
-		else if (gDP.otherMode.cvgXAlpha)
-		{
-            Xe_SetAlphaTestEnable(xe,1);
-
-			// Arbitrary number -- gives nice results though
-            Xe_SetAlphaFunc(xe,XE_CMP_GREATER);
-            Xe_SetAlphaRef(xe,0.4f);
-		}
-		else
-            Xe_SetAlphaTestEnable(xe,0);
-
-/*
-        if (OGL.usePolygonStipple && (gDP.otherMode.alphaCompare == G_AC_DITHER) && !(gDP.otherMode.alphaCvgSel))
-			glEnable( GL_POLYGON_STIPPLE );
-		else
-			glDisable( GL_POLYGON_STIPPLE );
-*/
-#else
-		appplyAlphaMode();
-#endif
+		applyAlphaMode();
 	}
 
 	if (gDP.changed & CHANGED_SCISSOR)
@@ -256,7 +236,7 @@ void updateStates(){
 		updateScissor();
 	}
 
-    if ((gDP.changed & CHANGED_COMBINE) || (gDP.changed & CHANGED_CYCLETYPE))
+	if ((gDP.changed & CHANGED_COMBINE) || (gDP.changed & CHANGED_CYCLETYPE))
 	{
 		if (gDP.otherMode.cycleType == G_CYC_COPY)
 			Combiner_SetCombine( EncodeCombineMode( 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0 ) );
@@ -306,82 +286,9 @@ void updateStates(){
 
 	if ((gDP.changed & CHANGED_RENDERMODE) || (gDP.changed & CHANGED_CYCLETYPE))
 	{
-#if 0
-		if ((gDP.otherMode.forceBlender) &&
-			(gDP.otherMode.cycleType != G_CYC_COPY) &&
-			(gDP.otherMode.cycleType != G_CYC_FILL) &&
-			!(gDP.otherMode.alphaCvgSel))
-		{
-            Xe_SetBlendOp(xe,XE_BLENDOP_ADD);
-            Xe_SetBlendOpAlpha(xe,XE_BLENDOP_ADD);
-
-
-			switch (gDP.otherMode.l >> 16)
-			{
-				case 0x0448: // Add
-				case 0x055A:
-                    Xe_SetSrcBlend(xe,XE_BLEND_ONE);
-                    Xe_SetDestBlend(xe,XE_BLEND_ONE);
-                    Xe_SetSrcBlendAlpha(xe,XE_BLEND_ONE);
-                    Xe_SetDestBlendAlpha(xe,XE_BLEND_ONE);
-                    break;
-				case 0x0C08: // 1080 Sky
-				case 0x0F0A: // Used LOTS of places
-                    Xe_SetSrcBlend(xe,XE_BLEND_ONE);
-                    Xe_SetDestBlend(xe,XE_BLEND_ZERO);
-                    Xe_SetSrcBlendAlpha(xe,XE_BLEND_ONE);
-                    Xe_SetDestBlendAlpha(xe,XE_BLEND_ZERO);
-					break;
-				case 0xC810: // Blends fog
-				case 0xC811: // Blends fog
-				case 0x0C18: // Standard interpolated blend
-				case 0x0C19: // Used for antialiasing
-				case 0x0050: // Standard interpolated blend
-				case 0x0055: // Used for antialiasing
-                    Xe_SetSrcBlend(xe,XE_BLEND_SRCALPHA);
-                    Xe_SetDestBlend(xe,XE_BLEND_INVSRCALPHA);
-                    Xe_SetSrcBlendAlpha(xe,XE_BLEND_SRCALPHA);
-                    Xe_SetDestBlendAlpha(xe,XE_BLEND_INVSRCALPHA);
-					break;
-				case 0x0FA5: // Seems to be doing just blend color - maybe combiner can be used for this?
-				case 0x5055: // Used in Paper Mario intro, I'm not sure if this is right...
-                    Xe_SetSrcBlend(xe,XE_BLEND_ZERO);
-                    Xe_SetDestBlend(xe,XE_BLEND_ONE);
-                    Xe_SetSrcBlendAlpha(xe,XE_BLEND_ZERO);
-                    Xe_SetDestBlendAlpha(xe,XE_BLEND_ONE);
-					break;
-				default:
-                    Xe_SetSrcBlend(xe,XE_BLEND_SRCALPHA);
-                    Xe_SetDestBlend(xe,XE_BLEND_INVSRCALPHA);
-                    Xe_SetSrcBlendAlpha(xe,XE_BLEND_SRCALPHA);
-                    Xe_SetDestBlendAlpha(xe,XE_BLEND_INVSRCALPHA);
-					break;
-			}
-		}
-		else
-        {
-            // disable
-            Xe_SetSrcBlend(xe,XE_BLEND_ONE);
-            Xe_SetDestBlend(xe,XE_BLEND_ZERO);
-            Xe_SetBlendOp(xe,XE_BLENDOP_ADD);
-            Xe_SetSrcBlendAlpha(xe,XE_BLEND_ONE);
-            Xe_SetDestBlendAlpha(xe,XE_BLEND_ZERO);
-            Xe_SetBlendOpAlpha(xe,XE_BLENDOP_ADD);
-		}
-
-		if (gDP.otherMode.cycleType == G_CYC_FILL)
-		{
-            Xe_SetSrcBlend(xe,XE_BLEND_SRCALPHA);
-            Xe_SetDestBlend(xe,XE_BLEND_INVSRCALPHA);
-            Xe_SetBlendOp(xe,XE_BLENDOP_ADD);
-            Xe_SetSrcBlendAlpha(xe,XE_BLEND_SRCALPHA);
-            Xe_SetDestBlendAlpha(xe,XE_BLEND_INVSRCALPHA);
-            Xe_SetBlendOpAlpha(xe,XE_BLENDOP_ADD);
-		}
-#else
 		applyBlenderMode();
-#endif
 	}
+
 	gDP.changed &= CHANGED_TILE | CHANGED_TMEM;
 	gSP.changed &= CHANGED_TEXTURE | CHANGED_MATRIX;
 }
@@ -461,8 +368,6 @@ void prepareDraw(){
  
 	Xe_InvalidateState(xe);
 
-    //updateViewport();
-
     resetLockVB();
 	resetLockIB();
 
@@ -493,12 +398,14 @@ void xeGfx_matrixDump(const char *name, float m[4][4])
 }
 
 void xeGfx_clearDepthBuffer(){
-	//printf("xeGfx_clearDepthBuffer\n");return;
+//	printf("xeGfx_clearDepthBuffer\n");return;
 
+#if 1
 	prepareDraw();
     drawVB();
 
     int i;
+    float depth = gDP.fillColor.z/(float)0x3fff;
 
 	for(i=0;i<6;++i){
 		*currentIndice=vertexCount()+recti[i];
@@ -507,23 +414,32 @@ void xeGfx_clearDepthBuffer(){
 	
 	for(i=0;i<4;++i){
         *currentVertex=rect[i];
-       nextVertex();
+		currentVertex->z=depth;
+		nextVertex();
     }
 
 
+    Xe_SetCullMode(xe,XE_CULL_NONE);
+    Xe_SetZEnable(xe,1);
+    Xe_SetZWrite(xe,1);
     Xe_SetZFunc(xe,XE_CMP_ALWAYS);
     Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
-    Xe_SetAlphaTestEnable(xe,1);
-    Xe_SetAlphaFunc(xe,XE_CMP_NEVER);
+	Xe_SetBlendControl(xe,XE_BLEND_ZERO,XE_BLENDOP_ADD,XE_BLEND_ONE,XE_BLEND_ZERO,XE_BLENDOP_ADD,XE_BLEND_ONE);
+    Xe_SetVertexShaderConstantF(xe,0,(float*)identityMatrix,4);
 
 	gDP.changed |= CHANGED_RENDERMODE;
     gDP.changed |= CHANGED_COMBINE;
-    drawVB();
+    gSP.changed |= CHANGED_VIEWPORT | CHANGED_GEOMETRYMODE;
+    updateStates();
+#else
+	Xe_ResolveInto(xe,Xe_GetFramebufferSurface(xe),0,XE_CLEAR_DS);
+#endif
 }
 
 void xeGfx_clearColorBuffer(float *color){
-    //printf("xeGfx_clearColorBuffer\n");return;
+//    printf("xeGfx_clearColorBuffer\n");
     
+#if 1
 	prepareDraw();
     drawVB();
 
@@ -545,16 +461,25 @@ void xeGfx_clearColorBuffer(float *color){
     }
 
 
-    Xe_SetZFunc(xe,XE_CMP_ALWAYS);
+    Xe_SetCullMode(xe,XE_CULL_NONE);
+    Xe_SetZEnable(xe,0);
     Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
+    Xe_SetVertexShaderConstantF(xe,0,(float*)identityMatrix,4);
 
 	gDP.changed |= CHANGED_RENDERMODE;
     gDP.changed |= CHANGED_COMBINE;
-    drawVB();
+    gSP.changed |= CHANGED_VIEWPORT | CHANGED_GEOMETRYMODE;
+    updateStates();
+#else
+	Xe_SetClearColor(xe,MAKE_COLOR4F(color[0],color[1],color[2],color[3]));
+	Xe_ResolveInto(xe,Xe_GetFramebufferSurface(xe),0,XE_CLEAR_COLOR);
+#endif
 }
 
 void doDrawRect(){
-    float ortho[4][4] = {
+	if(drawingRects) return;
+	
+	float ortho[4][4] = {
         {2.0f/VI.width,0,0,-1},
         {0,-2.0f/VI.height,0,1},
 	    {0,0,0.5,0.5},
@@ -566,15 +491,14 @@ void doDrawRect(){
 
     Xe_SetVertexShaderConstantF(xe,0,(float*)ortho,4);
 
-    gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
-    gDP.changed |= CHANGED_RENDERMODE;
+	drawingRects=true;
 }
 
 void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
-	printf("xeGfx_drawRect %d %d %d %d\n",ulx,uly,lrx,lry);
+	//printf("xeGfx_drawRect %d %d %d %d\n",ulx,uly,lrx,lry);return;
 
 	prepareDraw();
-	updateStates();
+	if (gSP.changed || gDP.changed) updateStates();
 
     TVertex v[4];
 
@@ -621,7 +545,7 @@ void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,
     int i;
      
 	prepareDraw();
-	updateStates();
+	if (gSP.changed || gDP.changed) updateStates();
 
     for(i=0;i<2;++i){
         if ((i==0 && !combiner.usesT0) || (i==1 && !combiner.usesT1)) continue;
@@ -780,6 +704,11 @@ void xeGfx_activateFrameBufferTexture(int index){
 }
 
 void xeGfx_addTriangle( SPVertex *vertices, int v0, int v1, int v2, int direct){
+	if(drawingRects){
+		drawingRects=false;
+		gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
+		gDP.changed |= CHANGED_RENDERMODE;
+	}
 	
 	if(direct){
 		SPVertex * spv;
@@ -851,13 +780,20 @@ void xeGfx_init(){
 	
 	xe = ZLX::g_pVideoDevice;
 
+	/* init vars */
+	
+	pendingIndicesCount=0;
+	drawPrepared=false;
+	hadTriangles=false;
+	drawingRects=false;
+	rendered_frames_ratio=1;
+
 	/* initialize the GPU */
 
 	Xe_SetRenderTarget(xe, Xe_GetFramebufferSurface(xe));
 	Xe_InvalidateState(xe);
 	Xe_SetClearColor(ZLX::g_pVideoDevice,0);
-
-
+	
 	if(!done){
 		/* load pixel shaders */
 
@@ -940,7 +876,8 @@ void xeGfx_render()
     Xe_VB_Unlock(xe,vertexBuffer);
 	Xe_IB_Unlock(xe,indexBuffer);
 
-    Xe_Resolve(xe);
+//    Xe_Resolve(xe);
+    Xe_ResolveInto(xe,Xe_GetFramebufferSurface(xe),XE_SOURCE_COLOR,0);
     Xe_Execute(xe); // render everything in background !
 	drawPrepared=false;
 	hadTriangles=false;
@@ -952,7 +889,7 @@ void xeGfx_render()
 
 		do{
 			tb=mftb();
-		}while((tb-last_rendered_tb)<(/*PPC_TIMEBASE_FREQ*/3192000000LL/64LL)*(frame_id-last_rendered_frame)/60);
+		}while((tb-last_rendered_tb)<(/*PPC_TIMEBASE_FREQ*/3192000000LL/64LL)*(frame_id-last_rendered_frame)/((getVideoSystem()==SYSTEM_PAL)?50:60));
 
 		last_rendered_tb=tb;	
 		last_rendered_frame=frame_id;

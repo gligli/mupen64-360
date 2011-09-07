@@ -2009,15 +2009,8 @@ void write_ai() {
 #else
 			VCR_aiLenChanged();
 #endif
-			switch (ROM_HEADER->Country_code >> 8) {
-				case 0x44:
-				case 0x46:
-				case 0x49:
-				case 0x50:
-				case 0x53:
-				case 0x55:
-				case 0x58:
-				case 0x59:
+			switch (getVideoSystem()) {
+				case SYSTEM_PAL:
 				{
 					unsigned long f = 49656530 / (ai_register.ai_dacrate + 1);
 					if (f)
@@ -2025,10 +2018,7 @@ void write_ai() {
 							vi_register.vi_delay * 50) / (f * 4);
 				}
 					break;
-				case 0x37:
-				case 0x41:
-				case 0x45:
-				case 0x4a:
+				case SYSTEM_NTSC:
 				{
 					unsigned long f = 48681812 / (ai_register.ai_dacrate + 1);
 					if (f)
@@ -2061,25 +2051,15 @@ void write_ai() {
 			printf("ai %x %x %x\n",ai_register.ai_dacrate,word,ROM_HEADER->Country_code);
 			if (ai_register.ai_dacrate != word) {
 				ai_register.ai_dacrate = word;
-				switch (ROM_HEADER->Country_code >> 8) {
-					case 0x44:
-					case 0x46:
-					case 0x49:
-					case 0x50:
-					case 0x53:
-					case 0x55:
-					case 0x58:
-					case 0x59:
+				switch (getVideoSystem()) {
+					case SYSTEM_PAL:
 #ifndef VCR_SUPPORT
 						aiDacrateChanged(SYSTEM_PAL);
 #else
 						VCR_aiDacrateChanged(SYSTEM_PAL);
 #endif
 						break;
-					case 0x37:
-					case 0x41:
-					case 0x45:
-					case 0x4a:
+					case SYSTEM_NTSC:
 #ifndef VCR_SUPPORT
 						aiDacrateChanged(SYSTEM_NTSC);
 #else
@@ -2111,22 +2091,12 @@ void write_aib() {
 #else
 			VCR_aiLenChanged();
 #endif
-			switch (ROM_HEADER->Country_code >> 8) {
-				case 0x44:
-				case 0x46:
-				case 0x49:
-				case 0x50:
-				case 0x53:
-				case 0x55:
-				case 0x58:
-				case 0x59:
+			switch (getVideoSystem()) {
+				case SYSTEM_PAL:
 					delay = ((unsigned long long) ai_register.ai_len * (ai_register.ai_dacrate + 1) *
 							vi_register.vi_delay * 50) / 49656530;
 					break;
-				case 0x37:
-				case 0x41:
-				case 0x45:
-				case 0x4a:
+				case SYSTEM_NTSC:
 					delay = ((unsigned long long) ai_register.ai_len * (ai_register.ai_dacrate + 1) *
 							vi_register.vi_delay * 60) / 48681812;
 					break;
@@ -2164,25 +2134,15 @@ void write_aib() {
 					+ ((*address_low & 3)^S8)) = byte;
 			if (ai_register.ai_dacrate != temp) {
 				ai_register.ai_dacrate = temp;
-				switch (ROM_HEADER->Country_code >> 8) {
-					case 0x44:
-					case 0x46:
-					case 0x49:
-					case 0x50:
-					case 0x53:
-					case 0x55:
-					case 0x58:
-					case 0x59:
+				switch (getVideoSystem()) {
+					case SYSTEM_PAL:
 #ifndef VCR_SUPPORT
 						aiDacrateChanged(SYSTEM_PAL);
 #else
 						VCR_aiDacrateChanged(SYSTEM_PAL);
 #endif
 						break;
-					case 0x37:
-					case 0x41:
-					case 0x45:
-					case 0x4a:
+					case SYSTEM_NTSC:
 #ifndef VCR_SUPPORT
 						aiDacrateChanged(SYSTEM_NTSC);
 #else
@@ -2213,22 +2173,12 @@ void write_aih() {
 #else
 			VCR_aiLenChanged();
 #endif
-			switch (ROM_HEADER->Country_code >> 8) {
-				case 0x44:
-				case 0x46:
-				case 0x49:
-				case 0x50:
-				case 0x53:
-				case 0x55:
-				case 0x58:
-				case 0x59:
+			switch (getVideoSystem()) {
+				case SYSTEM_PAL:
 					delay = ((unsigned long long) ai_register.ai_len * (ai_register.ai_dacrate + 1) *
 							vi_register.vi_delay * 50) / 49656530;
 					break;
-				case 0x37:
-				case 0x41:
-				case 0x45:
-				case 0x4a:
+				case SYSTEM_NTSC:
 					delay = ((unsigned long long) ai_register.ai_len * (ai_register.ai_dacrate + 1) *
 							vi_register.vi_delay * 60) / 48681812;
 					break;
@@ -2262,25 +2212,15 @@ void write_aih() {
 					+ ((*address_low & 3)^S16))) = hword;
 			if (ai_register.ai_dacrate != temp) {
 				ai_register.ai_dacrate = temp;
-				switch (ROM_HEADER->Country_code >> 8) {
-					case 0x44:
-					case 0x46:
-					case 0x49:
-					case 0x50:
-					case 0x53:
-					case 0x55:
-					case 0x58:
-					case 0x59:
+				switch (getVideoSystem()) {
+					case SYSTEM_PAL:
 #ifndef VCR_SUPPORT
 						aiDacrateChanged(SYSTEM_PAL);
 #else
 						VCR_aiDacrateChanged(SYSTEM_PAL);
 #endif
 						break;
-					case 0x37:
-					case 0x41:
-					case 0x45:
-					case 0x4a:
+					case SYSTEM_NTSC:
 #ifndef VCR_SUPPORT
 						aiDacrateChanged(SYSTEM_NTSC);
 #else
@@ -2307,22 +2247,12 @@ void write_aid() {
 #else
 			VCR_aiLenChanged();
 #endif
-			switch (ROM_HEADER->Country_code >> 8) {
-				case 0x44:
-				case 0x46:
-				case 0x49:
-				case 0x50:
-				case 0x53:
-				case 0x55:
-				case 0x58:
-				case 0x59:
+			switch (getVideoSystem()) {
+				case SYSTEM_PAL:
 					delay = ((unsigned long long) ai_register.ai_len * (ai_register.ai_dacrate + 1) *
 							vi_register.vi_delay * 50) / 49656530;
 					break;
-				case 0x37:
-				case 0x41:
-				case 0x45:
-				case 0x4a:
+				case SYSTEM_NTSC:
 					delay = ((unsigned long long) ai_register.ai_len * (ai_register.ai_dacrate + 1) *
 							vi_register.vi_delay * 60) / 48681812;
 					break;
@@ -2352,25 +2282,15 @@ void write_aid() {
 			printf("aid %x %x\n",ai_register.ai_dacrate,dword);
 			if (ai_register.ai_dacrate != dword >> 32) {
 				ai_register.ai_dacrate = dword >> 32;
-				switch (ROM_HEADER->Country_code >> 8) {
-					case 0x44:
-					case 0x46:
-					case 0x49:
-					case 0x50:
-					case 0x53:
-					case 0x55:
-					case 0x58:
-					case 0x59:
+				switch (getVideoSystem()) {
+					case SYSTEM_PAL:
 #ifndef VCR_SUPPORT
 						aiDacrateChanged(SYSTEM_PAL);
 #else
 						VCR_aiDacrateChanged(SYSTEM_PAL);
 #endif
 						break;
-					case 0x37:
-					case 0x41:
-					case 0x45:
-					case 0x4a:
+					case SYSTEM_NTSC:
 #ifndef VCR_SUPPORT
 						aiDacrateChanged(SYSTEM_NTSC);
 #else

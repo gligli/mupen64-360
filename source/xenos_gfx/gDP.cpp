@@ -567,14 +567,14 @@ void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette
 
 void gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
-	if(	gDP.tiles[tile].uls != _SHIFTR( uls, 2, 10 ) ||
+/*	if(	gDP.tiles[tile].uls != _SHIFTR( uls, 2, 10 ) ||
 		gDP.tiles[tile].ult != _SHIFTR( ult, 2, 10 ) ||
 		gDP.tiles[tile].lrs != _SHIFTR( lrs, 2, 10 ) ||
 		gDP.tiles[tile].lrt != _SHIFTR( lrt, 2, 10 ) ||
 		gDP.tiles[tile].fuls != _FIXED2FLOAT( uls, 2 ) ||
 		gDP.tiles[tile].fult != _FIXED2FLOAT( ult, 2 ) ||
 		gDP.tiles[tile].flrs != _FIXED2FLOAT( lrs, 2 ) ||
-		gDP.tiles[tile].flrt != _FIXED2FLOAT( lrt, 2 )){
+		gDP.tiles[tile].flrt != _FIXED2FLOAT( lrt, 2 ))*/{
 	
 		gDP.tiles[tile].uls = _SHIFTR( uls, 2, 10 );
 		gDP.tiles[tile].ult = _SHIFTR( ult, 2, 10 );

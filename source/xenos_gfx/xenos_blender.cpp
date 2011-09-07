@@ -67,7 +67,7 @@ static void Enable(){
 }
 
 
-void appplyAlphaMode(void)
+void applyAlphaMode(void)
 {
     if ( gDP.otherMode.alphaCompare == 0 )
     {

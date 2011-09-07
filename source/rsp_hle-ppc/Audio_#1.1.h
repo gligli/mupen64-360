@@ -26,10 +26,6 @@ extern "C" {
 #define EXPORT						__declspec(dllexport)
 #define CALL						_cdecl
 
-#define SYSTEM_NTSC					0
-#define SYSTEM_PAL					1
-#define SYSTEM_MPAL					2
-
 #ifdef NOTDEF
 /***** Structures *****/
 typedef struct {
