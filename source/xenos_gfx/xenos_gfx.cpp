@@ -124,7 +124,6 @@ int pendingIndicesCount=0;
 
 bool drawPrepared=false;
 bool hadTriangles=false;
-bool drawingRects=false;
 
 int rendered_frames_ratio=1;
 
@@ -198,8 +197,6 @@ void updateStates(){
 */
 
 		gSP.changed &= ~CHANGED_GEOMETRYMODE;
-
-		drawingRects=false;
 	}
 
 	if (gSP.geometryMode & G_ZBUFFER)
@@ -215,15 +212,11 @@ void updateStates(){
             Xe_SetZFunc(xe,XE_CMP_ALWAYS);
 
 		updateDepthUpdate();
-
-		drawingRects=false;
     }
 
     if (gSP.changed & CHANGED_VIEWPORT)
 	{
 		updateViewport();
-
-		drawingRects=false;
 	}
     
     if ((gDP.changed & CHANGED_ALPHACOMPARE) || (gDP.changed & CHANGED_RENDERMODE))
@@ -418,7 +411,7 @@ void xeGfx_clearDepthBuffer(){
 		nextVertex();
     }
 
-
+	Xe_SetScissor(xe,0,0,0,0,0);
     Xe_SetCullMode(xe,XE_CULL_NONE);
     Xe_SetZEnable(xe,1);
     Xe_SetZWrite(xe,1);
@@ -429,7 +422,9 @@ void xeGfx_clearDepthBuffer(){
 
 	gDP.changed |= CHANGED_RENDERMODE;
     gDP.changed |= CHANGED_COMBINE;
-    gSP.changed |= CHANGED_VIEWPORT | CHANGED_GEOMETRYMODE;
+    gDP.changed |= CHANGED_SCISSOR;
+    gSP.changed |= CHANGED_VIEWPORT;
+    gSP.changed |= CHANGED_GEOMETRYMODE;
     updateStates();
 #else
 	Xe_ResolveInto(xe,Xe_GetFramebufferSurface(xe),0,XE_CLEAR_DS);
@@ -460,7 +455,7 @@ void xeGfx_clearColorBuffer(float *color){
         nextVertex();
     }
 
-
+	Xe_SetScissor(xe,0,0,0,0,0);
     Xe_SetCullMode(xe,XE_CULL_NONE);
     Xe_SetZEnable(xe,0);
     Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
@@ -468,7 +463,9 @@ void xeGfx_clearColorBuffer(float *color){
 
 	gDP.changed |= CHANGED_RENDERMODE;
     gDP.changed |= CHANGED_COMBINE;
-    gSP.changed |= CHANGED_VIEWPORT | CHANGED_GEOMETRYMODE;
+    gDP.changed |= CHANGED_SCISSOR;
+    gSP.changed |= CHANGED_VIEWPORT;
+    gSP.changed |= CHANGED_GEOMETRYMODE;
     updateStates();
 #else
 	Xe_SetClearColor(xe,MAKE_COLOR4F(color[0],color[1],color[2],color[3]));
@@ -477,8 +474,6 @@ void xeGfx_clearColorBuffer(float *color){
 }
 
 void doDrawRect(){
-	if(drawingRects) return;
-	
 	float ortho[4][4] = {
         {2.0f/VI.width,0,0,-1},
         {0,-2.0f/VI.height,0,1},
@@ -491,7 +486,8 @@ void doDrawRect(){
 
     Xe_SetVertexShaderConstantF(xe,0,(float*)ortho,4);
 
-	drawingRects=true;
+	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
+	gDP.changed |= CHANGED_RENDERMODE;
 }
 
 void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
@@ -704,12 +700,6 @@ void xeGfx_activateFrameBufferTexture(int index){
 }
 
 void xeGfx_addTriangle( SPVertex *vertices, int v0, int v1, int v2, int direct){
-	if(drawingRects){
-		drawingRects=false;
-		gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
-		gDP.changed |= CHANGED_RENDERMODE;
-	}
-	
 	if(direct){
 		SPVertex * spv;
 		int v[] = { v0, v1, v2 };
@@ -785,7 +775,6 @@ void xeGfx_init(){
 	pendingIndicesCount=0;
 	drawPrepared=false;
 	hadTriangles=false;
-	drawingRects=false;
 	rendered_frames_ratio=1;
 
 	/* initialize the GPU */
