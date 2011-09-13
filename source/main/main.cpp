@@ -50,8 +50,10 @@ extern "C" {
 	#include "winlnxdefs.h"
 	#include "plugin.h"
 	#include "savestates.h"
+	#include "../memory/Saves.h"
 }
 
+#include <malloc.h>
 #include <debug.h>
 #include <diskio/dvd.h>
 #include <diskio/ata.h>
@@ -82,13 +84,12 @@ extern "C" {
 #include <signal.h>
 #endif
 
-#define stop_it() stop = 1
-
 ZLX::Browser Browser;
 lpBrowserActionEntry enh_action;
 lpBrowserActionEntry cpu_action;
 lpBrowserActionEntry lim_action;
 
+int regular_quit=0;
 int use_framelimit = 1;
 
 int autoinc_slot = 0;
@@ -315,11 +316,16 @@ int run_rom(char * romfile)
 		return 1;
 	}
 
+	regular_quit=0;
+	
+	fileBrowser_file saveFile_dir;
+	memset(&saveFile_dir,0,sizeof(fileBrowser_file));
+	strcpy(saveFile_dir.name,MUPEN_DIR"saves/");
+	
 	cls_GUI();
 	
     printf("Goodname:%s\n", ROM_SETTINGS.goodname);
-    printf("16kb eeprom=%d\n", ROM_SETTINGS.eeprom_16kb);
-
+	
 	init_memory();
 
 	plugin_load_plugins(NULL,NULL,NULL,NULL);
@@ -336,8 +342,20 @@ int run_rom(char * romfile)
 
 	cpu_init();
    
+	if (loadEeprom(&saveFile_dir)==1) printf("eeprom loaded!\n");
+	if (loadSram(&saveFile_dir)==1) printf("sram loaded!\n");
+	if (loadMempak(&saveFile_dir)==1) printf("mempak loaded!\n");
+	if (loadFlashram(&saveFile_dir)==1) printf("flash loaded!\n");
+				
 	go();
    
+	if(regular_quit){
+		if (saveEeprom(&saveFile_dir)==1) printf("eeprom saved!\n");
+		if (saveSram(&saveFile_dir)==1) printf("sram saved!\n");
+		if (saveMempak(&saveFile_dir)==1) printf("mempak saved!\n");
+		if (saveFlashram(&saveFile_dir)==1) printf("flash saved!\n");
+	}
+				
 	cpu_deinit();
  
 	romClosed_RSP();
@@ -417,7 +435,8 @@ void getKeys(int Control, BUTTONS *Keys)
     }
 
     if (c.select){
-		stop_it();
+		stop=1;
+		regular_quit=1;
 	}
 	
     b.START_BUTTON=c.start;
@@ -448,3 +467,26 @@ void getKeys(int Control, BUTTONS *Keys)
 
 }
 
+int saveFile_readFile(fileBrowser_file* file, void* buffer, unsigned int length){
+        FILE* f = fopen( file->name, "rb" );
+        if(!f) return FILE_BROWSER_ERROR;
+        
+        fseek(f, file->offset, SEEK_SET);
+        int bytes_read = fread(buffer, 1, length, f);
+        if(bytes_read > 0) file->offset += bytes_read;
+        
+        fclose(f);
+        return bytes_read;
+}
+
+int saveFile_writeFile(fileBrowser_file* file, void* buffer, unsigned int length){
+        FILE* f = fopen( file->name, "wb" );
+        if(!f) return FILE_BROWSER_ERROR;
+        
+        fseek(f, file->offset, SEEK_SET);
+        int bytes_read = fwrite(buffer, 1, length, f);
+        if(bytes_read > 0) file->offset += bytes_read;
+        
+        fclose(f);
+        return bytes_read;
+}

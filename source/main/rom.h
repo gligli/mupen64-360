@@ -34,6 +34,7 @@
 #define SYSTEM_PAL					1
 #define SYSTEM_MPAL					2
 
+char *saveregionstr();
 int getVideoSystem();
 int rom_read(const char *argv);
 int fill_header(const char *argv);

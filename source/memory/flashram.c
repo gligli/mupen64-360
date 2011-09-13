@@ -69,7 +69,6 @@ static unsigned long erase_offset, write_pointer;
 
 BOOL flashramWritten = FALSE;
 
-#if 0 //gli
 int loadFlashram(fileBrowser_file* savepath){
 	int i, result = 0;
 	fileBrowser_file saveFile;
@@ -106,7 +105,6 @@ int saveFlashram(fileBrowser_file* savepath){
 
 	return 1;
 }
-#endif
 
 void save_flashram_infos(char *buf)
 {

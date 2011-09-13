@@ -66,7 +66,6 @@ BOOL mempakWritten = FALSE;
 
 void check_input_sync(unsigned char *value);
 
-#if 0 //gli
 int loadEeprom(fileBrowser_file* savepath){
 	int i, result = 0;
 	fileBrowser_file saveFile;
@@ -106,7 +105,6 @@ int saveEeprom(fileBrowser_file* savepath){
 	return 1;
 
 }
-#endif
 
 void init_eeprom() {
   int i;
@@ -217,7 +215,6 @@ unsigned char mempack_crc(unsigned char *data)
    return CRC;
 }
 
-#if 0 //gli
 int loadMempak(fileBrowser_file* savepath){
 	int i, result = 0;
   fileBrowser_file saveFile;
@@ -255,7 +252,6 @@ int saveMempak(fileBrowser_file* savepath){
 
 	return 1;
 }
-#endif
 
 void internal_ReadController(int Control, BYTE *Command)
 {

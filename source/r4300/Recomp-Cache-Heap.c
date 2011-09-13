@@ -5,9 +5,9 @@
 #include "ppc/Recompile.h"
 #include "ppc/Wrappers.h"
 #include "Recomp-Cache.h"
-#include <malloc.h>
 
 #include <ppc/cache.h>
+#include <nocfe/lib_malloc.h>
 #include <debug.h>
 
 void DCFlushRange(void* startaddr, unsigned int len){
@@ -72,6 +72,11 @@ static int cacheSize;
 static unsigned int heapSize = 0;
 static unsigned int maxHeapSize = 0;
 static CacheMetaNode** cacheHeap = NULL;
+
+void * cache_buf=NULL;
+void * meta_cache_buf=NULL;
+mempool_t cache_mempool;
+mempool_t meta_cache_mempool;
 
 static void heapSwap(int i, int j){
 	CacheMetaNode* t = cacheHeap[i];
@@ -145,7 +150,7 @@ static void unlink_func(PowerPC_func* func){
 		ICInvalidateRange(link->branch-16, 17*sizeof(PowerPC_instr));
 		
 		remove_func(&link->func->links_out, func);
-		free(link);
+		MetaCache_Free(link);
 	}
 	func->links_in = NULL;
 	
@@ -161,12 +166,12 @@ static void unlink_func(PowerPC_func* func){
 			next = &(*link)->next;
 			if((*link)->func == func){
 				PowerPC_func_link_node* tmp = (*link)->next;
-				free(*link);
+				MetaCache_Free(*link);
 				*link = tmp;
 				next = link;
 			}
 		}
-		free(*node); // Free the PowerPC_func_node*
+		MetaCache_Free(*node); // Free the PowerPC_func_node*
 	}
 	remove_outgoing_links(&func->links_out);
 	func->links_out = NULL;
@@ -177,8 +182,8 @@ static void unlink_func(PowerPC_func* func){
 static void free_func(PowerPC_func* func, unsigned int addr){
 
         // Free the code associated with the func
-	free(func->code);
-	free(func->code_addr);
+	kfree(&cache_mempool,func->code);
+	MetaCache_Free(func->code_addr);
 
 	// Remove any holes into this func
 	PowerPC_func_hole_node* hole, * next;
@@ -249,10 +254,17 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 		// Free up at least enough space for it to fit
 		release(cacheSize + size + num_instrs * sizeof(void*) - RECOMP_CACHE_SIZE);
 	
+	void* code = kmalloc(&cache_mempool,size,128);
+	while(!code){
+		release(size);
+		code = kmalloc(&cache_mempool,size,128);
+	}
+
 	// We have the necessary space for this alloc, so just call malloc
 	cacheSize += size;
-	newBlock->func->code = memalign(128,size);
-	newBlock->func->code_addr = malloc(num_instrs * sizeof(void*));
+	
+	newBlock->func->code = code;
+	newBlock->func->code_addr = MetaCache_Alloc(num_instrs * sizeof(void*));
 	// Add it to the heap
 	heapPush(newBlock);
 	// Make this function the LRU
@@ -261,7 +273,8 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 
 void RecompCache_Realloc(PowerPC_func* func, unsigned int new_size){
 	// I'm not worrying about maintaining the cache size here for now
-	func->code = realloc(func->code, new_size);
+	kfree(&cache_mempool,func->code);
+	func->code = kmalloc(&cache_mempool,new_size,128);
 	int i;
 	for(i=heapSize-1; i>=0; --i){
 		if(func == cacheHeap[i]->func){
@@ -304,11 +317,8 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 	
 	// Setup book-keeping
 	// Create the incoming link info
-	PowerPC_func_link_node* fln = malloc(sizeof(PowerPC_func_link_node));
-	while(!fln){
-		release(sizeof(PowerPC_func_link_node));
-		fln = malloc(sizeof(PowerPC_func_link_node));
-	}
+	PowerPC_func_link_node* fln = MetaCache_Alloc(sizeof(PowerPC_func_link_node));
+
 	fln->branch = src_instr;
 	fln->func = src_func;
 	fln->next = dst_func->links_in;
@@ -334,5 +344,27 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 	ICInvalidateRange(src_instr-16, 17*sizeof(PowerPC_instr));
 	
 	//end_section(LINK_SECTION);
+}
+
+void RecompCache_Init(void){
+	if(!cache_buf){
+		cache_buf=malloc(RECOMP_CACHE_ALLOC_SIZE);
+	}
+    kmeminit(&cache_mempool,cache_buf,RECOMP_CACHE_ALLOC_SIZE);
+		
+/*	if(!meta_cache_buf){
+		meta_cache_buf=malloc(META_CACHE_ALLOC_SIZE);
+	}
+    kmeminit(&meta_cache_mempool,meta_cache_buf,META_CACHE_ALLOC_SIZE);*/
+}
+
+void* MetaCache_Alloc(unsigned int size){
+	//return kmalloc(&meta_cache_mempool,size,0);
+	return malloc(size);
+}
+
+void MetaCache_Free(void* ptr){
+	//kfree(&meta_cache_mempool,ptr);
+	free(ptr);
 }
 

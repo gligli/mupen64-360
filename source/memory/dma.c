@@ -65,7 +65,6 @@ static unsigned char sram[0x8000] __attribute__((aligned(32)));
 
 BOOL sramWritten = FALSE;
 
-#if 0 //gli
 int loadSram(fileBrowser_file* savepath){
 	int i, result = 0;
 	fileBrowser_file saveFile;
@@ -102,7 +101,6 @@ int saveSram(fileBrowser_file* savepath){
 
 	return 1;
 }
-#endif
 
 void dma_pi_read()
 {

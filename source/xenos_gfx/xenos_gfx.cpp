@@ -41,6 +41,7 @@ extern "C"{
 #include <time/time.h>
 
 #include <zlx/zlx.h>
+#include <malloc.h>
 
 #ifdef DEBUGON
 extern "C" { void _break(); }
@@ -56,7 +57,8 @@ char		*screenDirectory;
 
 #define MAKE_COLOR3(r,g,b) (0xff000000 | ((b)<<16) | ((g)<<8) | (r))
 #define MAKE_COLOR4(r,g,b,a) ((a)<<24 | ((b)<<16) | ((g)<<8) | (r))
-#define MAKE_COLOR4F(r,g,b,a) (((u8)(255.0*(a)))<<24 | (((u8)(255.0*(b)))<<16) | (((u8)(255.0*(g)))<<8) | ((u8)(255.0*(r))))
+#define MAKE_COLOR1F(c) ((u8)(255.0f*((c)>1.0f?1.0f:(c))))
+#define MAKE_COLOR4F(r,g,b,a) (MAKE_COLOR1F(a)<<24 | (MAKE_COLOR1F(b)<<16) | (MAKE_COLOR1F(g)<<8) | MAKE_COLOR1F(r))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
@@ -69,7 +71,7 @@ const struct XenosVBFFormat VertexBufferFormat = {
         {XE_USAGE_POSITION, 0, XE_TYPE_FLOAT4},
 	    {XE_USAGE_TEXCOORD, 0, XE_TYPE_FLOAT2},
 	    {XE_USAGE_TEXCOORD, 1, XE_TYPE_FLOAT2},
-        {XE_USAGE_COLOR,    0, XE_TYPE_FLOAT4},
+        {XE_USAGE_COLOR,    0, XE_TYPE_UBYTE4},
     }
 };
 
@@ -81,18 +83,18 @@ typedef struct
 	float x,y,z,w;
 	float u0,v0;
 	float u1,v1;
-    float r,g,b,a;
+    unsigned int color;
 } TVertex;
 
 typedef u16 TIndice;
 
 TVertex rect[] = {        
-    {-1,  1, 1, 1, 0.0f, 0.0f, 0, 0, 0, 0, 0, 0},
-    {1,  1,  1, 1, 1.0f, 0.0f, 0, 0, 0, 0, 0, 0},
-    {-1, -1, 1, 1, 0.0f, 1.0f, 0, 0, 0, 0, 0, 0},
-//    {-1, -1, 1, 1, 0.0f, 1.0f, 0, 0, 0, 0, 0, 0},
-//    {1,  1,  1, 1, 1.0f, 0.0f, 0, 0, 0, 0, 0, 0},
-	{1, -1,  1, 1, 1.0f, 1.0f, 0, 0, 0, 0, 0, 0},
+    {-1,  1, 1, 1, 0.0f, 0.0f, 0, 0, 0},
+    {1,  1,  1, 1, 1.0f, 0.0f, 0, 0, 0},
+    {-1, -1, 1, 1, 0.0f, 1.0f, 0, 0, 0},
+//    {-1, -1, 1, 1, 0.0f, 1.0f, 0, 0, 0},
+//    {1,  1,  1, 1, 1.0f, 0.0f, 0, 0, 0},
+	{1, -1,  1, 1, 1.0f, 1.0f, 0, 0, 0},
 };
 
 TIndice recti[] = {0,1,2,2,1,3};
@@ -292,10 +294,7 @@ void processVertex(SPVertex * spv,TVertex * v){
         v->z=gDP.otherMode.depthSource == G_ZS_PRIM ? gDP.primDepth.z * spv->w : spv->z;
         if (gDP.otherMode.depthMode == ZMODE_DEC) v->z*=0.999f; // GL_POLYGON_OFFSET_FILL emulation
         v->w=spv->w;
-        v->r=spv->r;
-        v->g=spv->g;
-        v->b=spv->b;
-        v->a=spv->a;
+		v->color=MAKE_COLOR4F(spv->r,spv->g,spv->b,spv->a);
         if (combiner.usesT0){
             v->u0 = (spv->s * cache.current[0]->shiftScaleS * gSP.texture.scales - gSP.textureTile[0]->fuls + cache.current[0]->offsetS) * cache.current[0]->scaleS; 
             v->v0 = (spv->t * cache.current[0]->shiftScaleT * gSP.texture.scalet - gSP.textureTile[0]->fult + cache.current[0]->offsetT) * cache.current[0]->scaleT;
@@ -354,10 +353,10 @@ void nextIndice(){
     }
 }
 
-void prepareDraw(){
+void prepareDraw(bool sync){
 	if (drawPrepared) return;
 
-	Xe_Sync(xe); // wait for background render to finish !
+	if (sync) Xe_Sync(xe); // wait for background render to finish !
  
 	Xe_InvalidateState(xe);
 
@@ -367,11 +366,11 @@ void prepareDraw(){
 	drawPrepared=true;
 }
 
-int dps=0;
+int dpf=0,prev_dpf=0;
 
 void drawVB(){
 	if (indiceCount()>prevIndiceCount){
-		++dps;
+		++dpf;
 		Xe_DrawIndexedPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST,0,0,vertexCount(),prevIndiceCount,(indiceCount()-prevIndiceCount)/3);
         prevIndiceCount=indiceCount();
 		hadTriangles=true;
@@ -394,7 +393,7 @@ void xeGfx_clearDepthBuffer(){
 //	printf("xeGfx_clearDepthBuffer\n");return;
 
 #if 1
-	prepareDraw();
+	prepareDraw(true);
     drawVB();
 
     int i;
@@ -435,7 +434,7 @@ void xeGfx_clearColorBuffer(float *color){
 //    printf("xeGfx_clearColorBuffer\n");
     
 #if 1
-	prepareDraw();
+	prepareDraw(true);
     drawVB();
 
     int i;
@@ -447,10 +446,7 @@ void xeGfx_clearColorBuffer(float *color){
 	for(i=0;i<4;++i){
         *currentVertex=rect[i];
 
-        currentVertex->r=color[0];
-        currentVertex->g=color[1];
-        currentVertex->b=color[2];
-        currentVertex->a=color[3];
+		currentVertex->color=MAKE_COLOR4F(color[0],color[1],color[2],color[3]);
 
         nextVertex();
     }
@@ -493,7 +489,7 @@ void doDrawRect(){
 void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
 	//printf("xeGfx_drawRect %d %d %d %d\n",ulx,uly,lrx,lry);return;
 
-	prepareDraw();
+	prepareDraw(true);
 	if (gSP.changed || gDP.changed) updateStates();
 
     TVertex v[4];
@@ -514,10 +510,7 @@ void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
     }
 	
     for(i=0;i<4;++i){
-        v[i].r=color[0];
-        v[i].g=color[1];
-        v[i].b=color[2];
-        v[i].a=color[3];
+		v[i].color=MAKE_COLOR4F(color[0],color[1],color[2],color[3]);
 
         v[i].z=(gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
         v[i].w=1.0f;
@@ -540,7 +533,7 @@ void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,
     TVertex v[4];
     int i;
      
-	prepareDraw();
+	prepareDraw(true);
 	if (gSP.changed || gDP.changed) updateStates();
 
     for(i=0;i<2;++i){
@@ -616,10 +609,7 @@ void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,
     }
 	
     for(i=0;i<4;++i){
-        v[i].r=1.0f;
-        v[i].g=1.0f;
-        v[i].b=1.0f;
-        v[i].a=1.0f;
+		v[i].color=-1;
 
         v[i].z=(gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
         v[i].w=1.0f;
@@ -705,7 +695,7 @@ void xeGfx_addTriangle( SPVertex *vertices, int v0, int v1, int v2, int direct){
 		int v[] = { v0, v1, v2 };
 		int i;
 
-		prepareDraw();
+		prepareDraw(true);
 		if (gSP.changed || gDP.changed) updateStates();
 
 		for(i=0;i<3;++i){
@@ -732,7 +722,7 @@ void xeGfx_drawTriangles(){
 		int i;
 		int numvert=0;
 		
-		prepareDraw();
+		prepareDraw(true);
 		if (gSP.changed || gDP.changed) updateStates();
 		
 		memset(ind,0xff,sizeof(ind));
@@ -769,13 +759,6 @@ void xeGfx_init(){
 	static int done=0;
 	
 	xe = ZLX::g_pVideoDevice;
-
-	/* init vars */
-	
-	pendingIndicesCount=0;
-	drawPrepared=false;
-	hadTriangles=false;
-	rendered_frames_ratio=1;
 
 	/* initialize the GPU */
 
@@ -818,10 +801,17 @@ void xeGfx_init(){
 }
 
 void xeGfx_start(){
-    Xe_SetShader(xe, SHADER_TYPE_VERTEX, sh_vs, 0);
+	pendingIndicesCount=0;
+	drawPrepared=false;
+	hadTriangles=false;
+	rendered_frames_ratio=1;
+	dpf=0;
+	prev_dpf=0;
+	
+	Xe_SetShader(xe, SHADER_TYPE_VERTEX, sh_vs, 0);
     Xe_SetShader(xe, SHADER_TYPE_PIXEL, sh_ps_combiner, 0);
 
-    prepareDraw();
+    prepareDraw(false);
 }
 
 void xeGfx_render()
@@ -839,10 +829,8 @@ void xeGfx_render()
 		else
 			rendered_frames_ratio=0;
 		
-	    printf("%d fps, rfr=%d, %d dps\n",frames,rendered_frames_ratio,dps);
+	    printf("%d fps, rfr=%d, %d dpf\n",frames,rendered_frames_ratio,prev_dpf);
 		
-		
-		dps = 0;
 		frames = 0;
 		rendered_frames = 0;
 	    lastTick = nowTick;
@@ -870,6 +858,8 @@ void xeGfx_render()
     Xe_Execute(xe); // render everything in background !
 	drawPrepared=false;
 	hadTriangles=false;
+	prev_dpf=dpf;
+	dpf=0;
 
 	if(use_framelimit){
 		static int last_rendered_frame=0;
@@ -878,7 +868,7 @@ void xeGfx_render()
 
 		do{
 			tb=mftb();
-		}while((tb-last_rendered_tb)<(/*PPC_TIMEBASE_FREQ*/3192000000LL/64LL)*(frame_id-last_rendered_frame)/((getVideoSystem()==SYSTEM_PAL)?50:60));
+		}while((tb-last_rendered_tb)<PPC_TIMEBASE_FREQ*(frame_id-last_rendered_frame)/((getVideoSystem()==SYSTEM_PAL)?50:60));
 
 		last_rendered_tb=tb;	
 		last_rendered_frame=frame_id;
@@ -989,7 +979,7 @@ EXPORT void CALL ProcessDList(void)
     }
 #endif
     
-    RSP_ProcessDList();
+   RSP_ProcessDList();
 }
 
 EXPORT void CALL ProcessRDPList(void)
@@ -998,11 +988,13 @@ EXPORT void CALL ProcessRDPList(void)
 
 EXPORT void CALL RomClosed (void)
 {
-    Combiner_Destroy();
+	Xe_SetScissor(xe,0,0,0,0,0);
+    if (vertexBuffer->lock.start) Xe_VB_Unlock(xe,vertexBuffer);
+	if (indexBuffer->lock.start) Xe_IB_Unlock(xe,indexBuffer);
+
+	Combiner_Destroy();
     TextureCache_Destroy();
     DepthBuffer_Destroy();
-	
-	Xe_SetScissor(xe,0,0,0,0,0);
 }
 
 EXPORT void CALL RomOpen (void)
@@ -1010,8 +1002,8 @@ EXPORT void CALL RomOpen (void)
 	xeGfx_start();
 
 	RSP_Init();
-    Combiner_Init();
-    TextureCache_Init();
+	Combiner_Init();
+	TextureCache_Init();
 	DepthBuffer_Init();
 
 	rendered_frames_ratio=1;

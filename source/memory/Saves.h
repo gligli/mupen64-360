@@ -36,7 +36,28 @@ extern char savepath[];
 
 // Return 0 if load/save fails, 1 otherwise
 
-#if 0 //gli
+#include <stdint.h>
+
+#define FILE_BROWSER_MAX_PATH_LEN 256
+
+#define FILE_BROWSER_ATTR_DIR     0x10
+
+#define FILE_BROWSER_ERROR         -1
+#define FILE_BROWSER_ERROR_NO_FILE -2
+
+#define FILE_BROWSER_SEEK_SET 1
+#define FILE_BROWSER_SEEK_CUR 2
+#define FILE_BROWSER_SEEK_END 3
+
+typedef struct {
+        char         name[FILE_BROWSER_MAX_PATH_LEN];
+        uint64_t discoffset; // Only necessary for DVD
+        unsigned int offset; // Keep track of our offset in the file
+        unsigned int size;
+        unsigned int attr;
+} fileBrowser_file;
+
+
 int loadEeprom(fileBrowser_file* savepath);
 int saveEeprom(fileBrowser_file* savepath);
 
@@ -48,7 +69,9 @@ int saveSram(fileBrowser_file* savepath);
 
 int loadFlashram(fileBrowser_file* savepath);
 int saveFlashram(fileBrowser_file* savepath);
-#endif
+
+int saveFile_readFile(fileBrowser_file* file, void* buffer, unsigned int length);
+int saveFile_writeFile(fileBrowser_file* file, void* buffer, unsigned int length);
 
 #endif
 
