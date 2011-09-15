@@ -111,39 +111,6 @@ void gSPCombineMatrices()
 	Mat44MulTo( gSPAligned.matrix.combined, gSPAligned.matrix.projection, gSPAligned.matrix.modelView[gSPAligned.matrix.modelViewi] );
 
 	gSP.changed &= ~CHANGED_MATRIX;
-
-#ifdef __GX__
-	if (OGL.numTriangles)
-		OGL_DrawTriangles();
-	OGL.GXupdateMtx = true;
-
-	if(gSPAligned.matrix.combined[2][3] != 0)
-	{
-		OGL.GXcombW[2][2] = -GXprojZOffset - (GXprojZScale*gSPAligned.matrix.combined[2][2]/gSPAligned.matrix.combined[2][3]);
-		OGL.GXcombW[2][3] = GXprojZScale*(gSPAligned.matrix.combined[3][2] - (gSPAligned.matrix.combined[2][2]*gSPAligned.matrix.combined[3][3]/gSPAligned.matrix.combined[2][3]));
-//		OGL.GXcombW[2][3] = OGL.GXcombW[2][3]-0.25;
-		OGL.GXuseCombW = true;
-
-		//Transform for zPrime
-		if (gSPAligned.matrix.combined[2][2] != 0)
-		{
-			OGL.GXzPrimeScale		= -gSPAligned.matrix.combined[2][3]/gSPAligned.matrix.combined[2][2];
-			OGL.GXzPrimeTranslate	= -(gSPAligned.matrix.combined[3][2] - (gSPAligned.matrix.combined[2][2]*gSPAligned.matrix.combined[3][3]/gSPAligned.matrix.combined[2][3]))*(gSPAligned.matrix.combined[2][3]/gSPAligned.matrix.combined[2][2]);
-//			OGL.GXzPrimeScale		= gSPAligned.matrix.combined[2][3]/gSPAligned.matrix.combined[2][2];
-//			OGL.GXzPrimeTranslate	= -(gSPAligned.matrix.combined[3][2] + (gSPAligned.matrix.combined[2][2]*gSPAligned.matrix.combined[3][3]/gSPAligned.matrix.combined[2][3]))*(gSPAligned.matrix.combined[2][3]/gSPAligned.matrix.combined[2][2]);
-		}
-		else
-		{
-			OGL.GXzPrimeScale = OGL.GXzPrimeTranslate = 0;
-# ifdef SHOW_DEBUG
-			sprintf(txtbuffer,"gSPCombineMtx: zPrime Error!");
-			DEBUG_print(txtbuffer,6+1); 
-# endif
-		}
-	}
-	else
-		OGL.GXuseCombW = false;
-#endif //__GX__
 }
 
 void gSPProcessVertex( u32 v )
@@ -460,45 +427,6 @@ void gSPForceMatrix( u32 mptr )
 	}
 
 	RSP_LoadMatrix( gSPAligned.matrix.combined, RSP_SegmentToPhysical( mptr ) );
-
-#ifdef __GX__
-#ifdef SHOW_DEBUG
-	sprintf(txtbuffer,"gSP: gSPForceMatrix");
-	DEBUG_print(txtbuffer,7);
-#endif
-
-	if (OGL.numTriangles)
-		OGL_DrawTriangles();
-	OGL.GXupdateMtx = true;
-
-	if(gSPAligned.matrix.combined[2][3] != 0)
-	{
-		OGL.GXcombW[2][2] = -GXprojZOffset - (GXprojZScale*gSPAligned.matrix.combined[2][2]/gSPAligned.matrix.combined[2][3]);
-		OGL.GXcombW[2][3] = GXprojZScale*(gSPAligned.matrix.combined[3][2] - (gSPAligned.matrix.combined[2][2]*gSPAligned.matrix.combined[3][3]/gSPAligned.matrix.combined[2][3]));
-//		OGL.GXcombW[2][3] = OGL.GXcombW[2][3]-0.25;
-		OGL.GXuseCombW = true;
-
-		//Transform for zPrime
-		if (gSPAligned.matrix.combined[2][2] != 0)
-		{
-			OGL.GXzPrimeScale		= -gSPAligned.matrix.combined[2][3]/gSPAligned.matrix.combined[2][2];
-			OGL.GXzPrimeTranslate	= -(gSPAligned.matrix.combined[3][2] - (gSPAligned.matrix.combined[2][2]*gSPAligned.matrix.combined[3][3]/gSPAligned.matrix.combined[2][3]))*(gSPAligned.matrix.combined[2][3]/gSPAligned.matrix.combined[2][2]);
-//			OGL.GXzPrimeScale		= gSPAligned.matrix.combined[2][3]/gSPAligned.matrix.combined[2][2];
-//			OGL.GXzPrimeTranslate	= -(gSPAligned.matrix.combined[3][2] + (gSPAligned.matrix.combined[2][2]*gSPAligned.matrix.combined[3][3]/gSPAligned.matrix.combined[2][3]))*(gSPAligned.matrix.combined[2][3]/gSPAligned.matrix.combined[2][2]);
-		}
-		else
-		{
-			OGL.GXzPrimeScale = OGL.GXzPrimeTranslate = 0;
-# ifdef SHOW_DEBUG
-			sprintf(txtbuffer,"gSPCombineMtx: zPrime Error!");
-			DEBUG_print(txtbuffer,6+1); 
-# endif
-		}
-	}
-	else
-		OGL.GXuseCombW = false;
-
-#endif //__GX__
 
 	gSP.changed &= ~CHANGED_MATRIX;
 
@@ -966,7 +894,6 @@ void gSPTriangle( s32 v0, s32 v1, s32 v2, s32 flag )
 {
 	if ((v0 < 80) && (v1 < 80) && (v2 < 80))
 	{
-#ifndef __GX__
 		// Don't bother with triangles completely outside clipping frustrum
 		if (((gSPAligned.vertices[v0].xClip < 0.0f) &&
 			 (gSPAligned.vertices[v1].xClip < 0.0f) &&
@@ -987,6 +914,7 @@ void gSPTriangle( s32 v0, s32 v1, s32 v2, s32 flag )
 			 (gSPAligned.vertices[v1].zClip < -0.1f) &&
 			 (gSPAligned.vertices[v2].zClip < -0.1f)))
 			 return;
+#if 0
 
 		// NoN work-around, clips triangles, and draws the clipped-off parts with clamped z
 		if (GBI.current->NoN &&
@@ -1060,142 +988,8 @@ void gSPTriangle( s32 v0, s32 v1, s32 v2, s32 flag )
 //				glDepthFunc( GL_LEQUAL );
 		}
 		else
+#endif
 			xeGfx_addTriangle( gSPAligned.vertices, v0, v1, v2, 0);
-
-#else // !__GX__
-		if(1)
-//		if(!OGL.GXuseProj)
-		{
-			// Don't bother with triangles completely outside clipping frustrum
-			if (((gSPAligned.vertices[v0].xClip < 0.0f) &&
-				 (gSPAligned.vertices[v1].xClip < 0.0f) &&
-				 (gSPAligned.vertices[v2].xClip < 0.0f)) ||
-			    ((gSPAligned.vertices[v0].xClip > 0.0f) &&
-				 (gSPAligned.vertices[v1].xClip > 0.0f) &&
-				 (gSPAligned.vertices[v2].xClip > 0.0f)) ||
-				((gSPAligned.vertices[v0].yClip < 0.0f) &&
-				 (gSPAligned.vertices[v1].yClip < 0.0f) &&
-				 (gSPAligned.vertices[v2].yClip < 0.0f)) ||
-			    ((gSPAligned.vertices[v0].yClip > 0.0f) &&
-				 (gSPAligned.vertices[v1].yClip > 0.0f) &&
-				 (gSPAligned.vertices[v2].yClip > 0.0f)) ||
-				((gSPAligned.vertices[v0].zClip > 0.1f) &&
-				 (gSPAligned.vertices[v1].zClip > 0.1f) &&
-				 (gSPAligned.vertices[v2].zClip > 0.1f)) ||
-				((gSPAligned.vertices[v0].zClip < -0.1f) &&
-				 (gSPAligned.vertices[v1].zClip < -0.1f) &&
-				 (gSPAligned.vertices[v2].zClip < -0.1f)))
-				 return;
-		}
-
-		// TODO: Make this work with the current Mtx setup. Fix .zClip.
-
-		// NoN work-around, clips triangles, and draws the clipped-off parts with clamped z
-		if (GBI.current->NoN &&
-			((gSPAligned.vertices[v0].zClip < 0.0f) ||
-			(gSPAligned.vertices[v1].zClip < 0.0f) ||
-			(gSPAligned.vertices[v2].zClip < 0.0f)))
-		{
-//		if(0)
-//		{
-			SPVertex nearVertices[4];
-			SPVertex clippedVertices[4];
-			//s32 numNearTris = 0;
-			//s32 numClippedTris = 0;
-			s32 nearIndex = 0;
-			s32 clippedIndex = 0;
-
-#ifdef __GX__
-			DEBUG_print((char*)"NoN clipping triangles!!!",DBG_TXINFO1); //5
-#endif // __GX__
-
-			s32 v[3] = { v0, v1, v2 };
-
-			for (s32 i = 0; i < 3; i++)
-			{
-				s32 j = i + 1;
-				if (j == 3) j = 0;
-
-				if (((gSPAligned.vertices[v[i]].zClip < 0.0f) && (gSPAligned.vertices[v[j]].zClip >= 0.0f)) ||
-					((gSPAligned.vertices[v[i]].zClip >= 0.0f) && (gSPAligned.vertices[v[j]].zClip < 0.0f)))
-				{
-					//catch div0 case which will give infinite vertex coords
-					if (((gSPAligned.vertices[v[j]].z - gSPAligned.vertices[v[i]].z) + (gSPAligned.vertices[v[j]].w - gSPAligned.vertices[v[i]].w)) == 0.0f)
-						return;
-					f32 percent = (-gSPAligned.vertices[v[i]].w - gSPAligned.vertices[v[i]].z) / ((gSPAligned.vertices[v[j]].z - gSPAligned.vertices[v[i]].z) + (gSPAligned.vertices[v[j]].w - gSPAligned.vertices[v[i]].w));
-
-					gSPInterpolateVertex( &clippedVertices[clippedIndex], percent, &gSPAligned.vertices[v[i]], &gSPAligned.vertices[v[j]] );
-
-					gSPCopyVertex( &nearVertices[nearIndex], &clippedVertices[clippedIndex] );
-					nearVertices[nearIndex].z = -nearVertices[nearIndex].w;
-
-					clippedIndex++;
-					nearIndex++;
-				}
-
-				if (((gSPAligned.vertices[v[i]].zClip < 0.0f) && (gSPAligned.vertices[v[j]].zClip >= 0.0f)) ||
-					((gSPAligned.vertices[v[i]].zClip >= 0.0f) && (gSPAligned.vertices[v[j]].zClip >= 0.0f)))
-				{
-					gSPCopyVertex( &clippedVertices[clippedIndex], &gSPAligned.vertices[v[j]] );
-					clippedIndex++;
-				}
-				else
-				{
-					gSPCopyVertex( &nearVertices[nearIndex], &gSPAligned.vertices[v[j]] );
-					nearVertices[nearIndex].z = -nearVertices[nearIndex].w;// + 0.00001f;
-					nearIndex++;
-				}
-			}
-
-			OGL_AddTriangle( clippedVertices, 0, 1, 2 );
-
-			if (clippedIndex == 4)
-				OGL_AddTriangle( clippedVertices, 0, 2, 3 );
-
-			//Flush triangle cache before drawing near triangles
-			OGL_DrawTriangles();
-			OGL.GXuseProjWnear = true;
-			OGL.GXupdateMtx = true;
-
-#ifndef __GX__
-			glDisable( GL_POLYGON_OFFSET_FILL );
-#else // !__GX__
-			if (OGL.GXpolyOffset)
-			{
-				OGL.GXpolyOffset = false;
-				OGL.GXupdateMtx = true;
-			}
-#endif // __GX__
-
-//			glDepthFunc( GL_LEQUAL );
-
-			OGL_AddTriangle( nearVertices, 0, 1, 2 );
-			if (nearIndex == 4)
-				OGL_AddTriangle( nearVertices, 0, 2, 3 );
-
-			//Flush near triangles from cache
-			OGL_DrawTriangles();
-			OGL.GXuseProjWnear = false;
-			OGL.GXupdateMtx = true;
-
-#ifndef __GX__
-			if (gDP.otherMode.depthMode == ZMODE_DEC)
-				glEnable( GL_POLYGON_OFFSET_FILL );
-#else // !__GX__
-			if (gDP.otherMode.depthMode == ZMODE_DEC)
-			{
-				OGL.GXpolyOffset = true;
-				OGL.GXupdateMtx = true;
-			}
-#endif // __GX__
-
-//			if (gDP.otherMode.depthCompare)
-//				glDepthFunc( GL_LEQUAL );
-		}
-//#endif // !__GX__
-		else
-			OGL_AddTriangle( gSPAligned.vertices, v0, v1, v2 );
-#endif // __GX__
 
 	}
 #ifdef DEBUG
