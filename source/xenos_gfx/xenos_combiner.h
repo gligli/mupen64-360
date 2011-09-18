@@ -34,7 +34,7 @@ struct TxeCombiner
 {
     Combiner color,alpha;    
 	float floats[2][XECOMB_COMBINER_SIZE][4];
-	int numOps[2];
+	int numOps;
 	
     bool flags[2][64];
 	float signs[2][4];

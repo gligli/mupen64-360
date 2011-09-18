@@ -234,28 +234,32 @@ void combinerCompile(int idx, Combiner * c, TxeCombiner * xc){
         }
 	}
 
+#ifdef DEBUG_COMBINERS
+	printf("numOps %d %d\n",numOps,numColOps);
+#endif
+	
     xc->usesSlow|=numOps>4;
 
-    if (idx==XECOMB_COLOR_IDX)
+    for(i=numOps+1;i<12;++i){
+		t[i][0]=0;
+		t[i][1]=1;
+		t[i][2]=0;
+		t[i][3]=XECOMB_ZERO;
+	}
+
+	if (idx==XECOMB_COLOR_IDX)
         numColOps=numOps;
-    else 
-        numOps=numColOps>numOps?numColOps:numOps;
+    else{
+        numOps=MAX(numColOps,numOps);
+		xc->numOps=numOps;
+	}
+
 
     t[0][0]=numOps-1;
     t[0][1]=(c->numStages>1)?c->stage[0].numOps-1:-1;
     t[0][2]=0;
     t[0][3]=0;
 
-    for(i=numOps;i<12;++i){
-		++numOps;
-
-		t[numOps][0]=0;
-		t[numOps][1]=1;
-		t[numOps][2]=0;
-		t[numOps][3]=XECOMB_ZERO;
-	}
-
-	xc->numOps[idx]=numOps;
 	memcpy(xc->floats[idx],t,sizeof(t));
 
     if (xc->usesSlow){
@@ -318,7 +322,7 @@ int combinerUpload(int idx, TxeCombiner * xc){
     int start=idx*XECOMB_COMBINER_SIZE;
 	int i;
 
-	xeGfx_setCombinerConstantF(start,xc->floats[idx][0],xc->numOps[idx]+1);
+	if (xc->usesSlow) xeGfx_setCombinerConstantF(start,xc->floats[idx][0],xc->numOps+1);
    
 	if (!xc->op[idx]) return 0;
 	
@@ -398,29 +402,31 @@ TxeCombiner *xeComb_compile( Combiner *color, Combiner *alpha ){
 	
 #ifdef DEBUG_COMBINERS
 	combinerDump("color",color);
+#endif
+	combinerCompile(XECOMB_COLOR_IDX,color,xeComb);
+
+#ifdef DEBUG_COMBINERS
     combinerDump("alpha",alpha);
 #endif
-
-	combinerCompile(XECOMB_COLOR_IDX,color,xeComb);
 	combinerCompile(XECOMB_ALPHA_IDX,alpha,xeComb);
 	
     return xeComb;
 }
 
 void xeComb_setCombiner( TxeCombiner *envCombiner ){
-	BOOL oneColorOp,oneAlphaOp;
+	int colorOps,alphaOps;
 	
 	combiner.usesNoise=FALSE;
     combiner.usesT0=envCombiner->usesT0;
     combiner.usesT1=envCombiner->usesT1;
 
-    oneColorOp=combinerUpload(XECOMB_COLOR_IDX,envCombiner)<=2;
-    oneAlphaOp=combinerUpload(XECOMB_ALPHA_IDX,envCombiner)<=2;
+    colorOps=combinerUpload(XECOMB_COLOR_IDX,envCombiner);
+    alphaOps=combinerUpload(XECOMB_ALPHA_IDX,envCombiner);
 
     xeGfx_setCombinerConstantB(0,combiner.usesT0);
     xeGfx_setCombinerConstantB(64,combiner.usesT1);
 
-	xeGfx_setCombinerShader(oneColorOp,oneAlphaOp,envCombiner->usesSlow);
+	xeGfx_setCombinerShader(colorOps,alphaOps,envCombiner->usesSlow);
 
 //    combinerDump("color",&envCombiner->color);
 //    combinerDump("alpha",&envCombiner->alpha);

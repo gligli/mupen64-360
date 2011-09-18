@@ -28,9 +28,17 @@ struct SPVertex
 {
 	f32		x, y, z, w;
 	f32		nx, ny, nz, ndummy;
-	f32		r, g, b, a;
 	f32		s, t;
 	f32		xClip, yClip, zClip;
+	union{
+		u32 color;
+		struct{
+			u8 r;
+			u8 g;
+			u8 b;
+			u8 a;
+		};
+	};
 	s16		flag;
 #ifdef __GX__
 	f32		zPrime;

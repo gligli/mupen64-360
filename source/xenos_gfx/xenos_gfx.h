@@ -16,6 +16,13 @@
 //#define DEBUG
 //#define RSPTHREAD
 
+#define MAKE_COLOR3(r,g,b) (0xff000000 | ((b)<<16) | ((g)<<8) | (r))
+#define MAKE_COLOR4(r,g,b,a) ((a)<<24 | ((b)<<16) | ((g)<<8) | (r))
+#define MAKE_COLOR1F(c) ((u8)(255.0f*((c)>1.0f?1.0f:(c))))
+#define MAKE_COLOR4F(r,g,b,a) (MAKE_COLOR1F(a)<<24 | (MAKE_COLOR1F(b)<<16) | (MAKE_COLOR1F(g)<<8) | MAKE_COLOR1F(r))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
 extern char			pluginName[];
 
 extern void (*CheckInterrupts)( void );
@@ -28,7 +35,7 @@ void xeGfx_drawRect(int ulx,int uly,int lrx,int lry,float *color);
 void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,float lrs,float lrt,bool flip);
 void xeGfx_setCombinerConstantF(int start,float * data,int count);
 void xeGfx_setCombinerConstantB(int index, bool value);
-void xeGfx_setCombinerShader(bool oneColorOp,bool oneAlphaOp,bool slow);
+void xeGfx_setCombinerShader(int colorOps,int alphaOps,bool slow);
 void * xeGfx_createTexture(int width,int height);
 void xeGfx_destroyTexture(void * tex);
 void xeGfx_setTextureData(void * tex,void * buffer);

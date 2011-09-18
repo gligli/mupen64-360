@@ -55,14 +55,6 @@ char		*screenDirectory;
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#define MAKE_COLOR3(r,g,b) (0xff000000 | ((b)<<16) | ((g)<<8) | (r))
-#define MAKE_COLOR4(r,g,b,a) ((a)<<24 | ((b)<<16) | ((g)<<8) | (r))
-#define MAKE_COLOR1F(c) ((u8)(255.0f*((c)>1.0f?1.0f:(c))))
-#define MAKE_COLOR4F(r,g,b,a) (MAKE_COLOR1F(a)<<24 | (MAKE_COLOR1F(b)<<16) | (MAKE_COLOR1F(g)<<8) | MAKE_COLOR1F(r))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-#define MIN(a,b) (((a)<(b))?(a):(b))
-
-
 #define MAX_VERTEX_COUNT 16384
 #define MAX_INDICE_COUNT 32768
 
@@ -100,17 +92,29 @@ TVertex rect[] = {
 TIndice recti[] = {0,1,2,2,1,3};
 
 struct XenosDevice *xe;
-struct XenosShader *sh_ps_combiner, *sh_ps_combiner_1c, *sh_ps_combiner_1a, *sh_ps_combiner_1c1a, *sh_ps_combiner_slow, *sh_ps_fb, *sh_vs;
+struct XenosShader *sh_ps_combiner[5][5], *sh_ps_combiner_slow, *sh_ps_fb, *sh_vs;
 struct XenosVertexBuffer *vertexBuffer;
 
 struct XenosIndexBuffer *indexBuffer;
 
 extern char inc_vs[];
 extern char inc_ps_fb[];
-extern char inc_ps_combiner[];
-extern char inc_ps_combiner_1c[];
-extern char inc_ps_combiner_1a[];
 extern char inc_ps_combiner_1c1a[];
+extern char inc_ps_combiner_1c2a[];
+extern char inc_ps_combiner_1c3a[];
+extern char inc_ps_combiner_1c4a[];
+extern char inc_ps_combiner_2c1a[];
+extern char inc_ps_combiner_2c2a[];
+extern char inc_ps_combiner_2c3a[];
+extern char inc_ps_combiner_2c4a[];
+extern char inc_ps_combiner_3c1a[];
+extern char inc_ps_combiner_3c2a[];
+extern char inc_ps_combiner_3c3a[];
+extern char inc_ps_combiner_3c4a[];
+extern char inc_ps_combiner_4c1a[];
+extern char inc_ps_combiner_4c2a[];
+extern char inc_ps_combiner_4c3a[];
+extern char inc_ps_combiner_4c4a[];
 extern char inc_ps_combiner_slow[];
 
 
@@ -294,7 +298,7 @@ void processVertex(SPVertex * spv,TVertex * v){
         v->z=gDP.otherMode.depthSource == G_ZS_PRIM ? gDP.primDepth.z * spv->w : spv->z;
         if (gDP.otherMode.depthMode == ZMODE_DEC) v->z*=0.999f; // GL_POLYGON_OFFSET_FILL emulation
         v->w=spv->w;
-		v->color=MAKE_COLOR4F(spv->r,spv->g,spv->b,spv->a);
+		v->color=__builtin_bswap32(spv->color);
         if (combiner.usesT0){
             v->u0 = (spv->s * cache.current[0]->shiftScaleS * gSP.texture.scales - gSP.textureTile[0]->fuls + cache.current[0]->offsetS) * cache.current[0]->scaleS; 
             v->v0 = (spv->t * cache.current[0]->shiftScaleT * gSP.texture.scalet - gSP.textureTile[0]->fult + cache.current[0]->offsetT) * cache.current[0]->scaleT;
@@ -631,20 +635,13 @@ void xeGfx_setCombinerConstantB(int index, bool value){
     Xe_SetPixelShaderConstantB(xe,index,value);
 }
 
-void xeGfx_setCombinerShader(bool oneColorOp,bool oneAlphaOp,bool slow){
+void xeGfx_setCombinerShader(int colorOps,int alphaOps,bool slow){
 //    Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);return;
     
     if (slow)
         Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_combiner_slow,0);
-    else{
-        if (oneColorOp && !oneAlphaOp)
-            Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_combiner_1c,0);
-        else if (!oneColorOp && oneAlphaOp)
-            Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_combiner_1a,0);
-        else if (oneColorOp && oneAlphaOp)
-            Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_combiner_1c1a,0);
-        else 
-            Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_combiner,0);
+	else{
+		Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_combiner[colorOps][alphaOps],0);
     }
 }
 void * xeGfx_createTexture(int width,int height){
@@ -768,18 +765,41 @@ void xeGfx_init(){
 	
 	if(!done){
 		/* load pixel shaders */
+		
+		XenosShader * s;
 
-		sh_ps_combiner = Xe_LoadShaderFromMemory(xe, inc_ps_combiner);
-		Xe_InstantiateShader(xe, sh_ps_combiner, 0);
-
-		sh_ps_combiner_1c = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c);
-		Xe_InstantiateShader(xe, sh_ps_combiner_1c, 0);
-
-		sh_ps_combiner_1a = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1a);
-		Xe_InstantiateShader(xe, sh_ps_combiner_1a, 0);
-
-		sh_ps_combiner_1c1a = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c1a);
-		Xe_InstantiateShader(xe, sh_ps_combiner_1c1a, 0);
+		sh_ps_combiner[1][1] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c1a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[1][2] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c2a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[1][3] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c3a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[1][4] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_1c4a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[2][1] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_2c1a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[2][2] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_2c2a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[2][3] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_2c3a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[2][4] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_2c4a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[3][1] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_3c1a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[3][2] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_3c2a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[3][3] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_3c3a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[3][4] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_3c4a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[4][1] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_4c1a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[4][2] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_4c2a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[4][3] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_4c3a);
+		Xe_InstantiateShader(xe, s, 0);
+		sh_ps_combiner[4][4] = s = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_4c4a);
+		Xe_InstantiateShader(xe, s, 0);
 
 		sh_ps_combiner_slow = Xe_LoadShaderFromMemory(xe, inc_ps_combiner_slow);
 		Xe_InstantiateShader(xe, sh_ps_combiner_slow, 0);
@@ -809,7 +829,7 @@ void xeGfx_start(){
 	prev_dpf=0;
 	
 	Xe_SetShader(xe, SHADER_TYPE_VERTEX, sh_vs, 0);
-    Xe_SetShader(xe, SHADER_TYPE_PIXEL, sh_ps_combiner, 0);
+    Xe_SetShader(xe, SHADER_TYPE_PIXEL, sh_ps_combiner_slow, 0);
 
     prepareDraw(false);
 }

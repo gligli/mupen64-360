@@ -110,7 +110,7 @@ float4 main(_IN aData): COLOR {
             inputValues[XECOMB_COMB_A]=float4(res.a,res.a,res.a,res.a);
         }
 
-        if (i>=anum.x) break;		
+        if (i>=anum.x) break;
 
     }
 

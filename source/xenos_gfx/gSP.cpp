@@ -186,9 +186,9 @@ void gSPProcessVertex( u32 v )
 		DEBUG_print(txtbuffer,DBG_SDGECKOPRINT);
 #endif // GLN64_SDLOG
 
-		gSPAligned.vertices[v].r = r;
-		gSPAligned.vertices[v].g = g;
-		gSPAligned.vertices[v].b = b;
+		gSPAligned.vertices[v].r = MAKE_COLOR1F(r);
+		gSPAligned.vertices[v].g = MAKE_COLOR1F(g);
+		gSPAligned.vertices[v].b = MAKE_COLOR1F(b);
 
 		if (gSP.geometryMode & G_TEXTURE_GEN)
 		{
@@ -515,14 +515,11 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
 				gSPAligned.vertices[i].nx = vertex->normal.x;
 				gSPAligned.vertices[i].ny = vertex->normal.y;
 				gSPAligned.vertices[i].nz = vertex->normal.z;
-				gSPAligned.vertices[i].a = vertex->color.a * 0.0039215689f;
+				gSPAligned.vertices[i].a = vertex->color.a;
 			}
 			else
 			{
-				gSPAligned.vertices[i].r = vertex->color.r * 0.0039215689f;
-				gSPAligned.vertices[i].g = vertex->color.g * 0.0039215689f;
-				gSPAligned.vertices[i].b = vertex->color.b * 0.0039215689f;
-				gSPAligned.vertices[i].a = vertex->color.a * 0.0039215689f;
+				gSPAligned.vertices[i].color = *(u32*)&vertex->color;
 			}
 
 #ifdef DEBUG
@@ -609,14 +606,11 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
 				gSPAligned.vertices[i].nx = (s8)color[0];
 				gSPAligned.vertices[i].ny = (s8)color[1];
 				gSPAligned.vertices[i].nz = (s8)color[2];
-				gSPAligned.vertices[i].a = color[3] * 0.0039215689f;
+				gSPAligned.vertices[i].a = color[3];
 			}
 			else
 			{
-				gSPAligned.vertices[i].r = color[0] * 0.0039215689f;
-				gSPAligned.vertices[i].g = color[1] * 0.0039215689f;
-				gSPAligned.vertices[i].b = color[2] * 0.0039215689f;
-				gSPAligned.vertices[i].a = color[3] * 0.0039215689f;
+				gSPAligned.vertices[i].color = *(u32*)color;
 			}
 #endif // _BIG_ENDIAN
 
@@ -683,14 +677,11 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
 				gSPAligned.vertices[i].nx = *(s8*)&RDRAM[(address + 6) ^ 0];
 				gSPAligned.vertices[i].ny = *(s8*)&RDRAM[(address + 7) ^ 0];
 				gSPAligned.vertices[i].nz = *(s8*)&RDRAM[(address + 8) ^ 0];
-				gSPAligned.vertices[i].a = *(u8*)&RDRAM[(address + 9) ^ 0] * 0.0039215689f;
+				gSPAligned.vertices[i].a = *(u8*)&RDRAM[(address + 9) ^ 0];
 			}
 			else
 			{
-				gSPAligned.vertices[i].r = *(u8*)&RDRAM[(address + 6) ^ 0] * 0.0039215689f;
-				gSPAligned.vertices[i].g = *(u8*)&RDRAM[(address + 7) ^ 0] * 0.0039215689f;
-				gSPAligned.vertices[i].b = *(u8*)&RDRAM[(address + 8) ^ 0] * 0.0039215689f;
-				gSPAligned.vertices[i].a = *(u8*)&RDRAM[(address + 9) ^ 0] * 0.0039215689f;
+				gSPAligned.vertices[i].color = *(u32*)&RDRAM[(address + 6) ^ 0];
 			}
 #endif // _BIG_ENDIAN
 
@@ -868,10 +859,7 @@ void gSPCopyVertex( SPVertex *dest, SPVertex *src )
 	dest->y = src->y;
 	dest->z = src->z;
 	dest->w = src->w;
-	dest->r = src->r;
-	dest->g = src->g;
-	dest->b = src->b;
-	dest->a = src->a;
+	dest->color = src->color;
 	dest->s = src->s;
 	dest->t = src->t;
 }
@@ -1380,10 +1368,7 @@ void gSPModifyVertex( u32 vtx, u32 where, u32 val )
 	switch (where)
 	{
 		case G_MWO_POINT_RGBA:
-			gSPAligned.vertices[vtx].r = _SHIFTR( val, 24, 8 ) * 0.0039215689f;
-			gSPAligned.vertices[vtx].g = _SHIFTR( val, 16, 8 ) * 0.0039215689f;
-			gSPAligned.vertices[vtx].b = _SHIFTR( val, 8, 8 ) * 0.0039215689f;
-			gSPAligned.vertices[vtx].a = _SHIFTR( val, 0, 8 ) * 0.0039215689f;
+			gSPAligned.vertices[vtx].color = val;
 #ifdef DEBUG
 			DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPModifyVertex( %i, %s, 0x%08X );\n",
 				vtx, MWOPointText[(where - 0x10) >> 2], val );

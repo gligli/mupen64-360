@@ -33,7 +33,7 @@
 
 // Emulateur Nintendo 64, MUPEN64, Fichier Principal 
 // main.c
-#define VERSION "0.91 Beta"
+#define VERSION "0.95 Beta"
 
 #define MUPEN_DIR "uda:/mupen64-360/"
 
@@ -74,6 +74,7 @@ extern "C" {
 #undef X_OK
 #include <zlx/Browser.h>
 #include <zlx/Draw.h>
+#include <zlx/Hw.h>
 
 #undef hi
 #undef lo
@@ -84,6 +85,10 @@ extern "C" {
 #include <signal.h>
 #endif
 
+extern unsigned char inc_about[];
+XenosSurface * tex_about;
+
+ZLX::Font Font;
 ZLX::Browser Browser;
 lpBrowserActionEntry enh_action;
 lpBrowserActionEntry cpu_action;
@@ -117,6 +122,11 @@ void ActionShutdown(void * unused) {
 	for(;;);
 }
 
+void ActionReboot(void * unused) {
+    xenon_smc_power_reboot();
+	for(;;);
+}
+
 void ActionXell(void * unused) {
     exit(0);
 }
@@ -126,6 +136,43 @@ void SetEnhName(){
         enh_action->name = "Texture enhancement: 2xSAI";
 	else
         enh_action->name = "Texture enhancement: None";
+}
+
+void ActionAbout(void * other) {
+	struct controller_data_s ctrl;
+	float x=0.2,y=-0.75,nl=0.1;
+	
+	// Begin to draw
+	Browser.Begin();
+
+	ZLX::Draw::DrawTexturedRect(-1.0f, -1.0f, 2.0f, 2.0f, tex_about);
+
+	Browser.getFont()->Begin();
+
+	Browser.getFont()->DrawTextF("Mupen64-360 version " VERSION, -1, x,y);y+=nl;
+	y+=nl*2;
+	Browser.getFont()->DrawTextF("Credits:", -1, x,y);y+=nl;
+	Browser.getFont()->DrawTextF("Wii64 / Mupen64 teams (guess why :)", -1, x,y);y+=nl;
+	Browser.getFont()->DrawTextF("GliGli (Xbox 360 port)", -1, x,y);y+=nl;
+	Browser.getFont()->DrawTextF("Ced2911 (GUI library)", -1, x,y);y+=nl;
+	Browser.getFont()->DrawTextF("Razkar (Backgrounds)", -1, x,y);y+=nl;
+	Browser.getFont()->DrawTextF("Everyone that contributed to libxenon", -1, x,y);y+=nl;
+
+	Browser.getFont()->End();
+
+	// Draw all text + form
+	Browser.Render();
+
+	// Draw is finished
+	Browser.End();
+
+	// Update code ...
+	for(;;){
+		usb_do_poll();
+		if(get_controller_data(&ctrl, 0) && (ctrl.a || ctrl.b)){
+			return;
+		}
+	}
 }
 
 void ActionToggleEnh(void * other) {
@@ -172,6 +219,22 @@ void cls_GUI() {
 
 void do_GUI() {
 
+	tex_about = ZLX::loadPNGFromMemory(inc_about);
+	
+	{
+        lpBrowserActionEntry action = new BrowserActionEntry();
+        action->name = "Controls / about Mupen64-360 ...";
+        action->action = ActionAbout;
+        action->param = NULL;
+        Browser.AddAction(action);
+    }
+	{
+        lpBrowserActionEntry action = new BrowserActionEntry();
+        action->name = "-";
+        action->action = NULL;
+        action->param = NULL;
+        Browser.AddAction(action);
+    }
     {
         enh_action = new BrowserActionEntry();
         enh_action->param = NULL;
@@ -203,11 +266,17 @@ void do_GUI() {
         action->param = NULL;
         Browser.AddAction(action);
     }
-
 	{
         lpBrowserActionEntry action = new BrowserActionEntry();
         action->name = "Shutdown";
         action->action = ActionShutdown;
+        action->param = NULL;
+        Browser.AddAction(action);
+    }
+	{
+        lpBrowserActionEntry action = new BrowserActionEntry();
+        action->name = "Reboot";
+        action->action = ActionReboot;
         action->param = NULL;
         Browser.AddAction(action);
     }
@@ -383,10 +452,8 @@ int main ()
 
 	xenon_sound_init();
 
-	xenon_make_it_faster(XENON_SPEED_FULL);  
-
-	usb_init();
-	usb_do_poll();
+	ZLX::Hw::SystemInit(ZLX::INIT_USB);
+	ZLX::Hw::SystemPool();
 
 	xenon_ata_init();
 	dvd_init();
@@ -410,9 +477,10 @@ static CONTROL_INFO control_info;
 
 void initiateControllers(CONTROL_INFO ControlInfo)
 {
-   control_info = ControlInfo;
-   control_info.Controls[0].Present = TRUE;
-   control_info.Controls[0].Plugin = PLUGIN_MEMPAK;
+	int i;
+	control_info = ControlInfo;
+	for(i=0;i<4;++i) control_info.Controls[i].Present = TRUE;
+	control_info.Controls[0].Plugin = PLUGIN_MEMPAK;
 }
 
 #define	STICK_DEAD_ZONE (32768*0.4)
@@ -426,45 +494,42 @@ void initiateControllers(CONTROL_INFO ControlInfo)
 
 void getKeys(int Control, BUTTONS *Keys)
 {
-    static struct controller_data_s c;
+    static struct controller_data_s cdata[3],*c;
     BUTTONS b;
 
 	usb_do_poll();
 
-    if(get_controller_data(&c, 0)){
-    }
+	get_controller_data(&cdata[Control], Control);
+	c=&cdata[Control];
 
-    if (c.select){
+    if (c->select){
 		stop=1;
 		regular_quit=1;
 	}
 	
-    b.START_BUTTON=c.start;
+    b.START_BUTTON=c->start;
         
-    b.A_BUTTON=c.a;
-    b.B_BUTTON=c.b;
-    b.Z_TRIG=c.x || c.y || (c.rt>TRIGGER_THRESHOLD) || (c.lt>TRIGGER_THRESHOLD);
+    b.A_BUTTON=c->a;
+    b.B_BUTTON=c->b;
+    b.Z_TRIG=c->x || c->y || (c->rt>TRIGGER_THRESHOLD) || (c->lt>TRIGGER_THRESHOLD);
         
-    b.L_TRIG=c.lb;
-    b.R_TRIG=c.rb;
+    b.L_TRIG=c->lb;
+    b.R_TRIG=c->rb;
         
-    b.U_DPAD=c.up;
-    b.D_DPAD=c.down;
-    b.L_DPAD=c.left;
-    b.R_DPAD=c.right;
+    b.U_DPAD=c->up;
+    b.D_DPAD=c->down;
+    b.L_DPAD=c->left;
+    b.R_DPAD=c->right;
 
-    b.X_AXIS=HANDLE_STICK_DEAD_ZONE(c.s1_x)/256;
-    b.Y_AXIS=HANDLE_STICK_DEAD_ZONE(c.s1_y)/256;
+    b.X_AXIS=HANDLE_STICK_DEAD_ZONE(c->s1_x)/256;
+    b.Y_AXIS=HANDLE_STICK_DEAD_ZONE(c->s1_y)/256;
 
-    b.D_CBUTTON=c.s2_y<-STICK_THRESHOLD;
-    b.U_CBUTTON=c.s2_y>STICK_THRESHOLD;
-    b.L_CBUTTON=c.s2_x<-STICK_THRESHOLD;
-    b.R_CBUTTON=c.s2_x>STICK_THRESHOLD;
+    b.D_CBUTTON=c->s2_y<-STICK_THRESHOLD;
+    b.U_CBUTTON=c->s2_y>STICK_THRESHOLD;
+    b.L_CBUTTON=c->s2_x<-STICK_THRESHOLD;
+    b.R_CBUTTON=c->s2_x>STICK_THRESHOLD;
 
-    //printf("%08x\n",b.Value);
-
-    if (Control == 0) Keys->Value = b.Value;
-
+    Keys->Value = b.Value;
 }
 
 int saveFile_readFile(fileBrowser_file* file, void* buffer, unsigned int length){

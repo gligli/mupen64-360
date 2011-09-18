@@ -137,35 +137,31 @@ float4 main(_IN aData): COLOR {
 
     COLOR_OPERATION(0)
 
-    bif (cops[1][0][0]){
-        COLOR_OPERATION(1)
-
-#ifndef WITH_1C 
-        bif (cops[2][0][0]){
-            COLOR_OPERATION(2)
-
-            bif (cops[3][0][0]){
-                COLOR_OPERATION(3)
-            }
-        }
+#if NUM_COL_OPS>1
+    COLOR_OPERATION(1)
 #endif
-    }
+
+#if NUM_COL_OPS>2
+    COLOR_OPERATION(2)
+#endif
+
+#if NUM_COL_OPS>3
+    COLOR_OPERATION(3)
+#endif
 
     ALPHA_OPERATION(0)
 
-    bif (aops[1][0][0]){
-        ALPHA_OPERATION(1)
-
-#ifndef WITH_1A
-        bif (aops[2][0][0]){
-            ALPHA_OPERATION(2)
-
-            bif (aops[3][0][0]){
-                ALPHA_OPERATION(3)
-            }
-        }
+#if NUM_ALPHA_OPS>1
+    ALPHA_OPERATION(1)
 #endif
-    }
+
+#if NUM_ALPHA_OPS>2
+    ALPHA_OPERATION(2)
+#endif
+
+#if NUM_ALPHA_OPS>3
+    ALPHA_OPERATION(3)
+#endif
 
     return res;
 }

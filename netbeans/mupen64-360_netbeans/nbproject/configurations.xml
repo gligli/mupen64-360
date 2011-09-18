@@ -237,16 +237,16 @@
               <pElem>../../../libsrc/zlib-1.2.5</pElem>
             </incDir>
             <preprocessorList>
-              <Elem>__BIG_ENDIAN__</Elem>
               <Elem>FASTMEM</Elem>
               <Elem>_BIG_ENDIAN</Elem>
+              <Elem>__BIG_ENDIAN__</Elem>
             </preprocessorList>
           </cTool>
           <ccTool>
             <preprocessorList>
-              <Elem>__BIG_ENDIAN__</Elem>
               <Elem>FASTMEM</Elem>
               <Elem>_BIG_ENDIAN</Elem>
+              <Elem>__BIG_ENDIAN__</Elem>
             </preprocessorList>
           </ccTool>
         </makeTool>
