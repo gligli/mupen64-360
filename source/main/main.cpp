@@ -453,7 +453,7 @@ int main ()
 	xenon_sound_init();
 
 	ZLX::Hw::SystemInit(ZLX::INIT_USB);
-	ZLX::Hw::SystemPool();
+	ZLX::Hw::SystemPoll();
 
 	xenon_ata_init();
 	dvd_init();
