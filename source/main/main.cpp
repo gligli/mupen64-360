@@ -33,7 +33,7 @@
 
 // Emulateur Nintendo 64, MUPEN64, Fichier Principal 
 // main.c
-#define VERSION "0.95 Beta"
+#define VERSION "0.96 Beta"
 
 #define MUPEN_DIR "uda:/mupen64-360/"
 

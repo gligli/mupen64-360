@@ -10,6 +10,7 @@
         <in>Gfx_#1.3.h</in>
         <in>Rsp_#1.1.h</in>
         <in>adler32.c</in>
+        <in>bininc.S</in>
         <in>config.c</in>
         <in>config.h</in>
         <in>guifuncs.h</in>
