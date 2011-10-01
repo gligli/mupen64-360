@@ -15,22 +15,24 @@ struct _OUT
 };
 
 float4x4 persp: register (c0);
+float4x4 ortho: register (c4);
+
+bool transform: register(b0);
+bool isortho: register(b1);
 
 _OUT main(_IN In )
 {
   _OUT Out;
 
-/*#define NEAR (-1.0)
-#define FAR  (1.0)
+  if(transform){
+	if(isortho)
+	  Out.pos = mul(In.pos,ortho);
+	else
+	  Out.pos = mul(In.pos,persp);
+  }else{
+	  Out.pos = In.pos;
+  }
 
-float4x4 persp = {
-	{1,0,0,0},
-	{0,1,0,0},
-	{0,0,FAR/(NEAR-FAR),0},
-	{0,0,NEAR*FAR/(NEAR-FAR),1},
-};*/
-
-  Out.pos = mul(In.pos,persp);
   Out.col = In.col;
   Out.uv0 = In.uv0;
   Out.uv1 = In.uv1;

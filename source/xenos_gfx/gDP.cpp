@@ -39,15 +39,11 @@ gDPInfo gDP;
 
 void gDPSetOtherMode( u32 mode0, u32 mode1 )
 {
-	if (gDP.otherMode.h != mode0 ||
-		gDP.otherMode.l != mode1){
-	
-		gDP.otherMode.h = mode0;
-		gDP.otherMode.l = mode1;
+	gDP.otherMode.h = mode0;
+	gDP.otherMode.l = mode1;
 
-		gDP.changed |= CHANGED_RENDERMODE | CHANGED_CYCLETYPE | CHANGED_ALPHACOMPARE;
+	gDP.changed |= CHANGED_RENDERMODE | CHANGED_CYCLETYPE | CHANGED_ALPHACOMPARE;
 
-	}
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetOtherMode( %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s, %s | %s | %s%s%s%s%s | %s | %s%s%s );\n",
 		AlphaDitherText[gDP.otherMode.alphaDither],
@@ -107,11 +103,8 @@ void gDPPipelineMode( u32 mode )
 
 void gDPSetCycleType( u32 type )
 {
-	if (gDP.otherMode.cycleType != type){
-	
-		gDP.otherMode.cycleType = type;
-		gDP.changed |= CHANGED_CYCLETYPE;
-	}
+	gDP.otherMode.cycleType = type;
+	gDP.changed |= CHANGED_CYCLETYPE;
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetCycleType( %s );\n",
@@ -267,14 +260,10 @@ void gDPSetRenderMode( u32 mode1, u32 mode2 )
 
 void gDPSetCombine( s32 muxs0, s32 muxs1 )
 {
-	if ((s32)gDP.combine.muxs0 != muxs0 ||
-		(s32)gDP.combine.muxs1 != muxs1){
-			
-		gDP.combine.muxs0 = muxs0;
-		gDP.combine.muxs1 = muxs1;
+	gDP.combine.muxs0 = muxs0;
+	gDP.combine.muxs1 = muxs1;
 
-		gDP.changed |= CHANGED_COMBINE;	
-	}
+	gDP.changed |= CHANGED_COMBINE;	
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_COMBINE, "gDPSetCombine( %s, %s, %s, %s, %s, %s, %s, %s,\n",
@@ -430,18 +419,12 @@ void gDPSetEnvColor( u32 r, u32 g, u32 b, u32 a )
 	fb = b * 0.0039215689f;
 	fa = a * 0.0039215689f;	
 	
-	if (gDP.envColor.r != fr ||
-		gDP.envColor.g != fg ||
-		gDP.envColor.b != fb ||
-		gDP.envColor.a != fa){
-	
-		gDP.envColor.r = fr;
-		gDP.envColor.g = fg;
-		gDP.envColor.b = fb;
-		gDP.envColor.a = fa;
-		
-		gDP.changed |= CHANGED_COMBINE_COLORS;
-	}
+	gDP.envColor.r = fr;
+	gDP.envColor.g = fg;
+	gDP.envColor.b = fb;
+	gDP.envColor.a = fa;
+
+	gDP.changed |= CHANGED_COMBINE_COLORS;
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_COMBINE, "gDPSetEnvColor( %i, %i, %i, %i );\n",
@@ -502,22 +485,14 @@ void gDPSetPrimColor( u32 m, u32 l, u32 r, u32 g, u32 b, u32 a )
 	fb = b * 0.0039215689f;
 	fa = a * 0.0039215689f;	
 	
-	if (gDP.primColor.m != m ||
-		gDP.primColor.l != fl ||
-		gDP.primColor.r != fr ||
-		gDP.primColor.g != fg ||
-		gDP.primColor.b != fb ||
-		gDP.primColor.a != fa){
-	
-		gDP.primColor.m = m;
-		gDP.primColor.l = fl;
-		gDP.primColor.r = fr;
-		gDP.primColor.g = fg;
-		gDP.primColor.b = fb;
-		gDP.primColor.a = fa;
-		
-		gDP.changed |= CHANGED_COMBINE_COLORS;
-	}
+	gDP.primColor.m = m;
+	gDP.primColor.l = fl;
+	gDP.primColor.r = fr;
+	gDP.primColor.g = fg;
+	gDP.primColor.b = fb;
+	gDP.primColor.a = fa;
+
+	gDP.changed |= CHANGED_COMBINE_COLORS;
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_COMBINE, "gDPSetPrimColor( %i, %i, %i, %i, %i, %i );\n",
@@ -567,27 +542,17 @@ void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette
 
 void gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
-/*	if(	gDP.tiles[tile].uls != _SHIFTR( uls, 2, 10 ) ||
-		gDP.tiles[tile].ult != _SHIFTR( ult, 2, 10 ) ||
-		gDP.tiles[tile].lrs != _SHIFTR( lrs, 2, 10 ) ||
-		gDP.tiles[tile].lrt != _SHIFTR( lrt, 2, 10 ) ||
-		gDP.tiles[tile].fuls != _FIXED2FLOAT( uls, 2 ) ||
-		gDP.tiles[tile].fult != _FIXED2FLOAT( ult, 2 ) ||
-		gDP.tiles[tile].flrs != _FIXED2FLOAT( lrs, 2 ) ||
-		gDP.tiles[tile].flrt != _FIXED2FLOAT( lrt, 2 ))*/{
-	
-		gDP.tiles[tile].uls = _SHIFTR( uls, 2, 10 );
-		gDP.tiles[tile].ult = _SHIFTR( ult, 2, 10 );
-		gDP.tiles[tile].lrs = _SHIFTR( lrs, 2, 10 );
-		gDP.tiles[tile].lrt = _SHIFTR( lrt, 2, 10 );
+	gDP.tiles[tile].uls = _SHIFTR( uls, 2, 10 );
+	gDP.tiles[tile].ult = _SHIFTR( ult, 2, 10 );
+	gDP.tiles[tile].lrs = _SHIFTR( lrs, 2, 10 );
+	gDP.tiles[tile].lrt = _SHIFTR( lrt, 2, 10 );
 
-		gDP.tiles[tile].fuls = _FIXED2FLOAT( uls, 2 );
-		gDP.tiles[tile].fult = _FIXED2FLOAT( ult, 2 );
-		gDP.tiles[tile].flrs = _FIXED2FLOAT( lrs, 2 );
-		gDP.tiles[tile].flrt = _FIXED2FLOAT( lrt, 2 );
+	gDP.tiles[tile].fuls = _FIXED2FLOAT( uls, 2 );
+	gDP.tiles[tile].fult = _FIXED2FLOAT( ult, 2 );
+	gDP.tiles[tile].flrs = _FIXED2FLOAT( lrs, 2 );
+	gDP.tiles[tile].flrt = _FIXED2FLOAT( lrt, 2 );
 
-		gDP.changed |= CHANGED_TILE;
-	}
+	gDP.changed |= CHANGED_TILE;
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTileSize( %i, %.2f, %.2f, %.2f, %.2f );\n",
@@ -819,20 +784,13 @@ void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 
 void gDPSetScissor( u32 mode, f32 ulx, f32 uly, f32 lrx, f32 lry )
 {
-	if (gDP.scissor.mode != mode ||
-		gDP.scissor.ulx != ulx ||
-		gDP.scissor.uly != uly ||
-		gDP.scissor.lrx != lrx ||
-		gDP.scissor.lry != lry){
-	
-		gDP.scissor.mode = mode;
-		gDP.scissor.ulx = ulx;
-		gDP.scissor.uly = uly;
-		gDP.scissor.lrx = lrx;
-		gDP.scissor.lry = lry;
+	gDP.scissor.mode = mode;
+	gDP.scissor.ulx = ulx;
+	gDP.scissor.uly = uly;
+	gDP.scissor.lrx = lrx;
+	gDP.scissor.lry = lry;
 
-		gDP.changed |= CHANGED_SCISSOR;
-	}
+	gDP.changed |= CHANGED_SCISSOR;
 	
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gDPSetScissor( %s, %.2f, %.2f, %.2f, %.2f );\n",

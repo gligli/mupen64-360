@@ -29,6 +29,7 @@ extern void (*CheckInterrupts)( void );
 extern char *screenDirectory;
 
 void xeGfx_matrixDump(const char *name, float m[4][4]);
+void xe_updateVSOrtho();
 void xeGfx_clearDepthBuffer();
 void xeGfx_clearColorBuffer(float *color);
 void xeGfx_drawRect(int ulx,int uly,int lrx,int lry,float *color);

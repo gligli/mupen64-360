@@ -352,9 +352,15 @@ void nextIndice(){
 	++currentIndice;
 	
     if (indiceCount()>=MAX_INDICE_COUNT){
-		printf("[xenos_gfx] too many indices !\n");
-		exit(1);
+		//printf("[xenos_gfx] too many indices !\n");
+		drawVB();
     }
+}
+
+void updateVSMatrixMode(bool transform,bool ortho)
+{
+	Xe_SetVertexShaderConstantB(xe,0,transform);
+	Xe_SetVertexShaderConstantB(xe,1,ortho);
 }
 
 void prepareDraw(bool sync){
@@ -366,7 +372,10 @@ void prepareDraw(bool sync){
 
     resetLockVB();
 	resetLockIB();
-
+	
+	xe_updateVSOrtho();
+	updateVSMatrixMode(true,false);
+	
 	drawPrepared=true;
 }
 
@@ -391,6 +400,18 @@ void xeGfx_matrixDump(const char *name, float m[4][4])
 			printf("% 3.3f ", m[i][j]);
 		printf("\n");
 	}
+}
+
+void xe_updateVSOrtho()
+{
+	float ortho[4][4] = {
+        {2.0f/VI.width,0,0,-1},
+        {0,-2.0f/VI.height,0,1},
+	    {0,0,0.5,0.5},
+	    {0,0,0,1},
+    };
+
+    Xe_SetVertexShaderConstantF(xe,4,(float*)ortho,4);
 }
 
 void xeGfx_clearDepthBuffer(){
@@ -421,12 +442,11 @@ void xeGfx_clearDepthBuffer(){
     Xe_SetZFunc(xe,XE_CMP_ALWAYS);
     Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
 	Xe_SetBlendControl(xe,XE_BLEND_ZERO,XE_BLENDOP_ADD,XE_BLEND_ONE,XE_BLEND_ZERO,XE_BLENDOP_ADD,XE_BLEND_ONE);
-    Xe_SetVertexShaderConstantF(xe,0,(float*)identityMatrix,4);
+    updateVSMatrixMode(false,false);
 
 	gDP.changed |= CHANGED_RENDERMODE;
     gDP.changed |= CHANGED_COMBINE;
     gDP.changed |= CHANGED_SCISSOR;
-    gSP.changed |= CHANGED_VIEWPORT;
     gSP.changed |= CHANGED_GEOMETRYMODE;
     updateStates();
 #else
@@ -459,12 +479,11 @@ void xeGfx_clearColorBuffer(float *color){
     Xe_SetCullMode(xe,XE_CULL_NONE);
     Xe_SetZEnable(xe,0);
     Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
-    Xe_SetVertexShaderConstantF(xe,0,(float*)identityMatrix,4);
+    updateVSMatrixMode(false,false);
 
 	gDP.changed |= CHANGED_RENDERMODE;
     gDP.changed |= CHANGED_COMBINE;
     gDP.changed |= CHANGED_SCISSOR;
-    gSP.changed |= CHANGED_VIEWPORT;
     gSP.changed |= CHANGED_GEOMETRYMODE;
     updateStates();
 #else
@@ -474,20 +493,8 @@ void xeGfx_clearColorBuffer(float *color){
 }
 
 void doDrawRect(){
-	float ortho[4][4] = {
-        {2.0f/VI.width,0,0,-1},
-        {0,-2.0f/VI.height,0,1},
-	    {0,0,0.5,0.5},
-	    {0,0,0,1},
-    };
-
-    Xe_SetCullMode(xe,XE_CULL_NONE);
-    Xe_SetZEnable(xe,0);
-
-    Xe_SetVertexShaderConstantF(xe,0,(float*)ortho,4);
-
-	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
-	gDP.changed |= CHANGED_RENDERMODE;
+	updateVSMatrixMode(true,true);
+	Xe_SetZEnable(xe,0);
 }
 
 void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
@@ -694,6 +701,7 @@ void xeGfx_addTriangle( SPVertex *vertices, int v0, int v1, int v2, int direct){
 
 		prepareDraw(true);
 		if (gSP.changed || gDP.changed) updateStates();
+	    updateVSMatrixMode(true,false);
 
 		for(i=0;i<3;++i){
 			spv=&vertices[v[i]];
@@ -721,6 +729,7 @@ void xeGfx_drawTriangles(){
 		
 		prepareDraw(true);
 		if (gSP.changed || gDP.changed) updateStates();
+	    updateVSMatrixMode(true,false);
 		
 		memset(ind,0xff,sizeof(ind));
 		
@@ -828,10 +837,12 @@ void xeGfx_start(){
 	dpf=0;
 	prev_dpf=0;
 	
+    prepareDraw(true);
+
 	Xe_SetShader(xe, SHADER_TYPE_VERTEX, sh_vs, 0);
     Xe_SetShader(xe, SHADER_TYPE_PIXEL, sh_ps_combiner_slow, 0);
 
-    prepareDraw(false);
+	gSP.changed=gDP.changed=-1;
 }
 
 void xeGfx_render()
@@ -1019,14 +1030,12 @@ EXPORT void CALL RomClosed (void)
 
 EXPORT void CALL RomOpen (void)
 {
-	xeGfx_start();
-
 	RSP_Init();
 	Combiner_Init();
 	TextureCache_Init();
 	DepthBuffer_Init();
 
-	rendered_frames_ratio=1;
+	xeGfx_start();
 }
 
 EXPORT void CALL ShowCFB (void)

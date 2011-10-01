@@ -45,6 +45,8 @@ void VI_UpdateSize()
 
 	if (VI.width == 0.0f) VI.width = (unsigned long)320.0f;
 	if (VI.height == 0.0f) VI.height = (unsigned long)240.0f;
+	
+	xe_updateVSOrtho();
 }
 
 void VI_UpdateScreen()

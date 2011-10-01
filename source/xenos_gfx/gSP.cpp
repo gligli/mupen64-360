@@ -391,22 +391,14 @@ void gSPViewport( u32 v )
 	gSP.viewport.vtrans[3] = *(s16*)&RDRAM[address + 14];
 #endif // _BIG_ENDIAN
 
-	if(	gSP.viewport.x		!= gSP.viewport.vtrans[0] - gSP.viewport.vscale[0] ||
-		gSP.viewport.y		!= gSP.viewport.vtrans[1] - gSP.viewport.vscale[1] ||
-		gSP.viewport.width	!= gSP.viewport.vscale[0] * 2 ||
-		gSP.viewport.height	!= gSP.viewport.vscale[1] * 2 ||
-		gSP.viewport.nearz	!= gSP.viewport.vtrans[2] - gSP.viewport.vscale[2] ||
-		gSP.viewport.farz	!= (gSP.viewport.vtrans[2] + gSP.viewport.vscale[2])){
+	gSP.viewport.x		= gSP.viewport.vtrans[0] - gSP.viewport.vscale[0];
+	gSP.viewport.y		= gSP.viewport.vtrans[1] - gSP.viewport.vscale[1];
+	gSP.viewport.width	= gSP.viewport.vscale[0] * 2;
+	gSP.viewport.height	= gSP.viewport.vscale[1] * 2;
+	gSP.viewport.nearz	= gSP.viewport.vtrans[2] - gSP.viewport.vscale[2];
+	gSP.viewport.farz	= (gSP.viewport.vtrans[2] + gSP.viewport.vscale[2]) ;
 
-		gSP.viewport.x		= gSP.viewport.vtrans[0] - gSP.viewport.vscale[0];
-		gSP.viewport.y		= gSP.viewport.vtrans[1] - gSP.viewport.vscale[1];
-		gSP.viewport.width	= gSP.viewport.vscale[0] * 2;
-		gSP.viewport.height	= gSP.viewport.vscale[1] * 2;
-		gSP.viewport.nearz	= gSP.viewport.vtrans[2] - gSP.viewport.vscale[2];
-		gSP.viewport.farz	= (gSP.viewport.vtrans[2] + gSP.viewport.vscale[2]) ;
-
-		gSP.changed |= CHANGED_VIEWPORT;
-	}
+	gSP.changed |= CHANGED_VIEWPORT;
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPViewport( 0x%08X );\n", v );
@@ -1456,27 +1448,20 @@ void gSPPerspNormalize( u16 scale )
 
 void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on )
 {
-	if (gSP.texture.scales != sc ||
-		gSP.texture.scalet != tc ||
-		gSP.texture.level != level ||
-		gSP.texture.on != on ||
-		gSP.texture.tile != tile){
+	gSP.texture.scales = sc;
+	gSP.texture.scalet = tc;
 
-		gSP.texture.scales = sc;
-		gSP.texture.scalet = tc;
+	if (gSP.texture.scales == 0.0f) gSP.texture.scales = 1.0f;
+	if (gSP.texture.scalet == 0.0f) gSP.texture.scalet = 1.0f;
 
-		if (gSP.texture.scales == 0.0f) gSP.texture.scales = 1.0f;
-		if (gSP.texture.scalet == 0.0f) gSP.texture.scalet = 1.0f;
+	gSP.texture.level = level;
+	gSP.texture.on = on;
 
-		gSP.texture.level = level;
-		gSP.texture.on = on;
+	gSP.texture.tile = tile;
+	gSP.textureTile[0] = &gDP.tiles[tile];
+	gSP.textureTile[1] = &gDP.tiles[(tile < 7) ? (tile + 1) : tile];
 
-		gSP.texture.tile = tile;
-		gSP.textureTile[0] = &gDP.tiles[tile];
-		gSP.textureTile[1] = &gDP.tiles[(tile < 7) ? (tile + 1) : tile];
-
-		gSP.changed |= CHANGED_TEXTURE;
-	}
+	gSP.changed |= CHANGED_TEXTURE;
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gSPTexture( %f, %f, %i, %i, %i );\n",
