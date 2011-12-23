@@ -85,7 +85,7 @@ void display_error(char *txt)
 		 i, reg_cop0[i], i, comp_reg[i]);
      }*/
    
-   stop_it();
+//   stop_it();
 }
 
 void check_input_sync(unsigned char *value)
@@ -109,7 +109,7 @@ void compare_core()
      {
 	if (!pipe_opened)
 	  {
-	     mkfifo("compare_pipe", 0600);
+	     //mkfifo("compare_pipe", 0600);
 	     f = fopen("compare_pipe", "r");
 	     pipe_opened = 1;
 	  }

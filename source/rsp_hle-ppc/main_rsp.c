@@ -109,9 +109,9 @@ static int audio_ucode_detect(OSTask_t *task)
      }
 }
 
-extern void (*ABI1[0x20])();
-extern void (*ABI2[0x20])();
-extern void (*ABI3[0x20])();
+extern void (*ABI1[0x20])(void);
+extern void (*ABI2[0x20])(void);
+extern void (*ABI3[0x20])(void);
 
 void (*ABI[0x20])();
 
