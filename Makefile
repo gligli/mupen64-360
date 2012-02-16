@@ -37,7 +37,7 @@ LDFLAGS	= $(MACHDEP_LD) $(OPTIFLAGS) -Wl,-Map,$(notdir $@).map
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:=	-lzlx -lpng -lxenon -lm -lz 
+LIBS	:=	-lzlx -lpng  -lz -lxenon -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

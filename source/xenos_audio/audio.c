@@ -50,12 +50,12 @@ AUDIO_INFO AudioInfo;
 
 #define BUFFER_SIZE 65536
 static char buffer[BUFFER_SIZE];
-static unsigned int freq;
-static unsigned int real_freq;
-static double freq_ratio;
-static int is_60Hz;
+static volatile unsigned int freq;
+static volatile unsigned int real_freq;
+static volatile double freq_ratio;
+static volatile int is_60Hz;
 // NOTE: 32khz actually uses ~2136 bytes/frame @ 60hz
-static enum { BUFFER_SIZE_32_60 = 2112, BUFFER_SIZE_48_60 = 3200,
+static volatile enum { BUFFER_SIZE_32_60 = 2112, BUFFER_SIZE_48_60 = 3200,
               BUFFER_SIZE_32_50 = 2560, BUFFER_SIZE_48_50 = 3840 } buffer_size = 1024;
 
 
@@ -228,6 +228,9 @@ static void thread_enqueue(void * buffer,int size)
 {
 	while(thread_bufsize);
 	
+	int k;
+	for(k=0;k<100;++k) asm volatile("nop");
+	
 	lock(&thread_lock);
 	
 	if(thread_bufmaxsize<size){
@@ -243,7 +246,7 @@ static void thread_enqueue(void * buffer,int size)
 
 static void thread_loop()
 {
-	static char * local_buffer[0x10000];
+	static char local_buffer[0x10000];
 	int local_bufsize=0;
 	int k;
 
