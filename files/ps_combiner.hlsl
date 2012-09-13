@@ -34,14 +34,14 @@ sampler tex1: register (s1);
     bif (cops[op][1][3]) v0=float4(v0.a,v0.a,v0.a,v0.a);                       \
                                                                                \
     bif (cops[op][0][1]){                                                      \
-        bif (cops[op][0][2])                                                   \
+        if (COL_OP##op##_B)                                                    \
             res.rgb=v0.rgb;                                                    \
         else                                                                   \
             res.rgb=res.rgb+csgns[op]*v0.rgb;                                  \
     }else{                                                                     \
-        bif (cops[op][0][2])                                                   \
+        if (COL_OP##op##_B){                                                   \
             res.rgb=res.rgb*v0.rgb;                                            \
-        else{                                                                  \
+        }else{                                                                 \
                                                                                \
             bif (cops[op][2][0]){                                              \
                 bif (cops[op][2][1])                                           \
@@ -88,14 +88,14 @@ sampler tex1: register (s1);
     }                                                                          \
                                                                                \
     bif (aops[op][0][1]){                                                      \
-        bif (aops[op][0][2])                                                   \
+        if (ALPHA_OP##op##_B)                                                  \
             res.a=v0.a;                                                        \
         else                                                                   \
             res.a=res.a+asgns[op]*v0.a;                                        \
     }else{                                                                     \
-        bif (aops[op][0][2])                                                   \
+        if (ALPHA_OP##op##_B){                                                 \
             res.a=res.a*v0.a;                                                  \
-        else{                                                                  \
+        }else{                                                                 \
                                                                                \
             bif (aops[op][2][0]){                                              \
                 bif (aops[op][2][1])                                           \

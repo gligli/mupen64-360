@@ -23,7 +23,7 @@
 #include "xenos_gfx.h"
 #include <debug.h>
 
-#define FIXED_TEXTURE_COST 16384
+#define FIXED_TEXTURE_COST 32768
 
 TextureCache	cache;
 

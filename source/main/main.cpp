@@ -35,7 +35,7 @@
 // main.c
 #define VERSION "0.96 Beta"
 
-#define MUPEN_DIR "uda:/mupen64-360/"
+#define MUPEN_DIR "uda0:/mupen64-360/"
 
 #include <stdlib.h>
 #include <unistd.h>

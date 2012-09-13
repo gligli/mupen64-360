@@ -36,7 +36,7 @@ void xeGfx_drawRect(int ulx,int uly,int lrx,int lry,float *color);
 void xeGfx_drawTexturedRect(int ulx,int uly,int lrx,int lry,float uls,float ult,float lrs,float lrt,bool flip);
 void xeGfx_setCombinerConstantF(int start,float * data,int count);
 void xeGfx_setCombinerConstantB(int index, bool value);
-void xeGfx_setCombinerShader(int colorOps,int alphaOps,bool slow);
+void xeGfx_setCombinerShader(u32 index,bool slow);
 void * xeGfx_createTexture(int width,int height);
 void xeGfx_destroyTexture(void * tex);
 void xeGfx_setTextureData(void * tex,void * buffer);

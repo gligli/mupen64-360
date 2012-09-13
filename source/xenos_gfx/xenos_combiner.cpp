@@ -318,7 +318,9 @@ void combinerCompile(int idx, Combiner * c, TxeCombiner * xc){
     xc->op[idx]=op;
  }
 
-int combinerUpload(int idx, TxeCombiner * xc){
+#define PS_FLAG(val,bit,en) {if(en) val|=1<<(bit);}
+
+int combinerUpload(int idx, TxeCombiner * xc, u32 &shidx){
     int start=idx*XECOMB_COMBINER_SIZE;
 	int i;
 
@@ -329,6 +331,46 @@ int combinerUpload(int idx, TxeCombiner * xc){
 	xeGfx_setCombinerConstantF(128+16*idx,xc->signs[2],1);
     for(i=0;i<64;++i) xeGfx_setCombinerConstantB(i+idx*64,xc->flags[idx][i]);
 	
+#if 1
+    if (idx==XECOMB_COLOR_IDX)
+    {
+        shidx|=(xc->op[idx]-1) & 3;
+        PS_FLAG(shidx,4,xc->flags[idx][0*4*4+2]);
+        PS_FLAG(shidx,5,xc->flags[idx][1*4*4+2]);
+        PS_FLAG(shidx,6,xc->flags[idx][2*4*4+2]);
+        PS_FLAG(shidx,7,xc->flags[idx][3*4*4+2]);
+    }
+    else
+    {
+        shidx|=((xc->op[idx]-1)&3)<<2;
+        PS_FLAG(shidx,8,xc->flags[idx][0*4*4+2]);
+        PS_FLAG(shidx,9,xc->flags[idx][1*4*4+2]);
+        PS_FLAG(shidx,10,xc->flags[idx][2*4*4+2]);
+        PS_FLAG(shidx,11,xc->flags[idx][3*4*4+2]);
+    }
+#else
+    if (idx==XECOMB_COLOR_IDX)
+    {
+        shidx|=(xc->op[idx]-1) & 3;
+        PS_FLAG(shidx,4,xc->flags[idx][0*4*4+1]);
+        PS_FLAG(shidx,5,xc->flags[idx][0*4*4+2]);
+        PS_FLAG(shidx,6,xc->flags[idx][1*4*4+1]);
+        PS_FLAG(shidx,7,xc->flags[idx][1*4*4+2]);
+        PS_FLAG(shidx,8,xc->flags[idx][2*4*4+2]);
+        PS_FLAG(shidx,9,xc->flags[idx][3*4*4+2]);
+    }
+    else
+    {
+        shidx|=((xc->op[idx]-1)&3)<<2;
+        PS_FLAG(shidx,10,xc->flags[idx][0*4*4+1]);
+        PS_FLAG(shidx,11,xc->flags[idx][0*4*4+2]);
+        PS_FLAG(shidx,12,xc->flags[idx][1*4*4+1]);
+        PS_FLAG(shidx,13,xc->flags[idx][1*4*4+2]);
+        PS_FLAG(shidx,14,xc->flags[idx][2*4*4+2]);
+        PS_FLAG(shidx,15,xc->flags[idx][3*4*4+2]);
+    }
+#endif  
+    
 	return xc->op[idx];
 }
 
@@ -414,19 +456,19 @@ TxeCombiner *xeComb_compile( Combiner *color, Combiner *alpha ){
 }
 
 void xeComb_setCombiner( TxeCombiner *envCombiner ){
-	int colorOps,alphaOps;
+	u32 shidx=0;
 	
 	combiner.usesNoise=FALSE;
     combiner.usesT0=envCombiner->usesT0;
     combiner.usesT1=envCombiner->usesT1;
 
-    colorOps=combinerUpload(XECOMB_COLOR_IDX,envCombiner);
-    alphaOps=combinerUpload(XECOMB_ALPHA_IDX,envCombiner);
+    combinerUpload(XECOMB_COLOR_IDX,envCombiner,shidx);
+    combinerUpload(XECOMB_ALPHA_IDX,envCombiner,shidx);
 
     xeGfx_setCombinerConstantB(0,combiner.usesT0);
     xeGfx_setCombinerConstantB(64,combiner.usesT1);
 
-	xeGfx_setCombinerShader(colorOps,alphaOps,envCombiner->usesSlow);
+	xeGfx_setCombinerShader(shidx,envCombiner->usesSlow);
 
 //    combinerDump("color",&envCombiner->color);
 //    combinerDump("alpha",&envCombiner->alpha);
