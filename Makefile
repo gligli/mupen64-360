@@ -25,19 +25,19 @@ INCLUDES	:=	files
 # options for code generation
 #---------------------------------------------------------------------------------
 
-OPTIFLAGS =  -Ofast -flto -fuse-linker-plugin -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 
+OPTIFLAGS =  -Ofast -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -flto -fuse-linker-plugin 
 
 ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32
 CFLAGS	= $(OPTIFLAGS) -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DDEBUG_ -DUSE_RECOMP_CACHE -DUSE_EXPANSION -DFASTMEM 
 CXXFLAGS	=	$(CFLAGS)
 
-MACHDEP_LD =  -DXENON -m32 -maltivec -fno-pic -mhard-float -L$(DEVKITXENON)/xenon/lib/32 -u read -u _start -u exc_base
+MACHDEP_LD =  -DXENON -m32 -maltivec -fno-pic -mhard-float -L$(DEVKITXENON)/xenon/lib/32
 LDFLAGS	= $(MACHDEP_LD) $(OPTIFLAGS) -Wl,-Map,$(notdir $@).map
 
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:=	-lzlx -lpng  -lz -lxenon -lm
+LIBS	:=	-lzlx -lpng  -lz -lfat -lext2fs -lntfs -lxtaf -lxenon -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
