@@ -46,25 +46,25 @@ extern int debugger_mode;
 extern void update_debugger();
 #endif
 
-unsigned long i, dynacore = 0, interpcore = 0;
+unsigned long __attribute__((aligned(128))) i, dynacore = 0, interpcore = 0;
 int no_audio_delay = 0;
 int no_compiled_jump = 0;
-int stop, llbit;
-long long int reg[34];
-long long int local_rs, local_rt;
-unsigned long reg_cop0[32];
-long local_rs32, local_rt32;
-unsigned long jump_target;
-float *reg_cop1_simple[32];
-double *reg_cop1_double[32];
-long reg_cop1_fgr_32[32];
-long long int reg_cop1_fgr_64[32];
-long FCR0, FCR31;
-tlb tlb_e[32];
-unsigned long delay_slot, skip_jump = 0, dyna_interp = 0, last_addr;
-unsigned long long int debug_count = 0;
-unsigned int next_interupt, CIC_Chip;
-precomp_instr *PC;
+int __attribute__((aligned(128))) stop, llbit;
+long long int __attribute__((aligned(128))) reg[34];
+long long int __attribute__((aligned(128))) local_rs, local_rt;
+unsigned long __attribute__((aligned(128))) reg_cop0[32];
+long __attribute__((aligned(128))) local_rs32, local_rt32;
+unsigned long __attribute__((aligned(128))) jump_target;
+float __attribute__((aligned(128))) *reg_cop1_simple[32];
+double __attribute__((aligned(128))) *reg_cop1_double[32];
+long __attribute__((aligned(128))) reg_cop1_fgr_32[32];
+long long int __attribute__((aligned(128))) reg_cop1_fgr_64[32];
+long __attribute__((aligned(128))) FCR0, FCR31;
+tlb __attribute__((aligned(128))) tlb_e[32];
+unsigned long __attribute__((aligned(128))) delay_slot, skip_jump = 0, dyna_interp = 0, last_addr;
+unsigned long long int __attribute__((aligned(128)))  debug_count = 0;
+unsigned int __attribute__((aligned(128))) next_interupt, CIC_Chip;
+precomp_instr __attribute__((aligned(128))) *PC;
 //char invalid_code[0x100000];
 
 #ifdef PPC_DYNAREC

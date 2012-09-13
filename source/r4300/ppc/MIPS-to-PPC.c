@@ -2772,7 +2772,7 @@ static int ERET(MIPS_instr mips){
 	GEN_STW(ppc, 3, 12*4, DYNAREG_COP0);
 	set_next_dst(ppc);
 	// check_interupt()
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(&check_interupt, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3272,7 +3272,7 @@ static int SQRT_FP(MIPS_instr mips, int dbl){
 	invalidateRegisters();
 
 	// call sqrt
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &sqrt : &sqrtf, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3390,7 +3390,7 @@ static int ROUND_L_FP(MIPS_instr mips, int dbl){
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// round
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &round : &roundf, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3405,7 +3405,7 @@ static int ROUND_L_FP(MIPS_instr mips, int dbl){
 #endif
 	
 	// convert
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3455,7 +3455,7 @@ static int TRUNC_L_FP(MIPS_instr mips, int dbl){
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// convert
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3505,7 +3505,7 @@ static int CEIL_L_FP(MIPS_instr mips, int dbl){
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// ceil
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &ceil : &ceilf, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3519,7 +3519,7 @@ static int CEIL_L_FP(MIPS_instr mips, int dbl){
 	set_next_dst(ppc);
 #endif
 	// convert
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3569,7 +3569,7 @@ static int FLOOR_L_FP(MIPS_instr mips, int dbl){
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// round
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &floor : &floorf, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3583,7 +3583,7 @@ static int FLOOR_L_FP(MIPS_instr mips, int dbl){
 	set_next_dst(ppc);
 #endif
 	// convert
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -3842,7 +3842,7 @@ static int CVT_L_FP(MIPS_instr mips, int dbl){
 
 	// FIXME: I'm fairly certain this will always trunc
 	// convert
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -4529,7 +4529,7 @@ static int CVT_FP_L(MIPS_instr mips, int dbl){
 	set_next_dst(ppc);
 
 	// convert
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(dbl ? &__floatdidf : &__floatdisf, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -4618,7 +4618,7 @@ static void genCallInterp(MIPS_instr mips){
 	GEN_ORI(ppc, 4, 4, get_src_pc());
 	set_next_dst(ppc);
 	// Branch to decodeNInterpret
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(&decodeNInterpret, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -4668,8 +4668,8 @@ static void genJumpTo(unsigned int loc, unsigned int type){
 		GEN_ADDI(ppc, 3, DYNAREG_FUNC, 0);
 		set_next_dst(ppc);
 		// Call RecompCache_Update(func)
-#if 0
-		GEN_B(ppc, add_jump(&RecompCache_Update, 1, 1), 0, 1);
+#if 1
+		GEN_B(ppc, add_jump(RecompCache_Update, 1, 1), 0, 1);
 		set_next_dst(ppc);
 #else
 		GEN_LIS(ppc, 12, ((unsigned int)&RecompCache_Update)>>16);
@@ -4697,15 +4697,14 @@ static void genJumpTo(unsigned int loc, unsigned int type){
 		// Store last_addr for linking
 		GEN_STW(ppc, 3, 0, DYNAREG_LADDR);
 		set_next_dst(ppc);
-		// Linking must be performed using ctr: the memory space is too large
-		GEN_ORI(ppc, 0, 0, 0);
-		set_next_dst(ppc);
-		set_next_dst(ppc);
-		GEN_MTCTR(ppc, 12);
-		set_next_dst(ppc);
 	}
 
 	GEN_BLR(ppc, (type != JUMPTO_REG));
+	set_next_dst(ppc);
+
+    GEN_ORI(ppc, 0, 0, 0);
+	set_next_dst(ppc);
+	set_next_dst(ppc);
 	set_next_dst(ppc);
 }
 
@@ -4761,7 +4760,7 @@ static void genUpdateCount(int checkCount){
 	GEN_ORI(ppc, 3, 3, get_src_pc()+4);
 	set_next_dst(ppc);
 	// Call dyna_update_count
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(&dyna_update_count, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -4800,8 +4799,8 @@ static void genCheckFP(void){
 		GEN_ANDIS(ppc, 0, 0, 0x2000);
 		set_next_dst(ppc);
 		// bne cr0, end
-//		GEN_BNE(ppc, 0, 8, 0, 0);
-		GEN_BNE(ppc, 0, 11, 0, 0);
+		GEN_BNE(ppc, 0, 8, 0, 0);
+//		GEN_BNE(ppc, 0, 11, 0, 0);
 		set_next_dst(ppc);
 		// Move &dyna_check_cop1_unusable to ctr for call
 		//GEN_MTCTR(ppc, DYNAREG_CHKFP);
@@ -4816,7 +4815,7 @@ static void genCheckFP(void){
 		GEN_ORI(ppc, 3, 3, get_src_pc());
 		set_next_dst(ppc);
 		// Call dyna_check_cop1_unusable
-#if 0
+#if 1
 		GEN_B(ppc, add_jump(&dyna_check_cop1_unusable, 1, 1), 0, 1);
 		set_next_dst(ppc);
 #else
@@ -4863,7 +4862,7 @@ void genCallDynaMem(memType type, int base, short immed){
 	GEN_LI(ppc, 7, 0, isDelaySlot ? 1 : 0);
 	set_next_dst(ppc);
 	// call dyna_mem
-#if 0
+#if 1
 	GEN_B(ppc, add_jump(&dyna_mem, 1, 1), 0, 1);
 	set_next_dst(ppc);
 #else
@@ -4906,8 +4905,7 @@ void genCallDynaMem2(int type, int base, short immed){
 		case MEM_WRITE_WORD:
 			genCallDynaMem(MEM_SW,base,immed);return;
 	}
-#endif
-	
+#else	
 	// addr (must be first)
 	GEN_ADDI(ppc, 6, base, immed);
 	set_next_dst(ppc);
@@ -4984,6 +4982,13 @@ void genCallDynaMem2(int type, int base, short immed){
 	set_next_dst(ppc);
 	GEN_CMPI(ppc,12,0,6);
 	set_next_dst(ppc);
+
+#if 1
+	GEN_BNE(ppc,6,2,0,0);
+	set_next_dst(ppc);
+	GEN_B(ppc, add_jump(&invalidate_func, 1, 1), 0, 1);
+	set_next_dst(ppc);
+#else
 	GEN_BNE(ppc,6,5,0,0);
 	set_next_dst(ppc);
 
@@ -4995,6 +5000,7 @@ void genCallDynaMem2(int type, int base, short immed){
 	set_next_dst(ppc);
 	GEN_BCTRL(ppc);
 	set_next_dst(ppc);
+#endif
 	
 	GEN_LI(ppc, 3, 0, 0);
 	set_next_dst(ppc);
@@ -5038,6 +5044,7 @@ void genCallDynaMem2(int type, int base, short immed){
 	set_next_dst(ppc);
 #endif
 
+#endif    
 }
 
 static int mips_is_jump(MIPS_instr instr){

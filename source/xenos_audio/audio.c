@@ -347,7 +347,8 @@ InitiateAudio( AUDIO_INFO Audio_Info )
 	thread_terminate=0;
 
 	xenon_run_thread_task(2,&thread_stack[sizeof(thread_stack)-0x100],thread_loop);
-	return TRUE;
+	atexit(RomClosed);
+    return TRUE;
 }
 
 EXPORT void CALL RomOpen()

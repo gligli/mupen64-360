@@ -9,6 +9,7 @@
 #include <ppc/cache.h>
 #include <nocfe/lib_malloc.h>
 #include <debug.h>
+#include <assert.h>
 
 void DCFlushRange(void* startaddr, unsigned int len){
 	if(len == 0) return;
@@ -142,13 +143,13 @@ static void unlink_func(PowerPC_func* func){
 	PowerPC_func_link_node* link, * next_link;
 	for(link = func->links_in; link != NULL; link = next_link){
 		next_link = link->next;
-		
-		GEN_ORI(*(link->branch-16), 0, 0, 0);
-		GEN_ORI(*(link->branch-15), 0, 0, 0);
+
+		GEN_ORI(*(link->branch-10), 0, 0, 0);
+		GEN_ORI(*(link->branch-9), 0, 0, 0);
 		GEN_BLR(*link->branch, 1); // Set the linking branch to blrl
 //		DCFlushRange(link->branch-16, 17*sizeof(PowerPC_instr));
-		ICInvalidateRange(link->branch-16, 17*sizeof(PowerPC_instr));
-		
+		ICInvalidateRange(link->branch-10, 11*sizeof(PowerPC_instr));
+
 		remove_func(&link->func->links_out, func);
 		MetaCache_Free(link);
 	}
@@ -308,7 +309,7 @@ void RecompCache_Free(unsigned int addr){
 }
 
 void RecompCache_Update(PowerPC_func* func){
-	update_lru(func);
+    update_lru(func);
 }
 
 void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
@@ -328,27 +329,20 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 	
 	// Actually link the funcs
 
-	GEN_LIS(*(src_instr-16), DYNAREG_FUNC, (unsigned int)dst_func>>16);
-	GEN_ORI(*(src_instr-15), DYNAREG_FUNC,DYNAREG_FUNC, (unsigned int)dst_func);
-
-	if (abs(dst_instr-src_instr)>8*1024*1024){
-		GEN_LIS(*(src_instr-3), 12, (unsigned int)dst_instr>>16);
-		GEN_ORI(*(src_instr-2), 12, 12, (unsigned int)dst_instr);
-		GEN_MTCTR(*(src_instr-1), 12);
-		GEN_BCTR(*src_instr);
-	}else{
-		GEN_B(*(src_instr), (PowerPC_instr*)dst_instr-src_instr, 0, 0);
-	}
-
-//	DCFlushRange(src_instr-16, 17*sizeof(PowerPC_instr));
-	ICInvalidateRange(src_instr-16, 17*sizeof(PowerPC_instr));
+    GEN_LIS(*(src_instr-10), DYNAREG_FUNC, (unsigned int)dst_func>>16);
+	GEN_ORI(*(src_instr-9), DYNAREG_FUNC,DYNAREG_FUNC, (unsigned int)dst_func);
+	GEN_B(*(src_instr), (PowerPC_instr*)dst_instr-src_instr, 0, 0);
+//    DCFlushRange(src_instr-10, 11*sizeof(PowerPC_instr));
+    ICInvalidateRange(src_instr-10, 11*sizeof(PowerPC_instr));
 	
 	//end_section(LINK_SECTION);
 }
 
+static __attribute__((aligned(65536))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
+
 void RecompCache_Init(void){
 	if(!cache_buf){
-		cache_buf=malloc(RECOMP_CACHE_ALLOC_SIZE);
+		cache_buf=recomp_cache_buffer;
 	}
     kmeminit(&cache_mempool,cache_buf,RECOMP_CACHE_ALLOC_SIZE);
 		
