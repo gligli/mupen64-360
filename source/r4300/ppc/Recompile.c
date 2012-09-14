@@ -554,28 +554,19 @@ void dyna_stop(){ }
 void jump_to_func(){ jump_to(jump_to_address); }
 
 static void genJumpPad(void){
-	PowerPC_instr ppc = NEW_PPC_INSTR();
-
 	// noCheckInterrupt = 1
-	GEN_LIS(ppc, 3, (unsigned int)(&noCheckInterrupt)>>16);
-	set_next_dst(ppc);
-	GEN_ORI(ppc, 3, 3, (unsigned int)(&noCheckInterrupt));
-	set_next_dst(ppc);
-	GEN_LI(ppc, 0, 0, 1);
-	set_next_dst(ppc);
-	GEN_STW(ppc, 0, 0, 3);
-	set_next_dst(ppc);
+	EMIT_LIS(3, (unsigned int)(&noCheckInterrupt)>>16);
+	EMIT_ORI(3, 3, (unsigned int)(&noCheckInterrupt));
+	EMIT_LI(0, 1);
+	EMIT_STW(0, 0, 3);
 
 	// Set the next address to the first address in the next block if
 	//   we've really reached the end of the block, not jumped to the pad
-	GEN_LIS(ppc, 3, (get_src_pc()+4)>>16);
-	set_next_dst(ppc);
-	GEN_ORI(ppc, 3, 3, get_src_pc()+4);
-	set_next_dst(ppc);
+	EMIT_LIS(3, (get_src_pc()+4)>>16);
+	EMIT_ORI(3, 3, get_src_pc()+4);
 
 	// return destination
-	GEN_BLR(ppc,0);
-	set_next_dst(ppc);
+	EMIT_BLR(0);
 }
 
 void invalidate_block(PowerPC_block* ppc_block){

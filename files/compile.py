@@ -1,5 +1,5 @@
 SCRIPT_NAME="Mass shader compiler by GliGli"
-SCRIPT_VERSION="0.03"
+SCRIPT_VERSION="0.04"
 
 # things you might want to change for a new project
 
@@ -47,7 +47,7 @@ SHADER_DEFS= \
 # things that shouldn't be changed  (code)
 
 from md5 import md5
-import os, tempfile, subprocess
+import os, tempfile, subprocess, time
 
 print "%s %s" % (SCRIPT_NAME,SCRIPT_VERSION)
 
@@ -108,10 +108,9 @@ for shader in SHADER_DEFS:
         else:
             compilertasks.append(subprocess.Popen(SHADER_COMPILER+" \""+tmpfile.name+"\" \""+absoutname+"\" "+shader[1],stdout=out))
 
-            if len(compilertasks)>CONCURENT_COMPILES_COUNT:
-                for task in compilertasks[0:CONCURENT_COMPILES_COUNT/2-1]:
-                    task.wait()
-                compilertasks=compilertasks[CONCURENT_COMPILES_COUNT/2:]
+            while len(compilertasks)>=CONCURENT_COMPILES_COUNT:
+				compilertasks=filter(lambda ct:ct.poll()==None,compilertasks)
+				time.sleep(0.1)
 
         print outname
 
@@ -143,7 +142,7 @@ for shader in SHADER_DEFS:
 
     # step2 : remove duplicates
 
-    print "* Removing duplicates on %d shaders" % (len(shaderfiles))
+    print "* Removing duplicates on %d shader(s)" % (len(shaderfiles))
 
     indexlist=[]
     shaderdatalist=[]
