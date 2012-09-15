@@ -20,6 +20,7 @@
         <in>ioapi.h</in>
         <in>main.cpp</in>
         <in>main.h</in>
+        <in>mchk.c</in>
         <in>md5.c</in>
         <in>md5.h</in>
         <in>mupenIniApi.c</in>
@@ -80,6 +81,15 @@
       </df>
       <df name="r4300">
         <df name="ppc">
+          <df name="disasm">
+            <in>asm_ppc.c</in>
+            <in>dis-asm.h</in>
+            <in>mybfd.h</in>
+            <in>opintl.h</in>
+            <in>ppc-dis.c</in>
+            <in>ppc-opc.c</in>
+            <in>ppc.h</in>
+          </df>
           <in>FuncTree.c</in>
           <in>Interpreter.h</in>
           <in>MIPS-to-PPC.c</in>

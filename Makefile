@@ -17,13 +17,15 @@ include $(DEVKITXENON)/rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/main source/memory source/r4300 source/r4300/ppc source/rsp_hle-ppc source/xenos_audio source/xenos_gfx
+SOURCES		:=	source/main source/memory source/r4300 source/r4300/ppc source/r4300/ppc/disasm source/rsp_hle-ppc source/xenos_audio source/xenos_gfx
 DATA		:=	  
 INCLUDES	:=	files
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
+
+MCHK = -Wl,-wrap,malloc  -Wl,-wrap,memalign -Wl,-wrap,realloc -Wl,-wrap,calloc -Wl,-wrap,free -DMCHK
 
 OPTIFLAGS =  -Ofast -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -flto -fuse-linker-plugin 
 

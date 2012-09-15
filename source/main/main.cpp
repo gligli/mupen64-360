@@ -378,8 +378,8 @@ void new_vi()
 
 int run_rom(char * romfile)
 {
-	if (rom_read(romfile)){
-		if(rom) free(rom);
+    if (rom_read(romfile)){
+		if(rom_buf) free(rom_buf);
 		if(ROM_HEADER) free(ROM_HEADER);
 		return 1;
 	}
@@ -431,9 +431,9 @@ int run_rom(char * romfile)
 	romClosed_audio();
 	romClosed_gfx();
 	
-	free(rom);
+	free(rom_buf);
 	free(ROM_HEADER);
-	rom=NULL;
+	rom_buf=NULL;
 	ROM_HEADER=NULL;
 	
 	free_memory();

@@ -40,6 +40,7 @@ int rom_read(const char *argv);
 int fill_header(const char *argv);
 void calculateMD5(const char *argv, unsigned char digest[16]);
 extern unsigned char *rom;
+extern unsigned char *rom_buf;
 extern int taille_rom;
 
 typedef struct _rom_header

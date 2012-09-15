@@ -72,7 +72,7 @@ inline unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 		"addi	23, 0, 0  \n"
 		:: "r" (reg), "r" (reg_cop0),
 		   "r" (reg_cop1_simple), "r" (reg_cop1_double),
-		   "r" (&FCR31), "r" (rdram),
+		   "r" (&FCR31), "r" (&rdram[0]),
 		   "r" (&last_addr), "r" (&next_interupt),
 		   "r" (func)
 		: "14", "15", "16", "17", "18", "19", "20", "21", "22", "23");
@@ -133,7 +133,7 @@ void dynarec(unsigned int address){
 			   (paddr >= 0x90000000 && paddr < 0xa0000000)){
 				init_block(NULL, dst_block);
 			} else {
-				init_block(rdram+(((paddr-(address-dst_block->start_address)) & 0x1FFFFFFF)>>2),
+				init_block(&rdram[0]+(((paddr-(address-dst_block->start_address)) & 0x1FFFFFFF)>>2),
 						   dst_block);
 			}
 		} else if(invalid_code_get(address>>12)){

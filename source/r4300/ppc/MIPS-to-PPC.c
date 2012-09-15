@@ -36,6 +36,7 @@
 
 #include <assert.h>
 #include <debug.h>
+#include <ppc/cache.h>
 
 // Prototypes for functions used and defined in this file
 static void genCallInterp(MIPS_instr);
@@ -272,7 +273,7 @@ static int branch(int offset, condition cond, int link, int likely){
 #if 0
 		// FIXME: Reenable this when blocks are small enough to BC within
 		//          Make sure that pass2 uses BD/LI as appropriate
-		EMIT_BC(add_jump(offset, 0, 0), 0, 0, bo, bi);
+		EMIT_BC(add_jump((int)(offset, 0, 0), 0, 0, bo, bi);
 #else
 		EMIT_BC(2, 0, 0, nbo, bi);
 		EMIT_B(add_jump(offset, 0, 0), 0, 0);
@@ -796,6 +797,28 @@ static int LD(MIPS_instr mips){
     return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LD,MIPS_GET_IMMED(mips));
 }
 
+extern long long int reg_cop1_fgr_64[32];
+
+static int LWC1(MIPS_instr mips){
+	
+#ifdef INTERPRET_LWC1
+	genCallInterp(mips);
+	return INTERPRETED;
+#endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LWC1,MIPS_GET_IMMED(mips));
+}
+
+static int LDC1(MIPS_instr mips){
+	
+#ifdef INTERPRET_LDC1
+	genCallInterp(mips);
+	return INTERPRETED;
+#endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LDC1,MIPS_GET_IMMED(mips));
+}
+
 static int SB(MIPS_instr mips){
 	
 #ifdef INTERPRET_SB
@@ -937,145 +960,6 @@ static int SD(MIPS_instr mips){
 	EMIT_LI(3, MIPS_GET_RT(mips));
 
 	genCallDynaMem(MEM_SD, base, MIPS_GET_IMMED(mips));
-
-	return CONVERT_SUCCESS;
-#endif
-}
-
-extern long long int reg_cop1_fgr_64[32];
-
-static int LWC1(MIPS_instr mips){
-	
-#ifdef INTERPRET_LWC1
-	genCallInterp(mips);
-	return INTERPRETED;
-#else // INTERPRET_LWC1
-
-	flushRegisters();
-	reset_code_addr();
-	
-	genCheckFP();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-	int addr = mapRegisterTemp(); // r5 = fpr_addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 7, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Perform the actual load
-	EMIT_LWZ(3, MIPS_GET_IMMED(mips), base);
-#if 1
-	// addr = reg_cop1_simple[frt]
-	EMIT_LWZ(addr, MIPS_GET_RT(mips)*4, DYNAREG_FPR_32);
-	// *addr = frs
-	EMIT_STW(3, 0, addr);
-#else
-	unsigned int copregaddr=((unsigned int)reg_cop1_fgr_64)+(MIPS_GET_RT(mips)>>1)*8+4-(MIPS_GET_RT(mips)&1);
-	EMIT_LIS(addr,HA(copregaddr));
-	// *addr = frs
-	EMIT_STW(3, copregaddr , addr);
-#endif
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into frt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LWC1, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
-#endif
-
-	return CONVERT_SUCCESS;
-#endif
-}
-
-static int LDC1(MIPS_instr mips){
-	
-#ifdef INTERPRET_LDC1
-	genCallInterp(mips);
-	return INTERPRETED;
-#else // INTERPRET_LDC1
-
-	flushRegisters();
-	reset_code_addr();
-	
-	genCheckFP();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-	int addr = mapRegisterTemp(); // r5 = fpr_addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 9, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Perform the actual load
-	EMIT_LWZ(3, MIPS_GET_IMMED(mips), base);
-	EMIT_LWZ(6, MIPS_GET_IMMED(mips)+4, base);
-	// addr = reg_cop1_double[frt]
-	EMIT_LWZ(addr, MIPS_GET_RT(mips)*4, DYNAREG_FPR_64);
-	// *addr = frs
-	EMIT_STW(3, 0, addr);
-	EMIT_STW(6, 4, addr);
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into frt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LDC1, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
-#endif
 
 	return CONVERT_SUCCESS;
 #endif
@@ -2137,7 +2021,7 @@ static int ERET(MIPS_instr mips){
 	EMIT_STW(3, 12*4, DYNAREG_COP0);
 	// check_interupt()
 #if 1
-	EMIT_B(add_jump(&check_interupt, 1, 1), 0, 1);
+	EMIT_B(add_jump((int)(&check_interupt), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)&check_interupt)>>16);
 	EMIT_ORI(12, 12, (unsigned int)&check_interupt);
@@ -2586,7 +2470,7 @@ static int SQRT_FP(MIPS_instr mips, int dbl){
 
 	// call sqrt
 #if 1
-	EMIT_B(add_jump(dbl ? &sqrt : &sqrtf, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&sqrt : (int)&sqrtf), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)(dbl ? &sqrt : &sqrtf))>>16);
 	EMIT_ORI(12, 12, (unsigned int)(dbl ? &sqrt : &sqrtf));
@@ -2692,7 +2576,7 @@ static int ROUND_L_FP(MIPS_instr mips, int dbl){
 
 	// round
 #if 1
-	EMIT_B(add_jump(dbl ? &round : &roundf, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&round : (int)&roundf), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)(dbl ? &round : &roundf))>>16);
 	EMIT_ORI(12, 12, (unsigned int)(dbl ? &round : &roundf));
@@ -2702,7 +2586,7 @@ static int ROUND_L_FP(MIPS_instr mips, int dbl){
 	
 	// convert
 #if 1
-	EMIT_B(add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&__fixdfdi : (int)&__fixsfdi), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
 	EMIT_ORI(12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
@@ -2742,7 +2626,7 @@ static int TRUNC_L_FP(MIPS_instr mips, int dbl){
 
 	// convert
 #if 1
-	EMIT_B(add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&__fixdfdi : (int)&__fixsfdi), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
 	EMIT_ORI(12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
@@ -2782,19 +2666,19 @@ static int CEIL_L_FP(MIPS_instr mips, int dbl){
 
 	// ceil
 #if 1
-	EMIT_B(add_jump(dbl ? &ceil : &ceilf, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&ceil : (int)&ceilf), 1, 1), 0, 1);
 #else
-	EMIT_LIS(12, ((unsigned int)(dbl ? &ceil : &ceilf))>>16);
-	EMIT_ORI(12, 12, (unsigned int)(dbl ? &ceil : &ceilf));
+	EMIT_LIS(12, ((unsigned int)(dbl ? &ceil : &ceilf)))>>16);
+	EMIT_ORI(12, 12, (unsigned int)(dbl ? &ceil : &ceilf)));
 	EMIT_MTCTR(12);
 	EMIT_BCTRL(ppc);
 #endif
 	// convert
 #if 1
-	EMIT_B(add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&__fixdfdi : (int)&__fixsfdi), 1, 1), 0, 1);
 #else
-	EMIT_LIS(12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
-	EMIT_ORI(12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
+	EMIT_LIS(12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi)))>>16);
+	EMIT_ORI(12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi)));
 	EMIT_MTCTR(12);
 	EMIT_BCTRL(ppc);
 #endif
@@ -2831,19 +2715,19 @@ static int FLOOR_L_FP(MIPS_instr mips, int dbl){
 
 	// round
 #if 1
-	EMIT_B(add_jump(dbl ? &floor : &floorf, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&floor : (int)&floorf), 1, 1), 0, 1);
 #else
-	EMIT_LIS(12, ((unsigned int)(dbl ? &floor : &floorf))>>16);
-	EMIT_ORI(12, 12, (unsigned int)(dbl ? &floor : &floorf));
+	EMIT_LIS(12, ((unsigned int)(dbl ? &floor : &floorf)))>>16);
+	EMIT_ORI(12, 12, (unsigned int)(dbl ? &floor : &floorf)));
 	EMIT_MTCTR(12);
 	EMIT_BCTRL(ppc);
 #endif
 	// convert
 #if 1
-	EMIT_B(add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&__fixdfdi : (int)&__fixsfdi), 1, 1), 0, 1);
 #else
-	EMIT_LIS(12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
-	EMIT_ORI(12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
+	EMIT_LIS(12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi)))>>16);
+	EMIT_ORI(12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi)));
 	EMIT_MTCTR(12);
 	EMIT_BCTRL(ppc);
 #endif
@@ -3071,7 +2955,7 @@ static int CVT_L_FP(MIPS_instr mips, int dbl){
 	// FIXME: I'm fairly certain this will always trunc
 	// convert
 #if 1
-	EMIT_B(add_jump(dbl ? &__fixdfdi : &__fixsfdi, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&__fixdfdi : (int)&__fixsfdi), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)(dbl ? &__fixdfdi : &__fixsfdi))>>16);
 	EMIT_ORI(12, 12, (unsigned int)(dbl ? &__fixdfdi : &__fixsfdi));
@@ -3644,7 +3528,7 @@ static int CVT_FP_L(MIPS_instr mips, int dbl){
 
 	// convert
 #if 1
-	EMIT_B(add_jump(dbl ? &__floatdidf : &__floatdisf, 1, 1), 0, 1);
+	EMIT_B(add_jump((dbl ? (int)&__floatdidf : (int)&__floatdisf), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)(dbl ? &__floatdidf : &__floatdisf))>>16);
 	EMIT_ORI(12, 12, (unsigned int)(dbl ? &__floatdidf : &__floatdisf));
@@ -3704,7 +3588,6 @@ static int (*gen_ops[64])(MIPS_instr) =
 
 
 static void genCallInterp(MIPS_instr mips){
-	PowerPC_instr ppc = NEW_PPC_INSTR();
 	flushRegisters();
 	reset_code_addr();
 	// Pass in whether this instruction is in the delay slot
@@ -3720,7 +3603,7 @@ static void genCallInterp(MIPS_instr mips){
 	EMIT_ORI(4, 4, get_src_pc());
 	// Branch to decodeNInterpret
 #if 1
-	EMIT_B(add_jump(&decodeNInterpret, 1, 1), 0, 1);
+	EMIT_B(add_jump((int)(&decodeNInterpret), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)&decodeNInterpret)>>16);
 	EMIT_ORI(12, 12, (unsigned int)&decodeNInterpret);
@@ -3741,8 +3624,6 @@ static void genCallInterp(MIPS_instr mips){
 }
 
 static void genJumpTo(unsigned int loc, unsigned int type){
-	PowerPC_instr ppc = NEW_PPC_INSTR();
-
 	if(type == JUMPTO_REG){
 		// Load the register as the return value
 		EMIT_LWZ(3, loc*8+4, DYNAREG_REG);
@@ -3758,7 +3639,7 @@ static void genJumpTo(unsigned int loc, unsigned int type){
 		EMIT_ADDI(3, DYNAREG_FUNC, 0);
 		// Call RecompCache_Update(func)
 #if 1
-		EMIT_B(add_jump(RecompCache_Update, 1, 1), 0, 1);
+		EMIT_B(add_jump((int)(RecompCache_Update), 1, 1), 0, 1);
 #else
 		EMIT_LIS(12, ((unsigned int)&RecompCache_Update)>>16);
 		EMIT_ORI(12, 12, (unsigned int)&RecompCache_Update);
@@ -3786,7 +3667,6 @@ static void genJumpTo(unsigned int loc, unsigned int type){
 
 // Updates Count, and sets cr2 to (next_interupt ? Count)
 static void genUpdateCount(int checkCount){
-	PowerPC_instr ppc = NEW_PPC_INSTR();
 #ifndef COMPARE_CORE
 	// Dynarec inlined code equivalent:
 	int tmp = mapRegisterTemp();
@@ -3824,7 +3704,7 @@ static void genUpdateCount(int checkCount){
 	EMIT_ORI(3, 3, get_src_pc()+4);
 	// Call dyna_update_count
 #if 1
-	EMIT_B(add_jump(&dyna_update_count, 1, 1), 0, 1);
+	EMIT_B(add_jump((int)(&dyna_update_count, 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)&dyna_update_count)>>16);
 	EMIT_ORI(12, 12, (unsigned int)&dyna_update_count);
@@ -3864,7 +3744,7 @@ static void genCheckFP(void){
 		EMIT_ORI(3, 3, get_src_pc());
 		// Call dyna_check_cop1_unusable
 #if 1
-		EMIT_B(add_jump(&dyna_check_cop1_unusable, 1, 1), 0, 1);
+		EMIT_B(add_jump((int)(&dyna_check_cop1_unusable), 1, 1), 0, 1);
 #else
 		EMIT_LIS(12, ((unsigned int)&dyna_check_cop1_unusable)>>16);
 		EMIT_ORI(12, 12, (unsigned int)&dyna_check_cop1_unusable);
@@ -3898,7 +3778,7 @@ void genCallDynaMem(memType type, int base, short immed){
 	EMIT_LI(7, isDelaySlot ? 1 : 0);
 	// call dyna_mem
 #if 1
-	EMIT_B(add_jump(&dyna_mem, 1, 1), 0, 1);
+	EMIT_B(add_jump((int)(&dyna_mem), 1, 1), 0, 1);
 #else
 	EMIT_LIS(12, ((unsigned int)&dyna_mem)>>16);
 	EMIT_ORI(12, 12, (unsigned int)&dyna_mem);
@@ -3981,7 +3861,7 @@ void genCallDynaMem2(int type, int base, short immed){
 
 #if 1
 	EMIT_BNE(6,2,0,0);
-	EMIT_B(add_jump(&invalidate_func, 1, 1), 0, 1);
+	EMIT_B(add_jump((int)(&invalidate_func), 1, 1), 0, 1);
 #else
 	EMIT_BNE(6,5,0,0);
 
@@ -4028,91 +3908,97 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 
 	int rd = mapRegisterTemp(); // r3 = rd
 	int base = mapRegister( rs_reg ); // r4 = addr
-	flushRegisters();
 
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
+    set_next_dst(PPC_NOP); //TODO:  why do I need this here?
 
-	int to_slow_id = add_jump_special(0);
-	EMIT_BGE(1, to_slow_id, 0, 0);
-	PowerPC_instr* ts_preCall = get_curr_dst();
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-
-/*    EMIT_LIS(0,0x4000);
-    EMIT_RLWIMI(base,0,0,1);*/
+    EMIT_RLWINM(rd,base,0,2,31);
+    EMIT_ORIS(rd,rd,0x4000); // virtual mapping base address
     
 	// Perform the actual load
 	switch (type)
     {
         case MEM_LB:
-            EMIT_LBZ(3, immed, base);
-            EMIT_EXTSB(3,3);
-        	mapRegisterNew( rt_reg );
+        {
+            int r = mapRegisterNew( rt_reg );
+            EMIT_LBZ(r, immed, rd);
+            EMIT_EXTSB(r,r);
             break;
+        }
         case MEM_LBU:
-            EMIT_LBZ(3, immed, base);
-        	mapRegisterNew( rt_reg );
+        {
+            int r = mapRegisterNew( rt_reg );
+            EMIT_LBZ(r, immed, rd);
             break;
+        }
         case MEM_LH:
-            EMIT_LHA(3, immed, base);
-        	mapRegisterNew( rt_reg );
+        {
+            int r = mapRegisterNew( rt_reg );
+            EMIT_LHA(r, immed, rd);
             break;
+        }
         case MEM_LHU:
-            EMIT_LHZ(3, immed, base)
-        	mapRegisterNew( rt_reg );
+        {
+            int r = mapRegisterNew( rt_reg );
+            EMIT_LHZ(r, immed, rd)
             break;
+        }
         case MEM_LW:
-            EMIT_LWZ(3, immed, base);
-        	mapRegisterNew( rt_reg );
-            break;
+        {
+            int r = mapRegisterNew( rt_reg );
+            EMIT_LWZ(r, immed, rd);
+        	break;
+        }
         case MEM_LWU:
         {
             // Create a mapping for this value
-            RegMapping value = mapRegister64New( rt_reg );
+            RegMapping r = mapRegister64New( rt_reg );
             // Perform the actual load
-            EMIT_LWZ(value.lo, immed, base);
+            EMIT_LWZ(r.lo, immed, rd);
             // Zero out the upper word
-            EMIT_LI(value.hi, 0);
+            EMIT_LI(r.hi, 0);
             break;
         }
         case MEM_LD:
         {
             // Create a mapping for this value
-            RegMapping value = mapRegister64New( rt_reg );
+            RegMapping r = mapRegister64New( rt_reg );
             // Perform the actual load
-            EMIT_LWZ(value.lo, immed+4, base);
-            EMIT_LWZ(value.hi, immed, base);
+            EMIT_LWZ(r.hi, immed, rd);
+            EMIT_LWZ(r.lo, immed+4, rd);
+            break;
+        }
+        case MEM_LWC1:
+        {
+            int addr = mapRegisterTemp();
+            int r = mapRegisterTemp();
+            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
+            EMIT_LWZ(r, immed, rd);
+            EMIT_STW(r, 0, addr);
+            break;
+        }
+        case MEM_LDC1:
+        {
+            int addr = mapRegisterTemp();
+            int r = mapRegisterTemp();
+            int r2 = mapRegisterTemp();
+            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
+            EMIT_LWZ(r, immed, rd);
+            EMIT_LWZ(r2, immed+4, rd);
+            EMIT_STW(r, 0, addr);
+            EMIT_STW(r2, 4, addr);
             break;
         }
         default:
             assert(0);
     }
     
-	flushRegisters();
+    flushRegisters();
     
 	// Skip over else
 	int not_fastmem_id = add_jump_special(1);
 	EMIT_B(not_fastmem_id, 0, 0);
 	PowerPC_instr* preCall = get_curr_dst();
 
-	int ts_callSize = get_curr_dst() - ts_preCall;
-	set_jump_special(to_slow_id, ts_callSize+1);
-        
 	invalidateRegisters();
 
 	// load into rt
@@ -4124,6 +4010,27 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 	set_jump_special(not_fastmem_id, callSize+1);
 
 	return CONVERT_SUCCESS;
+}
+
+void * rewriteDynaMemVM(void* fault_addr)
+{
+    // enabling slow access by noping out the mem access code and the jump over slow access code
+
+    PowerPC_instr * cur_op=(PowerPC_instr*)fault_addr;
+
+    while(*cur_op>>PPC_OPCODE_SHIFT!=PPC_OPCODE_B)
+    {
+        *cur_op=PPC_NOP;
+        ++cur_op;
+    }
+
+    // branch op
+    *cur_op=PPC_NOP;
+    ++cur_op;
+    
+    memicbi(fault_addr,(unsigned int)cur_op-(unsigned int)fault_addr);
+    
+    return cur_op;
 }
 
 static int mips_is_jump(MIPS_instr instr){

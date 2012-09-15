@@ -378,7 +378,7 @@ void plugin_load_plugins(const char *gfx_name,
 #endif
 		gfx_info.MemoryBswaped = TRUE;
 		gfx_info.HEADER = rom;
-		gfx_info.RDRAM = (BYTE*) rdram;
+		gfx_info.RDRAM = (BYTE*) &rdram[0];
 		gfx_info.DMEM = (BYTE*) SP_DMEM;
 		gfx_info.IMEM = (BYTE*) SP_IMEM;
 		gfx_info.MI_INTR_REG = &(MI_register.mi_intr_reg);
@@ -445,7 +445,7 @@ void plugin_load_plugins(const char *gfx_name,
 #endif	
 		audio_info.MemoryBswaped = TRUE;
 		audio_info.HEADER = rom;
-		audio_info.RDRAM = (BYTE*) rdram;
+		audio_info.RDRAM = (BYTE*) &rdram[0];
 		audio_info.DMEM = (BYTE*) SP_DMEM;
 		audio_info.IMEM = (BYTE*) SP_IMEM;
 		audio_info.MI_INTR_REG = &(MI_register.mi_intr_reg);
@@ -527,7 +527,7 @@ void plugin_load_plugins(const char *gfx_name,
 		if (romClosed_RSP == NULL) romClosed_RSP = dummy_void;
 #endif	
 		rsp_info.MemoryBswaped = TRUE;
-		rsp_info.RDRAM = (BYTE*) rdram;
+		rsp_info.RDRAM = (BYTE*) &rdram[0];
 		rsp_info.DMEM = (BYTE*) SP_DMEM;
 		rsp_info.IMEM = (BYTE*) SP_IMEM;
 		rsp_info.MI_INTR_REG = &MI_register.mi_intr_reg;

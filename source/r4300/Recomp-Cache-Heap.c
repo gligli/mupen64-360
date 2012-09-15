@@ -338,7 +338,7 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 	//end_section(LINK_SECTION);
 }
 
-static __attribute__((aligned(65536))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
+__attribute__((aligned(65536))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
 
 void RecompCache_Init(void){
 	if(!cache_buf){

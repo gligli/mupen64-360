@@ -1388,7 +1388,7 @@ BP   if ((PC->addr>>16) == 0xa400){
 #ifdef PPC_DYNAREC
 		//recompile_block(blocks[PC->addr>>12]);
 #else
-	       recompile_block(rdram+(((paddr-(PC->addr-blocks[PC->addr>>12]->start)) & 0x1FFFFFFF)>>2),
+	       recompile_block(&rdram[0]+(((paddr-(PC->addr-blocks[PC->addr>>12]->start)) & 0x1FFFFFFF)>>2),
 			       blocks[PC->addr>>12], PC->addr);
 #endif
 		}
@@ -1466,7 +1466,7 @@ inline void jump_to_func()
 	  }
 	blocks[addr>>12]->start = addr & ~0xFFF;
 	blocks[addr>>12]->end = (addr & ~0xFFF) + 0x1000;
-	init_block(rdram+(((paddr-(addr-blocks[addr>>12]->start)) & 0x1FFFFFFF)>>2),
+	init_block(&rdram[0]+(((paddr-(addr-blocks[addr>>12]->start)) & 0x1FFFFFFF)>>2),
 		   blocks[addr>>12]);
      }
 #ifdef USE_RECOMP_CACHE

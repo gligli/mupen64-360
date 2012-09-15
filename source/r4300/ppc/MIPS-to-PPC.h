@@ -59,4 +59,6 @@ void start_new_mapping(void);
     than one actual instruction       */
 int convert(void);
 
+void * rewriteDynaMemVM(void* fault_addr);
+
 #endif

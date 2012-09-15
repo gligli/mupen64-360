@@ -10,6 +10,9 @@
 
 #define META_CACHE_ALLOC_SIZE (8*1024*1024)
 
+extern __attribute__((aligned(65536))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
+
+
 // Allocate and free memory to be used for recompiled code
 //   Any memory allocated this way can be freed at any time
 //   you must check invalid_code before you can access it

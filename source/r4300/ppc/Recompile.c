@@ -40,6 +40,8 @@
 #include "../ARAM-blocks.h"
 #include <debug.h>
 
+int do_disasm=0;
+
 static MIPS_instr*    src;
 static PowerPC_instr* dst;
 static MIPS_instr*    src_last;
@@ -84,7 +86,12 @@ int has_next_src(void){ return (src_last-src) > 0; }
 // Returns the MIPS PC
 unsigned int get_src_pc(void){ return addr_first + ((src-1-src_first)<<2); }
 
-void set_next_dst(PowerPC_instr i){ *(dst++) = i; ++code_length; }
+void set_next_dst(PowerPC_instr i)
+{
+    if(do_disasm) disassemble((uint32_t)dst,i);
+    *(dst++) = i;
+    ++code_length;
+}
 void dbg_dst(int line,const char * func){printf("####### %p %s %d\n",dst,func,line);}
 
 

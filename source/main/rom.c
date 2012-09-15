@@ -40,6 +40,8 @@
 #include <byteswap.h>
 
 #include <debug.h>
+#include <malloc.h>
+#include <ppc/vm.h>
 
 #include "rom.h"
 #include "../memory/memory.h"
@@ -56,7 +58,8 @@ static unz_file_info pfile_info;
 static int i, tmp, z;
 
 int taille_rom;
-unsigned char *rom;
+unsigned char *rom_buf=NULL;
+unsigned char *rom=NULL;
 rom_header *ROM_HEADER;
 rom_settings ROM_SETTINGS;
 
@@ -67,15 +70,15 @@ static void findsize() {
 		fseek(rom_file, 0L, SEEK_SET);
 	} else if (z == 1) {
 		taille_rom = 0;
-		rom = malloc(100000);
+		rom_buf = memalign(VM_USER_PAGE_SIZE,100000);
 		for (;;) {
-			i = gzread(z_rom_file, rom, 100000);
+			i = gzread(z_rom_file, rom_buf, 100000);
 			taille_rom += i;
 			fflush(stdout);
 			if (!i) break;
 		}
-		free(rom);
-		rom = NULL;
+		free(rom_buf);
+		rom_buf = NULL;
 		printf("\n");
 		gzseek(z_rom_file, 0L, SEEK_SET);
 	}
@@ -159,19 +162,19 @@ int rom_read(const char *argv) {
 	printf("rom size: %d bytes (or %d Mb or %d Megabits)\n",
 			taille_rom, taille_rom / 1024 / 1024, taille_rom / 1024 / 1024 * 8);
 
-	if (rom) free(rom);
-	rom = malloc(taille_rom);
+	if (rom_buf) free(rom_buf);
+	rom_buf = memalign(VM_USER_PAGE_SIZE,taille_rom);
 
 	tmp = 0;
 	if (!z) {
-		for (i = 0; i < taille_rom; i += fread(rom + i, 1, 65536, rom_file)) {
+		for (i = 0; i < taille_rom; i += fread(rom_buf + i, 1, 65536, rom_file)) {
 			if (tmp != (int) ((i / (float) taille_rom)*100)) {
 				tmp = (int) (i / (float) (taille_rom)*100);
 				display_loading_progress(tmp);
 			}
 		}
 	} else if (z == 1) {
-		for (i = 0; i < taille_rom; i += gzread(z_rom_file, rom + i, 65536)) {
+		for (i = 0; i < taille_rom; i += gzread(z_rom_file, rom_buf + i, 65536)) {
 			if (tmp != (int) ((i / (float) taille_rom)*100)) {
 				tmp = (int) (i / (float) (taille_rom)*100);
 				display_loading_progress(tmp);
@@ -179,7 +182,7 @@ int rom_read(const char *argv) {
 		}
 	} else {
 		unzOpenCurrentFile(zip);
-		for (i = 0; i < taille_rom; i += unzReadCurrentFile(zip, rom + i, 65536)) {
+		for (i = 0; i < taille_rom; i += unzReadCurrentFile(zip, rom_buf + i, 65536)) {
 			if (tmp != (int) ((i / (float) taille_rom)*100)) {
 				tmp = (int) (i / (float) (taille_rom)*100);
 				display_loading_progress(tmp);
@@ -191,35 +194,35 @@ int rom_read(const char *argv) {
 	else if (z == 1) gzclose(z_rom_file);
 	else unzClose(zip);
 
-	if (rom[0] == 0x37) {
+	if (rom_buf[0] == 0x37) {
 		printf("byteswaping rom...\n");
 		for (i = 0; i < (taille_rom / 2); i++) {
-			tmp = rom[i * 2];
-			rom[i * 2] = rom[i * 2 + 1];
-			rom[i * 2 + 1] = tmp;
+			tmp = rom_buf[i * 2];
+			rom_buf[i * 2] = rom_buf[i * 2 + 1];
+			rom_buf[i * 2 + 1] = tmp;
 		}
 		printf("rom byteswaped\n");
 	}
-	if (rom[0] == 0x40) {
+	if (rom_buf[0] == 0x40) {
 		for (i = 0; i < (taille_rom / 4); i++) {
-			tmp = rom[i * 4];
-			rom[i * 4] = rom[i * 4 + 3];
-			rom[i * 4 + 3] = tmp;
-			tmp = rom[i * 4 + 1];
-			rom[i * 4 + 1] = rom[i * 4 + 2];
-			rom[i * 4 + 2] = tmp;
+			tmp = rom_buf[i * 4];
+			rom_buf[i * 4] = rom_buf[i * 4 + 3];
+			rom_buf[i * 4 + 3] = tmp;
+			tmp = rom_buf[i * 4 + 1];
+			rom_buf[i * 4 + 1] = rom_buf[i * 4 + 2];
+			rom_buf[i * 4 + 2] = tmp;
 		}
 		printf("rom byteswaped\n");
-	} else if ((rom[0] != 0x80) || (rom[1] != 0x37) || (rom[2] != 0x12) || (rom[3] != 0x40)) {
+	} else if ((rom_buf[0] != 0x80) || (rom_buf[1] != 0x37) || (rom_buf[2] != 0x12) || (rom_buf[3] != 0x40)) {
 		printf("wrong file format !\n");
-		free(rom);
-		rom = NULL;
+		free(rom_buf);
+		rom_buf = NULL;
 		return 1;
 	}
 	printf("rom loaded succesfully\n");
 
 	if (!ROM_HEADER) ROM_HEADER = malloc(sizeof (rom_header));
-	memcpy(ROM_HEADER, rom, sizeof (rom_header));
+	memcpy(ROM_HEADER, rom_buf, sizeof (rom_header));
 	display_loading_progress(100);
 	printf("%x %x %x %x\n", ROM_HEADER->init_PI_BSB_DOM1_LAT_REG,
 			ROM_HEADER->init_PI_BSB_DOM1_PGS_REG,
@@ -255,7 +258,7 @@ int rom_read(const char *argv) {
 
 	// loading rom settings and checking if it's a good dump
 	md5_init(&state);
-	md5_append(&state, (const md5_byte_t *) rom, taille_rom);
+	md5_append(&state, (const md5_byte_t *) rom_buf, taille_rom);
 	md5_finish(&state, digest);
 	printf("md5 code:");
 	for (i = 0; i < 16; i++) printf("%02X", digest[i]);
@@ -280,8 +283,8 @@ int rom_read(const char *argv) {
 			return 0;
 		} else {
 			if (!ask_bad()) {
-				free(rom);
-				rom = NULL;
+				free(rom_buf);
+				rom_buf = NULL;
 				free(ROM_HEADER);
 				ROM_HEADER = NULL;
 				return 1;
@@ -299,8 +302,8 @@ int rom_read(const char *argv) {
 	if (i != 0) {
 		if (s[i] == 'T' || s[i] == 't' || s[i] == 'h' || s[i] == 'f' || s[i] == 'o') {
 			if (!ask_hack()) {
-				free(rom);
-				rom = NULL;
+				free(rom_buf);
+				rom_buf = NULL;
 				free(ROM_HEADER);
 				ROM_HEADER = NULL;
 				return 1;
@@ -308,8 +311,8 @@ int rom_read(const char *argv) {
 		}
 		if (s[i] == 'b') {
 			if (!ask_bad()) {
-				free(rom);
-				rom = NULL;
+				free(rom_buf);
+				rom_buf = NULL;
 				free(ROM_HEADER);
 				ROM_HEADER = NULL;
 				return 1;
@@ -335,50 +338,50 @@ int fill_header(const char *argv) {
 	}
 	/*------------------------------------------------------------------------*/
 	findsize();
-	if (rom) free(rom);
-	rom = malloc(0x40);
+	if (rom_buf) free(rom_buf);
+	rom_buf = memalign(VM_USER_PAGE_SIZE,0x40);
 
 	tmp = 0;
 
 	if (!z)
-		fread(rom, 1, 0x40, rom_file);
+		fread(rom_buf, 1, 0x40, rom_file);
 	else if (z == 1)
-		gzread(z_rom_file, rom, 0x40);
+		gzread(z_rom_file, rom_buf, 0x40);
 	else {
 		unzOpenCurrentFile(zip);
-		unzReadCurrentFile(zip, rom, 0x40);
+		unzReadCurrentFile(zip, rom_buf, 0x40);
 		unzCloseCurrentFile(zip);
 	}
 	if (!z) fclose(rom_file);
 	else if (z == 1) gzclose(z_rom_file);
 	else unzClose(zip);
 
-	if (rom[0] == 0x37) {
+	if (rom_buf[0] == 0x37) {
 		for (i = 0; i < (0x40 / 2); i++) {
-			tmp = rom[i * 2];
-			rom[i * 2] = rom[i * 2 + 1];
-			rom[i * 2 + 1] = tmp;
+			tmp = rom_buf[i * 2];
+			rom_buf[i * 2] = rom_buf[i * 2 + 1];
+			rom_buf[i * 2 + 1] = tmp;
 		}
 	}
-	if (rom[0] == 0x40) {
+	if (rom_buf[0] == 0x40) {
 		for (i = 0; i < (0x40 / 4); i++) {
-			tmp = rom[i * 4];
-			rom[i * 4] = rom[i * 4 + 3];
-			rom[i * 4 + 3] = tmp;
-			tmp = rom[i * 4 + 1];
-			rom[i * 4 + 1] = rom[i * 4 + 2];
-			rom[i * 4 + 2] = tmp;
+			tmp = rom_buf[i * 4];
+			rom_buf[i * 4] = rom_buf[i * 4 + 3];
+			rom_buf[i * 4 + 3] = tmp;
+			tmp = rom_buf[i * 4 + 1];
+			rom_buf[i * 4 + 1] = rom_buf[i * 4 + 2];
+			rom_buf[i * 4 + 2] = tmp;
 		}
-	} else if ((rom[0] != 0x80) || (rom[1] != 0x37) || (rom[2] != 0x12) || (rom[3] != 0x40)) {
-		free(rom);
-		rom = NULL;
+	} else if ((rom_buf[0] != 0x80) || (rom_buf[1] != 0x37) || (rom_buf[2] != 0x12) || (rom_buf[3] != 0x40)) {
+		free(rom_buf);
+		rom_buf = NULL;
 		return 0;
 	}
 
 	if (ROM_HEADER == NULL) ROM_HEADER = malloc(sizeof (rom_header));
-	memcpy(ROM_HEADER, rom, 0x40);
-	free(rom);
-	rom = NULL;
+	memcpy(ROM_HEADER, rom_buf, 0x40);
+	free(rom_buf);
+	rom_buf = NULL;
 	return taille_rom;
 }
 
@@ -393,19 +396,19 @@ void calculateMD5(const char *argv, unsigned char digest[16]) {
 	}
 	/*------------------------------------------------------------------------*/
 	findsize();
-	if (rom) free(rom);
-	rom = malloc(taille_rom);
+	if (rom_buf) free(rom_buf);
+	rom_buf = memalign(VM_USER_PAGE_SIZE,taille_rom);
 
 	tmp = 0;
 	if (!z) {
-		for (i = 0; i < taille_rom; i += fread(rom + i, 1, 1000, rom_file)) {
+		for (i = 0; i < taille_rom; i += fread(rom_buf + i, 1, 1000, rom_file)) {
 			if (tmp != (int) ((i / (float) taille_rom)*100)) {
 				tmp = (int) (i / (float) (taille_rom)*100);
 				display_MD5calculating_progress(tmp);
 			}
 		}
 	} else if (z == 1) {
-		for (i = 0; i < taille_rom; i += gzread(z_rom_file, rom + i, 1000)) {
+		for (i = 0; i < taille_rom; i += gzread(z_rom_file, rom_buf + i, 1000)) {
 			if (tmp != (int) ((i / (float) taille_rom)*100)) {
 				tmp = (int) (i / (float) (taille_rom)*100);
 				display_MD5calculating_progress(tmp);
@@ -413,7 +416,7 @@ void calculateMD5(const char *argv, unsigned char digest[16]) {
 		}
 	} else {
 		unzOpenCurrentFile(zip);
-		for (i = 0; i < taille_rom; i += unzReadCurrentFile(zip, rom + i, 1000)) {
+		for (i = 0; i < taille_rom; i += unzReadCurrentFile(zip, rom_buf + i, 1000)) {
 			if (tmp != (int) ((i / (float) taille_rom)*100)) {
 				tmp = (int) (i / (float) (taille_rom)*100);
 				display_MD5calculating_progress(tmp);
@@ -427,37 +430,37 @@ void calculateMD5(const char *argv, unsigned char digest[16]) {
 
 	display_MD5calculating_progress(100);
 
-	if (rom[0] == 0x37) {
+	if (rom_buf[0] == 0x37) {
 		printf("byteswaping rom...\n");
 		for (i = 0; i < (taille_rom / 2); i++) {
-			tmp = rom[i * 2];
-			rom[i * 2] = rom[i * 2 + 1];
-			rom[i * 2 + 1] = tmp;
+			tmp = rom_buf[i * 2];
+			rom_buf[i * 2] = rom_buf[i * 2 + 1];
+			rom_buf[i * 2 + 1] = tmp;
 		}
 		printf("rom byteswaped\n");
 	}
-	if (rom[0] == 0x40) {
+	if (rom_buf[0] == 0x40) {
 		for (i = 0; i < (taille_rom / 4); i++) {
-			tmp = rom[i * 4];
-			rom[i * 4] = rom[i * 4 + 3];
-			rom[i * 4 + 3] = tmp;
-			tmp = rom[i * 4 + 1];
-			rom[i * 4 + 1] = rom[i * 4 + 2];
-			rom[i * 4 + 2] = tmp;
+			tmp = rom_buf[i * 4];
+			rom_buf[i * 4] = rom_buf[i * 4 + 3];
+			rom_buf[i * 4 + 3] = tmp;
+			tmp = rom_buf[i * 4 + 1];
+			rom_buf[i * 4 + 1] = rom_buf[i * 4 + 2];
+			rom_buf[i * 4 + 2] = tmp;
 		}
 		printf("rom byteswaped\n");
-	} else if ((rom[0] != 0x80) || (rom[1] != 0x37) || (rom[2] != 0x12) || (rom[3] != 0x40)) {
+	} else if ((rom_buf[0] != 0x80) || (rom_buf[1] != 0x37) || (rom_buf[2] != 0x12) || (rom_buf[3] != 0x40)) {
 		printf("wrong file format !\n");
-		free(rom);
-		rom = NULL;
+		free(rom_buf);
+		rom_buf = NULL;
 		return;
 	}
 	md5_init(&state);
-	md5_append(&state, (const md5_byte_t *) rom, taille_rom);
+	md5_append(&state, (const md5_byte_t *) rom_buf, taille_rom);
 	md5_finish(&state, digest);
 	display_MD5calculating_progress(-1);
-	free(rom);
-	rom = NULL;
+	free(rom_buf);
+	rom_buf = NULL;
 }
 
 int getVideoSystem(){

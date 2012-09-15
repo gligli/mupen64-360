@@ -129,6 +129,9 @@ extern char txtbuffer[1024];
 #define DEBUG_print(txtbuffer, dummy)
 #endif
 
+extern int do_disasm;
+int disassemble(unsigned int a, unsigned int op);
+
 #define EMIT_B(dst,aa,lk) \
 {PowerPC_instr ppc;GEN_B(ppc,dst,aa,lk);set_next_dst(ppc);}
 #define EMIT_MTCTR(rs) \

@@ -45,12 +45,14 @@
 #include "../r4300/recomph.h"
 #include "../r4300/ops.h"
 #include "../r4300/Invalid_Code.h"
+#include "../r4300/Recomp-Cache.h"
 #include "pif.h"
 #include "flashram.h"
 #include "../main/plugin.h"
 #include "../main/guifuncs.h"
 
 #include <assert.h>
+#include <ppc/vm.h>
 
 /* definitions of the rcp's structures and memory area */
 RDRAM_register rdram_register;
@@ -66,14 +68,15 @@ DPC_register dpc_register;
 DPS_register dps_register;
 // TODO: We only need 8MB when it's used, it'll save
 //         memory when we can alloc only 4MB
+unsigned long * rdram = NULL;
+unsigned char * rdramb = NULL;
 #ifdef USE_EXPANSION
-unsigned long rdram[0x800000 / 4];
+unsigned long __attribute__((aligned(65536))) rdram_buf[0x800000 / 4];
 #define MEMMASK 0x7FFFFF
 #else
-unsigned long rdram[0x800000 / 4 / 2];
+unsigned long __attribute__((aligned(65536))) rdram_buf[0x800000 / 4 / 2];
 #define MEMMASK 0x3FFFFF
 #endif
-unsigned char *rdramb = (unsigned char *) (rdram);
 unsigned long SP_DMEM[0x1000 / 4 * 2];
 unsigned long *SP_IMEM = SP_DMEM + 0x1000 / 4;
 unsigned char *SP_DMEMb = (unsigned char *) (SP_DMEM);
@@ -191,10 +194,58 @@ static FrameBufferInfo frameBufferInfos[6];
 static char framebufferRead[0x800];
 static int firstFrameBufferSetting;
 
+void * memory_vm_segfault_handler(int pir_,void * srr0,void * dar,int write)
+{
+    if((uint32_t)srr0>=(uint32_t)recomp_cache_buffer && (uint32_t)srr0<(uint32_t)recomp_cache_buffer+RECOMP_CACHE_ALLOC_SIZE)
+    {
+        printf("Rewrite %d %p %p %d\n",pir_,srr0,dar,write);
+        return rewriteDynaMemVM(srr0);
+    }
+    else
+    {
+        printf("VM GPF !!! %d %p %p %d\n",pir_,srr0,dar,write);
+        return (PowerPC_instr*)srr0+1;
+    }
+}
+
+
+static unsigned char __attribute__((aligned(VM_USER_PAGE_SIZE))) dummy_buf[VM_USER_PAGE_SIZE];
+
+void memory_vm_init()
+{
+    vm_set_user_mapping_segfault_handler(memory_vm_segfault_handler);
+
+    uint32_t base=0x40000000;
+    
+    // the dynarec can try to read just below the rdram page
+    memset(dummy_buf,0,VM_USER_PAGE_SIZE);
+    vm_create_user_mapping(base-VM_USER_PAGE_SIZE,(uint32_t)dummy_buf&0x7fffffff,VM_USER_PAGE_SIZE,VM_WIMG_CACHED_READ_ONLY);
+
+    // map rdram
+    vm_create_user_mapping(base,(uint32_t)rdram_buf&0x7fffffff,MEMMASK+1,VM_WIMG_CACHED);
+    vm_create_user_mapping(base+0x20000000,(uint32_t)rdram_buf&0x7fffffff,MEMMASK+1,VM_WIMG_CACHED);
+    rdram=(unsigned long *)base;
+    rdramb=(unsigned char *)base;
+    
+    // map rom
+    vm_create_user_mapping(base+0x10000000,((uint32_t)rom_buf&0x7fffffff),taille_rom,VM_WIMG_CACHED_READ_ONLY);
+    rom=(unsigned char *)base+0x10000000;
+}
+
+void memory_vm_destroy()
+{
+    vm_set_user_mapping_segfault_handler(NULL);
+
+    uint32_t base=0x40000000;
+    vm_destroy_user_mapping(base,1024*1024*1024);
+}
+
 int init_memory() {
 	int i;
 
-	//swap rom
+    memory_vm_init();
+    
+    //swap rom
 	//unsigned long *roml;
 	//roml = (void *)rom;
 	//for (i=0; i<(taille_rom/4); i++) roml[i] = sl(roml[i]);
@@ -610,6 +661,8 @@ void free_memory() {
 #ifdef USE_TLB_CACHE
 	TLBCache_deinit();
 #endif
+    
+    memory_vm_destroy();
 }
 
 static void update_MI_init_mode_reg() {
