@@ -50,6 +50,7 @@ static void genUpdateCount(int checkCount);
 static void genCheckFP(void);
 void genCallDynaMem(memType type, int base, short immed);
 void genCallDynaMem2(int type, int base, short immed);
+static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed);
 void RecompCache_Update(PowerPC_func*);
 static int inline mips_is_jump(MIPS_instr);
 void jump_to(unsigned int);
@@ -708,61 +709,9 @@ static int LB(MIPS_instr mips){
 #ifdef INTERPRET_LB
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_LB
-
-	flushRegisters();
-	reset_code_addr();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 9, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Perform the actual load
-	EMIT_LBZ(3, MIPS_GET_IMMED(mips), base);
-	// extsb rt
-	EMIT_EXTSB(3, 3);
-	// Have the value in r3 stored to rt
-	mapRegisterNew( MIPS_GET_RT(mips) );
-	flushRegisters();
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LB, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
 #endif
 
-	return CONVERT_SUCCESS;
-#endif
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LB,MIPS_GET_IMMED(mips));
 }
 
 static int LH(MIPS_instr mips){
@@ -770,59 +719,9 @@ static int LH(MIPS_instr mips){
 #ifdef INTERPRET_LH
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_LH
-
-	flushRegisters();
-	reset_code_addr();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 8, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Perform the actual load
-	EMIT_LHA(3, MIPS_GET_IMMED(mips), base);
-	// Have the value in r3 stored to rt
-	mapRegisterNew( MIPS_GET_RT(mips) );
-	flushRegisters();
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LH, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
 #endif
 
-	return CONVERT_SUCCESS;
-#endif
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LH,MIPS_GET_IMMED(mips));
 }
 
 static int LWL(MIPS_instr mips){
@@ -841,119 +740,19 @@ static int LW(MIPS_instr mips){
 #ifdef INTERPRET_LW
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_LW
-
-	flushRegisters();
-	reset_code_addr();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 8, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Perform the actual load
-	EMIT_LWZ(3, MIPS_GET_IMMED(mips), base);
-	// Have the value in r3 stored to rt
-	mapRegisterNew( MIPS_GET_RT(mips) );
-	flushRegisters();
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LW, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
 #endif
 
-	return CONVERT_SUCCESS;
-#endif
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LW,MIPS_GET_IMMED(mips));
 }
 
 static int LBU(MIPS_instr mips){
-	
+
 #ifdef INTERPRET_LBU
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_LBU
-
-	flushRegisters();
-	reset_code_addr();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 8, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Perform the actual load
-	EMIT_LBZ(3, MIPS_GET_IMMED(mips), base);
-	// Have the value in r3 stored to rt
-	mapRegisterNew( MIPS_GET_RT(mips) );
-	flushRegisters();
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LBU, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
 #endif
 
-	return CONVERT_SUCCESS;
-#endif
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LBU,MIPS_GET_IMMED(mips));
 }
 
 static int LHU(MIPS_instr mips){
@@ -961,59 +760,9 @@ static int LHU(MIPS_instr mips){
 #ifdef INTERPRET_LHU
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_LHU
-
-	flushRegisters();
-	reset_code_addr();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 8, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Perform the actual load
-	EMIT_LHZ(3, MIPS_GET_IMMED(mips), base);
-	// Have the value in r3 stored to rt
-	mapRegisterNew( MIPS_GET_RT(mips) );
-	flushRegisters();
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LHU, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
 #endif
 
-	return CONVERT_SUCCESS;
-#endif
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LHU,MIPS_GET_IMMED(mips));
 }
 
 static int LWR(MIPS_instr mips){
@@ -1032,62 +781,19 @@ static int LWU(MIPS_instr mips){
 #ifdef INTERPRET_LWU
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_LWU
-
-	flushRegisters();
-	reset_code_addr();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 8, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Create a mapping for this value
-	RegMapping value = mapRegister64New( MIPS_GET_RT(mips) );
-	// Perform the actual load
-	EMIT_LWZ(value.lo, MIPS_GET_IMMED(mips), base);
-	// Zero out the upper word
-	EMIT_LI(value.hi, 0);
-	// Write the value out to reg
-	flushRegisters();
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LWU, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
 #endif
 
-	return CONVERT_SUCCESS;
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LWU,MIPS_GET_IMMED(mips));
+}
+
+static int LD(MIPS_instr mips){
+	
+#ifdef INTERPRET_LD
+	genCallInterp(mips);
+	return INTERPRETED;
 #endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LD,MIPS_GET_IMMED(mips));
 }
 
 static int SB(MIPS_instr mips){
@@ -1209,68 +915,6 @@ static int SWR(MIPS_instr mips){
 #else // INTERPRET_SWR
 	// TODO: swr
 	return CONVERT_ERROR;
-#endif
-}
-
-static int LD(MIPS_instr mips){
-	
-#ifdef INTERPRET_LD
-	genCallInterp(mips);
-	return INTERPRETED;
-#else // INTERPRET_LD
-
-	flushRegisters();
-	reset_code_addr();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-#ifdef FASTMEM
-	// If base in physical memory
-#ifdef USE_EXPANSION
-	EMIT_LIS(0, 0x8080);
-#else
-	EMIT_LIS(0, 0x8040);
-#endif
-	EMIT_CMP(base, 0, 1);
-	EMIT_BGE(1, 8, 0, 0);
-
-	// Use rdram
-#ifdef USE_EXPANSION
-	// Mask sp with 0x007FFFFF
-	EMIT_RLWINM(base, base, 0, 9, 31);
-#else
-	// Mask sp with 0x003FFFFF
-	EMIT_RLWINM(base, base, 0, 10, 31);
-#endif
-	// Add rdram pointer
-	EMIT_ADD(base, DYNAREG_RDRAM, base);
-	// Create a mapping for this value
-	RegMapping value = mapRegister64New( MIPS_GET_RT(mips) );
-	// Perform the actual load
-	EMIT_LWZ(value.lo, MIPS_GET_IMMED(mips)+4, base);
-	EMIT_LWZ(value.hi, MIPS_GET_IMMED(mips), base);
-	// Write the value out to reg
-	flushRegisters();
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
-#endif // FASTMEM
-
-	// load into rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_LD, base, MIPS_GET_IMMED(mips));
-
-#ifdef FASTMEM
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
-#endif
-
-	return CONVERT_SUCCESS;
 #endif
 }
 
@@ -4375,6 +4019,111 @@ void genCallDynaMem2(int type, int base, short immed){
 #endif
 
 #endif    
+}
+
+static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
+	
+	flushRegisters();
+	reset_code_addr();
+
+	int rd = mapRegisterTemp(); // r3 = rd
+	int base = mapRegister( rs_reg ); // r4 = addr
+	flushRegisters();
+
+	// If base in physical memory
+#ifdef USE_EXPANSION
+	EMIT_LIS(0, 0x8080);
+#else
+	EMIT_LIS(0, 0x8040);
+#endif
+	EMIT_CMP(base, 0, 1);
+
+	int to_slow_id = add_jump_special(0);
+	EMIT_BGE(1, to_slow_id, 0, 0);
+	PowerPC_instr* ts_preCall = get_curr_dst();
+
+	// Use rdram
+#ifdef USE_EXPANSION
+	// Mask sp with 0x007FFFFF
+	EMIT_RLWINM(base, base, 0, 9, 31);
+#else
+	// Mask sp with 0x003FFFFF
+	EMIT_RLWINM(base, base, 0, 10, 31);
+#endif
+	// Add rdram pointer
+	EMIT_ADD(base, DYNAREG_RDRAM, base);
+
+/*    EMIT_LIS(0,0x4000);
+    EMIT_RLWIMI(base,0,0,1);*/
+    
+	// Perform the actual load
+	switch (type)
+    {
+        case MEM_LB:
+            EMIT_LBZ(3, immed, base);
+            EMIT_EXTSB(3,3);
+        	mapRegisterNew( rt_reg );
+            break;
+        case MEM_LBU:
+            EMIT_LBZ(3, immed, base);
+        	mapRegisterNew( rt_reg );
+            break;
+        case MEM_LH:
+            EMIT_LHA(3, immed, base);
+        	mapRegisterNew( rt_reg );
+            break;
+        case MEM_LHU:
+            EMIT_LHZ(3, immed, base)
+        	mapRegisterNew( rt_reg );
+            break;
+        case MEM_LW:
+            EMIT_LWZ(3, immed, base);
+        	mapRegisterNew( rt_reg );
+            break;
+        case MEM_LWU:
+        {
+            // Create a mapping for this value
+            RegMapping value = mapRegister64New( rt_reg );
+            // Perform the actual load
+            EMIT_LWZ(value.lo, immed, base);
+            // Zero out the upper word
+            EMIT_LI(value.hi, 0);
+            break;
+        }
+        case MEM_LD:
+        {
+            // Create a mapping for this value
+            RegMapping value = mapRegister64New( rt_reg );
+            // Perform the actual load
+            EMIT_LWZ(value.lo, immed+4, base);
+            EMIT_LWZ(value.hi, immed, base);
+            break;
+        }
+        default:
+            assert(0);
+    }
+    
+	flushRegisters();
+    
+	// Skip over else
+	int not_fastmem_id = add_jump_special(1);
+	EMIT_B(not_fastmem_id, 0, 0);
+	PowerPC_instr* preCall = get_curr_dst();
+
+	int ts_callSize = get_curr_dst() - ts_preCall;
+	set_jump_special(to_slow_id, ts_callSize+1);
+        
+	invalidateRegisters();
+
+	// load into rt
+	EMIT_LI(3, rt_reg);
+
+	genCallDynaMem(type, base, immed);
+
+	int callSize = get_curr_dst() - preCall;
+	set_jump_special(not_fastmem_id, callSize+1);
+
+	return CONVERT_SUCCESS;
 }
 
 static int mips_is_jump(MIPS_instr instr){
