@@ -242,10 +242,11 @@ void invalidate_func(unsigned int addr){
 		RecompCache_Free(func->start_addr);
 }
 
-#define check_memory() \
-	if(!invalid_code_get(address>>12)/* && \
+void check_memory(unsigned int addr){
+	if(!invalid_code_get(addr>>12)/* && \
 	   blocks[address>>12]->code_addr[(address&0xfff)>>2]*/) \
-		invalidate_func(address);
+		invalidate_func(addr);
+}
 
 unsigned int dyna_mem_usage[16]={};
 
@@ -300,32 +301,32 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 		case MEM_SW:
 			word = value;
 			write_word_in_memory();
-			check_memory();
+			check_memory(address);
 			break;
 		case MEM_SH:
 			hword = value;
 			write_hword_in_memory();
-			check_memory();
+			check_memory(address);
 			break;
 		case MEM_SB:
 			byte = value;
 			write_byte_in_memory();
-			check_memory();
+			check_memory(address);
 			break;
 		case MEM_SD:
 			dword = reg[value];
 			write_dword_in_memory();
-			check_memory();
+			check_memory(address);
 			break;
 		case MEM_SWC1:
 			word = *((long*)reg_cop1_simple[value]);
 			write_word_in_memory();
-			check_memory();
+			check_memory(address);
 			break;
 		case MEM_SDC1:
 			dword = *((unsigned long long*)reg_cop1_double[value]);
 			write_dword_in_memory();
-			check_memory();
+			check_memory(address);
 			break;
 		default:
 			printf("dyna_mem bad type\n");

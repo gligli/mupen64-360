@@ -94,7 +94,7 @@ void       set_next_dst(PowerPC_instr);
 void dbg_dst(int line,const char * func);
 #define DBG_DST dbg_dst(__LINE__,__FUNCTION__);
 
-int        add_jump(int old_jump, int is_j, int is_out);
+int        add_jump(int old_jump, int is_j, int is_call);
 int        is_j_out(int branch, int is_aa);
 // Use these for jumps that won't be known until later in compile time
 int        add_jump_special(int is_j);

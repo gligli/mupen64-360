@@ -45,7 +45,6 @@ void reset_code_addr(void);
 /* Adds src and dst address, and src jump address to tables
     it returns a unique address identifier.
    This data should be used to fill in addresses in pass two. */
-extern int  add_jump(int old_address, int is_li, int is_aa);
 extern int  is_j_out(int branch, int is_aa);
 // Use these for jumps that won't be known until later in compile time
 extern int  add_jump_special(int is_j);

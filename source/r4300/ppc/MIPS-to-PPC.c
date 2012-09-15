@@ -824,25 +824,9 @@ static int SB(MIPS_instr mips){
 #ifdef INTERPRET_SB
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_SB
-
-	flushRegisters();
-	reset_code_addr();
-
-	if( MIPS_GET_RT(mips) ){
-		mapRegister( MIPS_GET_RT(mips) ); // r3 = value
-	} else {
-		mapRegisterTemp();
-		EMIT_LI(3, 0); // r3 = 0
-	}
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-	genCallDynaMem2(MEM_WRITE_BYTE, base, MIPS_GET_IMMED(mips));
-
-	return CONVERT_SUCCESS;
 #endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_SB,MIPS_GET_IMMED(mips));
 }
 
 static int SH(MIPS_instr mips){
@@ -850,25 +834,9 @@ static int SH(MIPS_instr mips){
 #ifdef INTERPRET_SH
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_SH
-
-	flushRegisters();
-	reset_code_addr();
-
-	if( MIPS_GET_RT(mips) ){
-		mapRegister( MIPS_GET_RT(mips) ); // r3 = value
-	} else {
-		mapRegisterTemp();
-		EMIT_LI(3, 0); // r3 = 0
-	}
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-	genCallDynaMem2(MEM_WRITE_HALF, base, MIPS_GET_IMMED(mips));
-
-	return CONVERT_SUCCESS;
 #endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_SH,MIPS_GET_IMMED(mips));
 }
 
 static int SWL(MIPS_instr mips){
@@ -887,25 +855,9 @@ static int SW(MIPS_instr mips){
 #ifdef INTERPRET_SW
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_SW
-
-	flushRegisters();
-	reset_code_addr();
-
-	if( MIPS_GET_RT(mips) ){
-		mapRegister( MIPS_GET_RT(mips) ); // r3 = value
-	} else {
-		mapRegisterTemp();
-		EMIT_LI(3, 0); // r3 = 0
-	}
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-	genCallDynaMem2(MEM_WRITE_WORD, base, MIPS_GET_IMMED(mips));
-
-	return CONVERT_SUCCESS;
 #endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_SW,MIPS_GET_IMMED(mips));
 }
 
 static int SDL(MIPS_instr mips){
@@ -946,23 +898,9 @@ static int SD(MIPS_instr mips){
 #ifdef INTERPRET_SD
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_SD
-
-	flushRegisters();
-	reset_code_addr();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-	// store from rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_SD, base, MIPS_GET_IMMED(mips));
-
-	return CONVERT_SUCCESS;
 #endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_SD,MIPS_GET_IMMED(mips));
 }
 
 static int SWC1(MIPS_instr mips){
@@ -970,35 +908,9 @@ static int SWC1(MIPS_instr mips){
 #ifdef INTERPRET_SWC1
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_SWC1
-
-	flushRegisters();
-	reset_code_addr();
-
-	genCheckFP();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-	int addr = mapRegisterTemp(); // r5 = fpr_addr
-
-	invalidateRegisters();
-
-#if 1
-	// addr = reg_cop1_simple[frt]
-	EMIT_LWZ(addr, MIPS_GET_RT(mips)*4, DYNAREG_FPR_32);
-	// frs = *addr
-	EMIT_LWZ(3, 0, addr);
-	
-	genCallDynaMem2(MEM_WRITE_WORD, base, MIPS_GET_IMMED(mips));
-#else
-	// store from rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-	
-	genCallDynaMem(MEM_SWC1, base, MIPS_GET_IMMED(mips));
 #endif
-	
-	return CONVERT_SUCCESS;
-#endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_SWC1,MIPS_GET_IMMED(mips));
 }
 
 static int SDC1(MIPS_instr mips){
@@ -1006,25 +918,9 @@ static int SDC1(MIPS_instr mips){
 #ifdef INTERPRET_SDC1
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_SDC1
-
-	flushRegisters();
-	reset_code_addr();
-
-	genCheckFP();
-
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( MIPS_GET_RS(mips) ); // r4 = addr
-
-	invalidateRegisters();
-
-	// store from rt
-	EMIT_LI(3, MIPS_GET_RT(mips));
-
-	genCallDynaMem(MEM_SDC1, base, MIPS_GET_IMMED(mips));
-
-	return CONVERT_SUCCESS;
 #endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_SDC1,MIPS_GET_IMMED(mips));
 }
 
 static int CACHE(MIPS_instr mips){
@@ -3795,114 +3691,25 @@ void genCallDynaMem(memType type, int base, short immed){
 	EMIT_BNELR(6, 0);
 }
 
-extern unsigned long delay_slot, interp_addr;
 extern unsigned char invalid_code[0x100000];
 
-void genCallDynaMem2(int type, int base, short immed){
-	
-	unsigned int pc;
-
-#if 0
-	switch(type){
-		case MEM_WRITE_BYTE:
-			genCallDynaMem(MEM_SB,base,immed);return;
-		case MEM_WRITE_HALF:
-			genCallDynaMem(MEM_SH,base,immed);return;
-		case MEM_WRITE_WORD:
-			genCallDynaMem(MEM_SW,base,immed);return;
-	}
-#else	
-	// addr (must be first)
-	EMIT_ADDI(6, base, immed);
-	EMIT_LIS(4, HA((unsigned int)&address));
-	EMIT_STW(6,((unsigned int)&address),4);
-	// value
-	switch(type){
-		case MEM_WRITE_BYTE:
-			EMIT_LIS(4, HA((unsigned int)&byte));
-			EMIT_STB(3,((unsigned int)&byte),4);
-			break;
-		case MEM_WRITE_HALF:
-			EMIT_LIS(4, HA((unsigned int)&hword));
-			EMIT_STH(3,((unsigned int)&hword),4);
-			break;
-		case MEM_WRITE_WORD:
-			EMIT_LIS(4, HA((unsigned int)&word));
-			EMIT_STW(3,((unsigned int)&word),4);
-			break;
-	}
-	// pc
-	pc=get_src_pc()+4;
-	EMIT_LIS(5, (pc)>>16);
-	EMIT_ORI(5, 5, pc);
-	EMIT_LIS(4,HA((unsigned int)&interp_addr));
-	EMIT_STW(5,((unsigned int)&interp_addr),4);
-	// delay slot
-	EMIT_LI(5, isDelaySlot ? 1 : 0);
-	EMIT_LIS(4, HA((unsigned int)&delay_slot));
-	EMIT_STW(5,((unsigned int)&delay_slot),4);
-	// rwmem
-	EMIT_LIS(12, HA((unsigned int)&rwmem));
-	EMIT_RLWINM(5, 6, 18, 14, 29);
-	EMIT_ADD(12, 12, 5);
-	EMIT_LWZ(12,((unsigned int)&rwmem),12);
-	EMIT_LWZ(12,type*4,12);
-	EMIT_MTCTR(12);
-	EMIT_BCTRL(ppc);
-	
-	// test invalid code
-	EMIT_LIS(4, HA((unsigned int)&address));
-	EMIT_LWZ(3,((unsigned int)&address),4);
-	EMIT_LIS(12, HA((unsigned int)&invalid_code));
-	EMIT_RLWINM(5, 3, 20, 12, 31);
-	EMIT_ADD(12, 12, 5);
-	EMIT_LBZ(12,((unsigned int)&invalid_code),12);
-	EMIT_CMPI(12,0,6);
-
-#if 1
-	EMIT_BNE(6,2,0,0);
-	EMIT_B(add_jump((int)(&invalidate_func), 1, 1), 0, 1);
-#else
-	EMIT_BNE(6,5,0,0);
-
-	EMIT_LIS(12, ((unsigned int)&invalidate_func)>>16);
-	EMIT_ORI(12, 12, (unsigned int)&invalidate_func);
-	EMIT_MTCTR(12);
-	EMIT_BCTRL(ppc);
-#endif
-	
-	EMIT_LI(3, 0);
-	// clear delay_slot
-	EMIT_LIS(4, HA((unsigned int)&delay_slot));
-	EMIT_STW(3,((unsigned int)&delay_slot),4);
-
-	// Load old LR
-	EMIT_LWZ(0, DYNAOFF_LR, 1);
-
-	// Restore LR
-	EMIT_MTLR(0);
-
-#if 0
-	EMIT_LIS(4,HA((unsigned int)&interp_addr));
-	EMIT_LWZ(5,((unsigned int)&interp_addr),4);
-	EMIT_LIS(6, (pc)>>16);
-	EMIT_ORI(6, 6, pc);
-	EMIT_CMP(5,6,6);
-	EMIT_BEQ(6,5,0,0);
-	
-	EMIT_LI(3, 1);
-	// set noCheckInterrupt
-	EMIT_LIS(4, HA((unsigned int)&noCheckInterrupt));
-	EMIT_STW(3,((unsigned int)&noCheckInterrupt),4);
-	// return to trampoline
-	EMIT_BLR(0);
-#endif
-
-#endif    
-}
+#define CHECK_INVALID_CODE()                                                   \
+    invalidateRegisters();                                                     \
+    EMIT_ADDI(3, base, immed);                                                 \
+    /* test invalid code */                                                    \
+    EMIT_LIS(12, HA((unsigned int)&invalid_code));                             \ 
+    EMIT_RLWINM(5, 3, 20, 12, 31);                                             \ 
+    EMIT_ADD(12, 12, 5);                                                       \ 
+    EMIT_LBZ(12,((unsigned int)&invalid_code),12);                             \ 
+    EMIT_CMPI(12,0,6);                                                         \ 
+    EMIT_BNE(6,4,0,0);                                                         \
+    /* invalidate code if needed */                                            \ 
+    EMIT_B(add_jump((int)(&invalidate_func), 1, 1),0,1);                       \
+    /* restore LR */                                                           \
+    EMIT_LWZ(0, DYNAOFF_LR, 1);                                                \
+    EMIT_MTLR(0);
 
 static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
-	
 	flushRegisters();
 	reset_code_addr();
 
@@ -3988,6 +3795,58 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             EMIT_STW(r2, 4, addr);
             break;
         }
+        case MEM_SB:
+        {
+            int r = mapRegister( rt_reg );
+            EMIT_STB(r, immed, rd);
+            CHECK_INVALID_CODE();
+            break;
+        }
+        case MEM_SH:
+        {
+            int r = mapRegister( rt_reg );
+            EMIT_STH(r, immed, rd);
+            CHECK_INVALID_CODE();
+            break;
+        }
+        case MEM_SW:
+        {
+            int r = mapRegister( rt_reg );
+            EMIT_STW(r, immed, rd);
+            CHECK_INVALID_CODE();
+            break;
+        }
+        case MEM_SD:
+        {
+            RegMapping r = mapRegister64( rt_reg );
+            EMIT_STW(r.hi, immed, rd);
+            EMIT_STW(r.lo, immed+4, rd);
+            CHECK_INVALID_CODE();
+            break;
+        }
+        case MEM_SWC1:
+        {
+            int addr = mapRegisterTemp();
+            int r = mapRegisterTemp();
+            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
+            EMIT_LWZ(r, 0, addr);
+            EMIT_STW(r, immed, rd);
+            CHECK_INVALID_CODE();
+            break;
+        }
+        case MEM_SDC1:
+        {
+            int addr = mapRegisterTemp();
+            int r = mapRegisterTemp();
+            int r2 = mapRegisterTemp();
+            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
+            EMIT_LWZ(r, 0, addr);
+            EMIT_LWZ(r2, 4, addr);
+            EMIT_STW(r, immed, rd);
+            EMIT_STW(r2, immed+4, rd);
+            CHECK_INVALID_CODE();
+            break;
+        }
         default:
             assert(0);
     }
@@ -4002,10 +3861,21 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 	invalidateRegisters();
 
 	// load into rt
-	EMIT_LI(3, rt_reg);
+    if(type<MEM_SW)
+    {
+        EMIT_LI(3, rt_reg);
+    }
+    else
+    {
+        int r=mapRegister( rt_reg );
+        if(r!=3)
+            EMIT_OR(3,r,r);
+    }
 
 	genCallDynaMem(type, base, immed);
 
+    flushRegisters();
+    
 	int callSize = get_curr_dst() - preCall;
 	set_jump_special(not_fastmem_id, callSize+1);
 
@@ -4018,7 +3888,7 @@ void * rewriteDynaMemVM(void* fault_addr)
 
     PowerPC_instr * cur_op=(PowerPC_instr*)fault_addr;
 
-    while(*cur_op>>PPC_OPCODE_SHIFT!=PPC_OPCODE_B)
+    while((*cur_op>>PPC_OPCODE_SHIFT)!=PPC_OPCODE_B || (*cur_op&1)!=0)
     {
         *cur_op=PPC_NOP;
         ++cur_op;
