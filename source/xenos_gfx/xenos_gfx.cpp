@@ -43,6 +43,7 @@ extern "C"{
 #include <zlx/zlx.h>
 #include <malloc.h>
 #include <assert.h>
+#include <float.h>
 
 #ifdef DEBUGON
 extern "C" { void _break(); }
@@ -148,6 +149,9 @@ void updateScissor(){
 	); 
 }
 
+#define NEAR (-10.0)
+#define FAR  (10.0)
+
 void updateViewport()
 {
 //    printf("updateViewport %f %f %f %f %d %d\n",gSP.viewport.x,gSP.viewport.y,gSP.viewport.width,gSP.viewport.height,VI.width,VI.height);
@@ -162,7 +166,7 @@ void updateViewport()
 	float persp[4][4] = {
         {w,0,0,2*x+w-1.0f},
         {0,h,0,-2*y-h+1.0f},
-        {0,0,0.5f,0.5f},
+        {0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
 	    {0,0,0,1},
     };
 	
@@ -371,7 +375,7 @@ void prepareDraw(bool sync){
 	if (drawPrepared) return;
 
 	if (sync) Xe_Sync(xe); // wait for background render to finish !
- 
+    
 	Xe_InvalidateState(xe);
     resetLockVB();
 	resetLockIB();
@@ -412,7 +416,7 @@ void xe_updateVSOrtho()
 	float ortho[4][4] = {
         {2.0f/VI.width,0,0,-1},
         {0,-2.0f/VI.height,0,1},
-	    {0,0,0.5,0.5},
+	    {0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
 	    {0,0,0,1},
     };
 
