@@ -10,7 +10,7 @@
 **/
 
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #include "xenos_gfx.h"
 #include "Types.h"
@@ -46,128 +46,15 @@ void VI_UpdateSize()
 	if (VI.width == 0.0f) VI.width = (unsigned long)320.0f;
 	if (VI.height == 0.0f) VI.height = (unsigned long)240.0f;
 	
+    // Interlace detection
+    if ((*REG.VI_STATUS>>6)&1)
+        VI.height*=2;
+    
 	xe_updateVSOrtho();
 }
 
 void VI_UpdateScreen()
 {
     xeGfx_render();
-#if 0
-#ifndef __GX__
-	glFinish();
-
-	if (OGL.frameBufferTextures)
-	{
-		FrameBuffer *current = FrameBuffer_FindBuffer( *REG.VI_ORIGIN );
-
-		if ((*REG.VI_ORIGIN != VI.lastOrigin) || ((current) && current->changed))
-		{
-			if (gDP.colorImage.changed)
-			{
-				FrameBuffer_SaveBuffer( gDP.colorImage.address, gDP.colorImage.size, gDP.colorImage.width, gDP.colorImage.height );
-				gDP.colorImage.changed = FALSE;
-			}
-
-			FrameBuffer_RenderBuffer( *REG.VI_ORIGIN );
-
-			gDP.colorImage.changed = FALSE;
-			VI.lastOrigin = *REG.VI_ORIGIN;
-#ifdef DEBUG
-			while (Debug.paused && !Debug.step);
-			Debug.step = FALSE;
-#endif
-		}
-	}
-	else
-	{
-		if (gSP.changed & CHANGED_COLORBUFFER)
-		{
-#ifndef __LINUX__
-			SwapBuffers( OGL.hDC );
-#else
-			OGL_SwapBuffers();
-#endif
-			gSP.changed &= ~CHANGED_COLORBUFFER;
-#ifdef DEBUG
-			while (Debug.paused && !Debug.step);
-			Debug.step = FALSE;
-#endif
-		}
-	}
-	glFinish();
-#else // !__GX__
-	if (renderCpuFramebuffer)
-	{
-		//Only render N64 framebuffer in RDRAM and not EFB
-		VI_GX_cleanUp();
-		VI_GX_renderCpuFramebuffer();
-		VI_GX_showFPS();
-		VI_GX_showDEBUG();
-		GX_SetCopyClear ((GXColor){0,0,0,255}, 0xFFFFFF);
-		GX_CopyDisp (VI.xfb[VI.which_fb]+GX_xfb_offset, GX_FALSE);
-		GX_DrawDone(); //Wait until EFB->XFB copy is complete
-		VI.enableLoadIcon = true;
-		VI.EFBcleared = false;
-		VI.copy_fb = true;
-	}
-
-	if (OGL.frameBufferTextures)
-	{
-		FrameBuffer *current = FrameBuffer_FindBuffer( *REG.VI_ORIGIN );
-
-		if ((*REG.VI_ORIGIN != VI.lastOrigin) || ((current) && current->changed))
-		{
-			FrameBuffer_IncrementVIcount();
-			if (gDP.colorImage.changed)
-			{
-				FrameBuffer_SaveBuffer( gDP.colorImage.address, gDP.colorImage.size, gDP.colorImage.width, gDP.colorImage.height );
-				gDP.colorImage.changed = FALSE;
-			}
-
-			FrameBuffer_RenderBuffer( *REG.VI_ORIGIN );
-
-			//Draw DEBUG to screen
-			VI_GX_cleanUp();
-			VI_GX_showFPS();
-			VI_GX_showDEBUG();
-			GX_SetCopyClear ((GXColor){0,0,0,255}, 0xFFFFFF);
-			//Copy EFB->XFB
-			GX_CopyDisp (VI.xfb[VI.which_fb]+GX_xfb_offset, GX_FALSE);
-			GX_DrawDone(); //Wait until EFB->XFB copy is complete
-			VI.updateOSD = false;
-			VI.enableLoadIcon = true;
-			VI.copy_fb = true;
-
-			//Restore current EFB
-			FrameBuffer_RestoreBuffer( gDP.colorImage.address, gDP.colorImage.size, gDP.colorImage.width );
-
-			gDP.colorImage.changed = FALSE;
-			VI.lastOrigin = *REG.VI_ORIGIN;
-		}
-	}
-	else
-	{
-/*		if (gSP.changed & CHANGED_COLORBUFFER)
-		{
-			OGL_SwapBuffers();
-			gSP.changed &= ~CHANGED_COLORBUFFER;
-		}*/
-		if(VI.updateOSD && (gSP.changed & CHANGED_COLORBUFFER))
-		{
-			VI_GX_cleanUp();
-			VI_GX_showFPS();
-			VI_GX_showDEBUG();
-			GX_SetCopyClear ((GXColor){0,0,0,255}, 0xFFFFFF);
-			GX_CopyDisp (VI.xfb[VI.which_fb]+GX_xfb_offset, GX_FALSE);
-			GX_DrawDone(); //Wait until EFB->XFB copy is complete
-			VI.updateOSD = false;
-			VI.enableLoadIcon = true;
-			VI.EFBcleared = false;
-			VI.copy_fb = true;
-			gSP.changed &= ~CHANGED_COLORBUFFER;
-		}
-	}
-#endif // __GX__
-#endif
 }
 

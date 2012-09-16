@@ -141,12 +141,16 @@ int rendered_frames_ratio=1;
 void drawVB();
 
 void updateScissor(){
-	Xe_SetScissor(xe,1,
-		MAX(gSP.viewport.x,gDP.scissor.ulx)*Xe_GetFramebufferSurface(xe)->width/VI.width,
-		MAX(gSP.viewport.y,gDP.scissor.uly)*Xe_GetFramebufferSurface(xe)->height/VI.height,
-		MIN(gSP.viewport.x+gSP.viewport.width-1,gDP.scissor.lrx)*Xe_GetFramebufferSurface(xe)->width/VI.width,
-		MIN(gSP.viewport.y+gSP.viewport.height-1,gDP.scissor.lry)*Xe_GetFramebufferSurface(xe)->height/VI.height
-	); 
+	int l,t,r,b,ok;
+    
+    l=MAX(gSP.viewport.x,gDP.scissor.ulx)*Xe_GetFramebufferSurface(xe)->width/VI.width;
+	t=MAX(gSP.viewport.y,gDP.scissor.uly)*Xe_GetFramebufferSurface(xe)->height/VI.height;
+	r=MIN(gSP.viewport.x+gSP.viewport.width-1,gDP.scissor.lrx)*Xe_GetFramebufferSurface(xe)->width/VI.width;
+	b=MIN(gSP.viewport.y+gSP.viewport.height-1,gDP.scissor.lry)*Xe_GetFramebufferSurface(xe)->height/VI.height;
+    
+    ok=(l>=0) && (t>=0) && (r<Xe_GetFramebufferSurface(xe)->width) && (b<Xe_GetFramebufferSurface(xe)->height);
+    
+    Xe_SetScissor(xe,ok?1:0,l,t,r,b); 
 }
 
 #define NEAR (-10.0)
