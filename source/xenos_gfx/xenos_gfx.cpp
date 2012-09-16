@@ -502,6 +502,7 @@ void xeGfx_clearColorBuffer(float *color){
 void doDrawRect(){
 	updateVSMatrixMode(true,true);
 	Xe_SetZEnable(xe,0);
+    Xe_SetCullMode(xe,XE_CULL_NONE);
 }
 
 void xeGfx_drawRect( int ulx, int uly, int lrx, int lry, float *color ){
