@@ -138,17 +138,22 @@ bool hadTriangles=false;
 
 int rendered_frames_ratio=1;
 
+// used for double buffering
+struct XenosSurface * framebuffer[2] = {NULL};
+int curFB=0;
+
+
 void drawVB();
 
 void updateScissor(){
 	int l,t,r,b,ok;
     
-    l=MAX(gSP.viewport.x,gDP.scissor.ulx)*Xe_GetFramebufferSurface(xe)->width/VI.width;
-	t=MAX(gSP.viewport.y,gDP.scissor.uly)*Xe_GetFramebufferSurface(xe)->height/VI.height;
-	r=MIN(gSP.viewport.x+gSP.viewport.width-1,gDP.scissor.lrx)*Xe_GetFramebufferSurface(xe)->width/VI.width;
-	b=MIN(gSP.viewport.y+gSP.viewport.height-1,gDP.scissor.lry)*Xe_GetFramebufferSurface(xe)->height/VI.height;
+    l=MAX(gSP.viewport.x,gDP.scissor.ulx)*framebuffer[curFB]->width/VI.width;
+	t=MAX(gSP.viewport.y,gDP.scissor.uly)*framebuffer[curFB]->height/VI.height;
+	r=MIN(gSP.viewport.x+gSP.viewport.width-1,gDP.scissor.lrx)*framebuffer[curFB]->width/VI.width;
+	b=MIN(gSP.viewport.y+gSP.viewport.height-1,gDP.scissor.lry)*framebuffer[curFB]->height/VI.height;
     
-    ok=(l>=0) && (t>=0) && (r<Xe_GetFramebufferSurface(xe)->width) && (b<Xe_GetFramebufferSurface(xe)->height);
+    ok=(l>=0) && (t>=0) && (r<framebuffer[curFB]->width) && (b<framebuffer[curFB]->height);
     
     Xe_SetScissor(xe,ok?1:0,l,t,r,b); 
 }
@@ -379,6 +384,10 @@ void prepareDraw(bool sync){
 	if (drawPrepared) return;
 
 	if (sync) Xe_Sync(xe); // wait for background render to finish !
+
+    Xe_SetFrameBufferSurface(xe,framebuffer[curFB]);
+    curFB=1-curFB;
+    Xe_SetRenderTarget(xe,framebuffer[curFB]);
     
 	Xe_InvalidateState(xe);
     resetLockVB();
@@ -452,19 +461,21 @@ void xeGfx_clearDepthBuffer(){
     Xe_SetCullMode(xe,XE_CULL_NONE);
     Xe_SetZEnable(xe,1);
     Xe_SetZWrite(xe,1);
+	Xe_SetBlendControl(xe,XE_BLEND_ZERO,XE_BLENDOP_ADD,XE_BLEND_ONE,XE_BLEND_ZERO,XE_BLENDOP_ADD,XE_BLEND_ONE);
     Xe_SetZFunc(xe,XE_CMP_ALWAYS);
     Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
     lastShaderIdx=0xffffffff;
-	Xe_SetBlendControl(xe,XE_BLEND_ZERO,XE_BLENDOP_ADD,XE_BLEND_ONE,XE_BLEND_ZERO,XE_BLENDOP_ADD,XE_BLEND_ONE);
     updateVSMatrixMode(false,false);
 
 	gDP.changed |= CHANGED_RENDERMODE;
     gDP.changed |= CHANGED_COMBINE;
     gDP.changed |= CHANGED_SCISSOR;
+    gDP.changed |= CHANGED_CYCLETYPE;
     gSP.changed |= CHANGED_GEOMETRYMODE;
     updateStates();
 #else
-	Xe_ResolveInto(xe,Xe_GetFramebufferSurface(xe),0,XE_CLEAR_DS);
+    Xe_Clear(xe,XE_CLEAR_DS);
+    Xe_Execute(xe);
 #endif
 }
 
@@ -492,6 +503,7 @@ void xeGfx_clearColorBuffer(float *color){
 	Xe_SetScissor(xe,0,0,0,0,0);
     Xe_SetCullMode(xe,XE_CULL_NONE);
     Xe_SetZEnable(xe,0);
+    Xe_SetZWrite(xe,0);
     Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
     lastShaderIdx=0xffffffff;
     updateVSMatrixMode(false,false);
@@ -502,8 +514,10 @@ void xeGfx_clearColorBuffer(float *color){
     gSP.changed |= CHANGED_GEOMETRYMODE;
     updateStates();
 #else
-	Xe_SetClearColor(xe,MAKE_COLOR4F(color[0],color[1],color[2],color[3]));
-	Xe_ResolveInto(xe,Xe_GetFramebufferSurface(xe),0,XE_CLEAR_COLOR);
+    Xe_Sync(xe);
+    Xe_SetClearColor(xe,MAKE_COLOR4F(color[0],color[1],color[2],color[3]));
+    Xe_Clear(xe,XE_CLEAR_COLOR);
+    Xe_Execute(xe);
 #endif
 }
 
@@ -715,7 +729,7 @@ void xeGfx_activateTexture(void * tex,int index, int filter, int clamps, int cla
 
 void xeGfx_activateFrameBufferTexture(int index){
     printf("xeGfx_activateFrameBufferTexture %d\n",index);
-	Xe_SetTexture(xe,index,Xe_GetFramebufferSurface(xe));
+	Xe_SetTexture(xe,index,framebuffer[1-curFB]);
 }
 
 void xeGfx_addTriangle( SPVertex *vertices, int v0, int v1, int v2, int direct){
@@ -788,48 +802,53 @@ void xeGfx_drawTriangles(){
 
 void xeGfx_init(){
 	static int done=0;
-	
+    
+    if(done) return;
+
 	xe = ZLX::g_pVideoDevice;
 
 	/* initialize the GPU */
 
-	Xe_SetRenderTarget(xe, Xe_GetFramebufferSurface(xe));
+    XenosSurface * fb = Xe_GetFramebufferSurface(xe);
+	Xe_SetRenderTarget(xe, fb);
 	Xe_InvalidateState(xe);
-	Xe_SetClearColor(ZLX::g_pVideoDevice,0);
+	Xe_SetClearColor(xe,0);
 	
-	if(!done){
-		/* load pixel shaders */
-		
-        u32 i;
-        
-        sh_ps_combiner=(XenosShader**)malloc(ps_combiner_table_count*sizeof(void*));
+    /* load pixel shaders */
 
-        for(i=0;i<ps_combiner_table_count;++i)
-        {
-            sh_ps_combiner[i]=Xe_LoadShaderFromMemory(xe, ps_combiner_data_table[i]);
-            Xe_InstantiateShader(xe, sh_ps_combiner[i], 0);
-        }
-            
-        assert(ps_combiner_slow_table_count==1 && ps_combiner_slow_indice_count==1);
-		sh_ps_combiner_slow = Xe_LoadShaderFromMemory(xe, ps_combiner_slow_data_table[0]);
-		Xe_InstantiateShader(xe, sh_ps_combiner_slow, 0);
+    u32 i;
 
-        assert(ps_fb_table_count==1 && ps_fb_indice_count==1);
-		sh_ps_fb = Xe_LoadShaderFromMemory(xe, ps_fb_data_table[0]);
-		Xe_InstantiateShader(xe, sh_ps_fb, 0);
+    sh_ps_combiner=(XenosShader**)malloc(ps_combiner_table_count*sizeof(void*));
 
-		/* load vertex shader */
+    for(i=0;i<ps_combiner_table_count;++i)
+    {
+        sh_ps_combiner[i]=Xe_LoadShaderFromMemory(xe, ps_combiner_data_table[i]);
+        Xe_InstantiateShader(xe, sh_ps_combiner[i], 0);
+    }
 
-        assert(vs_table_count==1 && vs_indice_count==1);
-		sh_vs = Xe_LoadShaderFromMemory(xe, vs_data_table[0]);
-		Xe_InstantiateShader(xe, sh_vs, 0);
-		Xe_ShaderApplyVFetchPatches(xe, sh_vs, 0, &VertexBufferFormat);
+    assert(ps_combiner_slow_table_count==1 && ps_combiner_slow_indice_count==1);
+    sh_ps_combiner_slow = Xe_LoadShaderFromMemory(xe, ps_combiner_slow_data_table[0]);
+    Xe_InstantiateShader(xe, sh_ps_combiner_slow, 0);
 
-		vertexBuffer = Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
-		indexBuffer = Xe_CreateIndexBuffer(xe, MAX_INDICE_COUNT*sizeof(TIndice),XE_FMT_INDEX16);
-		
-		done=1;
-	}
+    assert(ps_fb_table_count==1 && ps_fb_indice_count==1);
+    sh_ps_fb = Xe_LoadShaderFromMemory(xe, ps_fb_data_table[0]);
+    Xe_InstantiateShader(xe, sh_ps_fb, 0);
+
+    /* load vertex shader */
+
+    assert(vs_table_count==1 && vs_indice_count==1);
+    sh_vs = Xe_LoadShaderFromMemory(xe, vs_data_table[0]);
+    Xe_InstantiateShader(xe, sh_vs, 0);
+    Xe_ShaderApplyVFetchPatches(xe, sh_vs, 0, &VertexBufferFormat);
+
+    vertexBuffer = Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
+    indexBuffer = Xe_CreateIndexBuffer(xe, MAX_INDICE_COUNT*sizeof(TIndice),XE_FMT_INDEX16);
+
+    // Create surface for double buffering
+    framebuffer[0] = Xe_CreateTexture(xe, fb->width, fb->height, 0, XE_FMT_8888 | XE_FMT_BGRA, 1);
+    framebuffer[1] = Xe_CreateTexture(xe, fb->width, fb->height, 0, XE_FMT_8888 | XE_FMT_BGRA, 1);        
+
+    done=1;
 }
 
 void xeGfx_start(){
@@ -839,7 +858,11 @@ void xeGfx_start(){
 	rendered_frames_ratio=1;
 	dpf=0;
 	prev_dpf=0;
-	
+    curFB=0;
+    
+    Xe_SetClearColor(xe,0);
+    Xe_ResolveInto(xe,framebuffer[curFB],0,XE_CLEAR_COLOR|XE_CLEAR_DS);
+    
     prepareDraw(true);
 
 	Xe_SetShader(xe, SHADER_TYPE_VERTEX, sh_vs, 0);
@@ -847,6 +870,15 @@ void xeGfx_start(){
     lastShaderIdx=0xffffffff;
 
 	gSP.changed=gDP.changed=-1;
+}
+
+
+void xeGfx_end(){
+    if (vertexBuffer->lock.start) Xe_VB_Unlock(xe,vertexBuffer);
+	if (indexBuffer->lock.start) Xe_IB_Unlock(xe,indexBuffer);
+	Xe_SetScissor(xe,0,0,0,0,0);
+    Xe_SetFrameBufferSurface(xe,&xe->default_fb);
+    Xe_SetRenderTarget(xe,&xe->default_fb);
 }
 
 void xeGfx_render()
@@ -889,7 +921,7 @@ void xeGfx_render()
 	Xe_IB_Unlock(xe,indexBuffer);
 
 //    Xe_Resolve(xe);
-    Xe_ResolveInto(xe,Xe_GetFramebufferSurface(xe),XE_SOURCE_COLOR,0);
+    Xe_ResolveInto(xe,framebuffer[curFB],XE_SOURCE_COLOR,0);
     Xe_Execute(xe); // render everything in background !
 	drawPrepared=false;
 	hadTriangles=false;
@@ -1023,9 +1055,7 @@ EXPORT void CALL ProcessRDPList(void)
 
 EXPORT void CALL RomClosed (void)
 {
-	Xe_SetScissor(xe,0,0,0,0,0);
-    if (vertexBuffer->lock.start) Xe_VB_Unlock(xe,vertexBuffer);
-	if (indexBuffer->lock.start) Xe_IB_Unlock(xe,indexBuffer);
+	xeGfx_end();
 
 	Combiner_Destroy();
     TextureCache_Destroy();

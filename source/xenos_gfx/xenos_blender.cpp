@@ -50,7 +50,7 @@ static void SetAlphaTestEnable(int at){
 
 static void ForceAlphaRef(float ar){
 	Xe_SetAlphaFunc(xe,/*(ar > 0.0f) ? XE_CMP_GREATEREQUAL :*/ XE_CMP_GREATER);
-	Xe_SetAlphaRef(xe,ar-0.001f); // simulate XE_CMP_GREATEREQUAL
+	Xe_SetAlphaRef(xe,ar-1.0f/255.0f); // simulate XE_CMP_GREATEREQUAL
 }
 
 static void BlendFunc(int src,int dst){
