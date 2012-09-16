@@ -136,8 +136,6 @@ u32 lastShaderIdx=0xffffffff;
 bool drawPrepared=false;
 bool hadTriangles=false;
 
-int rendered_frames_ratio=1;
-
 // used for double buffering
 struct XenosSurface * framebuffer[2] = {NULL};
 int curFB=0;
@@ -855,7 +853,6 @@ void xeGfx_start(){
 	pendingIndicesCount=0;
 	drawPrepared=false;
 	hadTriangles=false;
-	rendered_frames_ratio=1;
 	dpf=0;
 	prev_dpf=0;
     curFB=0;
@@ -890,13 +887,9 @@ void xeGfx_render()
 	frame_id++;
 	frames++;
     nowTick = mftb()/(PPC_TIMEBASE_FREQ/1000);
-    if (lastTick + 1000 <= nowTick) {
-		if (rendered_frames)
-			rendered_frames_ratio=(float)frames/(float)rendered_frames+0.5f;
-		else
-			rendered_frames_ratio=0;
-		
-	    printf("%d fps, rfr=%d, %d dpf\n",frames,rendered_frames_ratio,prev_dpf);
+    if (lastTick + 1000 <= nowTick)
+    {
+	    printf("%d fps, %d dpf\n",frames,prev_dpf);
 		
 		frames = 0;
 		rendered_frames = 0;
@@ -920,26 +913,12 @@ void xeGfx_render()
     Xe_VB_Unlock(xe,vertexBuffer);
 	Xe_IB_Unlock(xe,indexBuffer);
 
-//    Xe_Resolve(xe);
     Xe_ResolveInto(xe,framebuffer[curFB],XE_SOURCE_COLOR,0);
     Xe_Execute(xe); // render everything in background !
 	drawPrepared=false;
 	hadTriangles=false;
 	prev_dpf=dpf;
 	dpf=0;
-
-	if(use_framelimit){
-		static u32 last_rendered_frame=0;
-		static u64 last_rendered_tb=0;
-		u64 tb=0;
-
-		do{
-			tb=mftb();
-		}while((tb-last_rendered_tb)<PPC_TIMEBASE_FREQ*(frame_id-last_rendered_frame)/((getVideoSystem()==SYSTEM_PAL)?50:60));
-
-		last_rendered_tb=tb;	
-		last_rendered_frame=frame_id;
-	}
 }
 
 

@@ -46,7 +46,7 @@
 
 AUDIO_INFO AudioInfo;
 
-#define MAX_UNPLAYED 32768
+#define MAX_UNPLAYED 16384
 
 #define BUFFER_SIZE 65536
 static char buffer[BUFFER_SIZE];
@@ -59,12 +59,10 @@ static volatile enum { BUFFER_SIZE_32_60 = 2112, BUFFER_SIZE_48_60 = 3200,
               BUFFER_SIZE_32_50 = 2560, BUFFER_SIZE_48_50 = 3840 } buffer_size = 1024;
 
 
-static unsigned char thread_stack[0x10000];
+static unsigned char thread_stack[0x100000];
 
-static unsigned int thread_lock  __attribute__ ((aligned (128))) =0;
-static volatile void * thread_buffer=NULL;
+static volatile unsigned char thread_buffer[65536];
 static volatile int thread_bufsize=0;
-static int thread_bufmaxsize=0;
 static volatile int thread_terminate=0;
 
 
@@ -124,29 +122,6 @@ static void inline play_buffer(void){
 	xenon_sound_submit(buffer,buffer_size);
 }
 
-static void inline copy_to_buffer(int* buffer, int* stream, unsigned int length, unsigned int stream_length){
-//	printf("c2b %p %p %d %d\n",buffer,stream,length,stream_length);
-	// NOTE: length is in samples (stereo (2) shorts)
-	int di;
-	double si;
-	for(di = 0, si = 0.0f; di < length; ++di, si += freq_ratio){
-#if 1
-		// Linear interpolation between current and next sample
-		double t = si - floor(si);
-		short* osample  = (short*)(buffer + di);
-		short* isample1 = (short*)(stream + (int)si);
-		short* isample2 = (short*)(stream + (int)ceil(si));
-
-		// Left and right
-		osample[0] = (1.0f - t)*isample1[0] + t*isample2[0];
-		osample[1] = (1.0f - t)*isample1[1] + t*isample2[1];
-#else
-		// Quick and dirty resampling: skip over or repeat samples
-		buffer[di] = stream[(int)si];
-#endif
-	}
-}
-
 static s16 prevLastSample[2]={0,0};
 // resamples pStereoSamples (taken from http://pcsx2.googlecode.com/svn/trunk/plugins/zerospu2/zerospu2.cpp)
 void ResampleLinear(s16* pStereoSamples, s32 oldsamples, s16* pNewSamples, s32 newsamples)
@@ -181,99 +156,29 @@ static void inline add_to_buffer(void* stream, unsigned int length){
 	unsigned int lengthLeft = length >> 2;
 	unsigned int rlengthLeft = ceil(lengthLeft / freq_ratio);
 
-#if 1
-	//copy_to_buffer((int *)buffer, stream , rlengthLeft, lengthLeft);
 	ResampleLinear((s16 *)stream,lengthLeft,(s16 *)buffer,rlengthLeft);
 	buffer_size=rlengthLeft<<2;
 	play_buffer();
-#else
-	static unsigned int buffer_offset = 0;
-	// This shouldn't lose any data and works for any size
-	unsigned int stream_offset = 0;
-	// Length calculations are in samples (stereo (short) sample pairs)
-	unsigned int lengthi, rlengthi;
-
-	while(1){
-		rlengthi = (buffer_offset + (rlengthLeft << 2) <= buffer_size) ?
-		            rlengthLeft : ((buffer_size - buffer_offset) >> 2);
-		lengthi  = rlengthi * freq_ratio;
-		
-		//copy_to_buffer((int *)(buffer + buffer_offset), stream + stream_offset, rlengthi, lengthi);
-		ResampleLinear((s16 *)(stream + stream_offset),lengthi,(s16 *)(buffer + buffer_offset),rlengthi);
-		
-		if(buffer_offset + (rlengthLeft << 2) < buffer_size){
-			buffer_offset += rlengthi << 2;
-			return;
-		}
-
-		lengthLeft    -= lengthi;
-		stream_offset += lengthi << 2;
-		rlengthLeft   -= rlengthi;
-
-		play_buffer();
-
-#ifdef AIDUMP
-		if(AIdump)
-	    fwrite(&buffer[which_buffer][0],1,buffer_size,AIdump);
-#endif
-		buffer_offset = 0;
-	
-//		buffer_size = is_60Hz ? BUFFER_SIZE_48_60 : BUFFER_SIZE_48_50;
-	}
-#endif
 }
 
 
 static void thread_enqueue(void * buffer,int size)
 {
-	while(thread_bufsize);
-	
-	int k;
-	for(k=0;k<100;++k) asm volatile("nop");
-	
-	lock(&thread_lock);
-	
-	if(thread_bufmaxsize<size){
-		thread_bufmaxsize=size;
-		thread_buffer=realloc((void*)thread_buffer,thread_bufmaxsize);
-	}
+	while(thread_bufsize) asm volatile("db16cyc");
 	
 	thread_bufsize=size;
 	memcpy((void*)thread_buffer,buffer,thread_bufsize);
-	
-	unlock(&thread_lock);
 }
 
 static void thread_loop()
 {
-	static char local_buffer[0x10000];
-	int local_bufsize=0;
-	int k;
-
 	while(!thread_terminate){
-		lock(&thread_lock);
-
 		if (thread_bufsize){
-			local_bufsize=thread_bufsize;
-			if (local_bufsize>sizeof(local_buffer)) local_bufsize=sizeof(local_buffer);
-			memcpy(local_buffer,(void*)thread_buffer,local_bufsize);
-			thread_bufsize-=local_bufsize;
+			add_to_buffer((void*)thread_buffer,(unsigned int)thread_bufsize);
+			thread_bufsize=0;
 		}
-
-		unlock(&thread_lock);
-	
-		if (local_bufsize){
-//			printf("add_to_buffer %d\n",local_bufsize);
-			add_to_buffer(local_buffer,local_bufsize);
-			local_bufsize=0;
-		}
-		
-		for(k=0;k<100;++k) asm volatile("nop");
 	}
 }
-
-#define MIN_RATIO 2
-#define MAX_RATIO 4
 
 EXPORT void CALL
 AiLenChanged( void )
@@ -340,13 +245,10 @@ InitiateAudio( AUDIO_INFO Audio_Info )
 {
 	AudioInfo = Audio_Info;
 
-	thread_lock=0;
-	thread_buffer=NULL;
 	thread_bufsize=0;
-	thread_bufmaxsize=0;
 	thread_terminate=0;
 
-	xenon_run_thread_task(2,&thread_stack[sizeof(thread_stack)-0x100],thread_loop);
+	xenon_run_thread_task(2,&thread_stack[sizeof(thread_stack)-0x1000],thread_loop);
 	atexit(RomClosed);
     return TRUE;
 }
@@ -360,7 +262,6 @@ RomClosed( void )
 {
 	thread_terminate=1;
 	while(xenon_is_thread_task_running(2));
-//	AUDIO_StopDMA(); // So we don't have a buzzing sound when we exit the game
 }
 
 EXPORT void CALL
@@ -369,7 +270,6 @@ ProcessAlist( void )
 }
 
 void pauseAudio(void){
-//	AUDIO_StopDMA();
 }
 
 void resumeAudio(void){
