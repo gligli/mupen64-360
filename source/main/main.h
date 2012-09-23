@@ -29,6 +29,8 @@
 #  define PATH_MAX 1024
 #endif
 
+#define MUPEN_DIR "uda0:/mupen64-360/"
+
 extern int use_framelimit;
 extern char g_WorkingDir[];
 

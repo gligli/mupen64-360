@@ -2,3 +2,4 @@
 *.elf
 build
 netbeans/
+/files/compiled/*.bin

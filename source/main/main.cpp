@@ -35,8 +35,6 @@
 // main.c
 #define VERSION "0.96 Beta"
 
-#define MUPEN_DIR "uda0:/mupen64-360/"
-
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -67,7 +65,9 @@ extern "C" {
 #include <xenon_smc/xenon_smc.h>
 #include <time/time.h>
 #include <xenos/xe.h>
-#include "../xenos_gfx/Textures.h"
+#ifdef XENOS_GFX
+# include "../xenos_gfx/Textures.h"
+#endif
 #include "config.h"
 
 #undef X_OK
@@ -131,10 +131,12 @@ void ActionXell(void * unused) {
 }
 
 void SetEnhName(){
+#ifdef XENOS_GFX
 	if(cache.enable2xSaI)
         enh_action->name = "Texture enhancement: 2xSAI";
 	else
         enh_action->name = "Texture enhancement: None";
+#endif
 }
 
 void ActionAbout(void * other) {
@@ -175,7 +177,9 @@ void ActionAbout(void * other) {
 }
 
 void ActionToggleEnh(void * other) {
+#ifdef XENOS_GFX
 	cache.enable2xSaI=!cache.enable2xSaI;
+#endif
 	
 	SetEnhName();
 }

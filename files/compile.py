@@ -3,10 +3,8 @@ SCRIPT_VERSION="0.04"
 
 # things you might want to change for a new project
 
-DEBUG=0
-CONCURENT_COMPILES_COUNT=16
-SHADER_COMPILER="./rshadercompiler.exe"
-OUTPUT_ASM_FILE="../source/xenos_gfx/shaders.S"
+SHADER_COMPILER="./xenosc.exe"
+OUTPUT_ASM_FILE="../source/shaders.S"
 OUTPUT_DIR="./compiled"
 
 SHADER_DEFS= \
@@ -14,34 +12,34 @@ SHADER_DEFS= \
     # list of shader files
     [
         "vs.hlsl",
-        "/vs" # compiler command line args
+        "vs_3_0" # compiler command line args
     ],
     [
         "ps_fb.hlsl",
-        "/ps"
+        "ps_3_0"
     ],
     [
-        "ps_combiner_slow.hlsl",
-        "/ps"
+         "ps_combiner_slow.hlsl",
+         "ps_3_0"
     ],
-    [
-        "ps_combiner.hlsl",
-        "/ps",
-        [
-            # optional list of defines, with list of possible values per define
-            # each combination of those will be a new shader ...
-            ["NUM_COL_OPS ",[1,2,3,4]],
-            ["NUM_ALPHA_OPS ",[1,2,3,4]],
-            ["COL_OP0_B",[0,1]],
-            ["COL_OP1_B",[0,1]],
-            ["COL_OP2_B",[0,1]],
-            ["COL_OP3_B",[0,1]],
-            ["ALPHA_OP0_B",[0,1]],
-            ["ALPHA_OP1_B",[0,1]],
-            ["ALPHA_OP2_B",[0,1]],
-            ["ALPHA_OP3_B",[0,1]],
-        ]
-    ]
+#     [
+#         "ps_combiner.hlsl",
+#         "/ps",
+#         [
+#             # optional list of defines, with list of possible values per define
+#             # each combination of those will be a new shader ...
+#             ["NUM_COL_OPS ",[1,2,3,4]],
+#             ["NUM_ALPHA_OPS ",[1,2,3,4]],
+#             ["COL_OP0_B",[0,1]],
+#             ["COL_OP1_B",[0,1]],
+#             ["COL_OP2_B",[0,1]],
+#             ["COL_OP3_B",[0,1]],
+#             ["ALPHA_OP0_B",[0,1]],
+#             ["ALPHA_OP1_B",[0,1]],
+#             ["ALPHA_OP2_B",[0,1]],
+#             ["ALPHA_OP3_B",[0,1]],
+#         ]
+#     ]
 ]
 
 # things that shouldn't be changed  (code)
@@ -75,10 +73,7 @@ for shader in SHADER_DEFS:
 
         orifile=open(shader[0],"rb")
 
-        if DEBUG:
-            tmpfile=open('__tmp__.hlsl',"wb")
-        else:
-            tmpfile=tempfile.NamedTemporaryFile(delete=False);
+        tmpfile=open('__tmp__.hlsl',"wb")
 
         outname=OUTPUT_DIR+'/'+fn
 
@@ -96,21 +91,14 @@ for shader in SHADER_DEFS:
 
         out=os.tmpfile()
 
-        if DEBUG:
-            subprocess.call(SHADER_COMPILER+" \""+tmpfile.name+"\" \""+absoutname+"\" "+shader[1],stdout=out)
+        subprocess.call(SHADER_COMPILER+" \""+tmpfile.name+"\" "+shader[1]+" -o \""+absoutname+"\" ",stdout=out)
 
-            out.seek(0,0)
-            outs=out.read()
+        out.seek(0,0)
+        outs=out.read()
 
-            if not '- Compiled!' in  outs: # can't find something better ...
-                print outs
-                exit(1)
-        else:
-            compilertasks.append(subprocess.Popen(SHADER_COMPILER+" \""+tmpfile.name+"\" \""+absoutname+"\" "+shader[1],stdout=out))
-
-            while len(compilertasks)>=CONCURENT_COMPILES_COUNT:
-				compilertasks=filter(lambda ct:ct.poll()==None,compilertasks)
-				time.sleep(0.1)
+        if not '- Compiled!' in  outs: # can't find something better ...
+            print outs
+            exit(1)
 
         print outname
 

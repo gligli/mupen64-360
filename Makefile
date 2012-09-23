@@ -17,7 +17,9 @@ include $(DEVKITXENON)/rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/main source/memory source/r4300 source/r4300/ppc source/r4300/ppc/disasm source/rsp_hle-ppc source/xenos_audio source/xenos_gfx
+SOURCES		:=	source source/main source/memory source/r4300 source/r4300/ppc \
+			source/r4300/ppc/disasm source/rsp_hle-ppc source/xenos_audio \
+			source/rice-video source/rice-video/liblinux #source/xenos_gfx
 DATA		:=	  
 INCLUDES	:=	files
 
@@ -27,10 +29,10 @@ INCLUDES	:=	files
 
 MCHK = -Wl,-wrap,malloc  -Wl,-wrap,memalign -Wl,-wrap,realloc -Wl,-wrap,calloc -Wl,-wrap,free -DMCHK
 
-OPTIFLAGS =  -Ofast -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -flto -fuse-linker-plugin 
+OPTIFLAGS =  -Ofast -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 #-flto -fuse-linker-plugin 
 
 ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32
-CFLAGS	= $(OPTIFLAGS) -g -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DDEBUG_ -DUSE_RECOMP_CACHE -DUSE_EXPANSION -DFASTMEM 
+CFLAGS	= $(OPTIFLAGS) -g -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DDEBUG_ -DUSE_RECOMP_CACHE -DUSE_EXPANSION -DFASTMEM -DNO_ASM
 CXXFLAGS	=	$(CFLAGS)
 
 #MACHDEP_LD =  -DXENON -m32 -maltivec -fno-pic -mhard-float -L$(DEVKITXENON)/xenon/lib/32
