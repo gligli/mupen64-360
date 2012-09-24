@@ -379,6 +379,7 @@ void SetVIScales()
         uint32 end = *g_GraphicsInfo.VI_H_START_REG&0xFFFF;
         uint32 width = *g_GraphicsInfo.VI_WIDTH_REG;
         windowSetting.fViWidth = (end-start)*xscale;
+
         if( abs((int)(windowSetting.fViWidth - width) ) < 8 ) 
         {
             windowSetting.fViWidth = (float)width;
@@ -436,6 +437,7 @@ void SetVIScales()
 
         windowSetting.uViHeight = (unsigned short)(windowSetting.fViHeight/4);
         windowSetting.fViHeight = windowSetting.uViHeight *= 4;
+		
         uint16 optimizeHeight = (uint16)(windowSetting.uViWidth*status.fRatio);
         optimizeHeight &= ~3;
 
@@ -511,9 +513,6 @@ void DebugMessage(int level, const char *message, ...)
 {
   char msgbuf[1024];
   va_list args;
-
-  if (l_DebugCallback == NULL)
-      return;
 
   va_start(args, message);
   vsprintf(msgbuf, message, args);
@@ -711,7 +710,7 @@ EXPORT int CALL romOpen_gfx(void)
     if( debuggerPause )
     {
         debuggerPause = FALSE;
-        usleep(100 * 1000);
+        udelay(100 * 1000);
     }
 #endif
 

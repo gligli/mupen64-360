@@ -1,7 +1,9 @@
 #pragma once
 
+#include <time/time.h>
 #include <ppc/timebase.h>
 #include <xenos/xe.h>
+#include <debug.h>
 
 #include "GraphicsContext.h"
 #include "Render.h"
@@ -10,6 +12,7 @@
 #include "TextureManager.h"
 
 #define xe_GetTicks() (mftb()/(PPC_TIMEBASE_FREQ/1000))
+#define usleep(x) udelay(x)
 
 class CxeGraphicsContext : public CGraphicsContext
 {
@@ -148,10 +151,6 @@ protected:
     ~CxeColorCombiner();
 
     CxeRender *m_pxeRender;
-
-#ifdef DEBUGGER
-    void DisplaySimpleMuxString(void);
-#endif
 };
 
 class CxeBlender : public CBlender

@@ -601,27 +601,38 @@ bool CxeRender::RenderFlushTris()
 
     ApplyZBias(m_dwZBias);                    // set the bias factors
 
+/*TRI( windowSetting.uDisplayHeight)
+TRI( windowSetting.vpTopW)
+TRI(windowSetting.vpHeightW)
+TRI(windowSetting.statusBarHeightToUse)
+ */
     glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW, false);
-
-	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
-	Xe_SetShader(xe,SHADER_TYPE_VERTEX,sh_vs,0);
 
 	TVertex * v = (TVertex*) Xe_VB_Lock(xe,vertexBuffer,0,1000*sizeof(TVertex),XE_LOCK_WRITE);
 
 	int i;
 	for(i=0;i<1000;++i)
 	{
+#if 1
 		v[i].x=g_vtxProjected5[i][0];
 		v[i].y=g_vtxProjected5[i][1];
 		v[i].z=g_vtxProjected5[i][2];
 		v[i].w=g_vtxProjected5[i][3];
+#else
+		v[i].x=g_vtxTransformed[i].x;
+		v[i].y=g_vtxTransformed[i].y;
+		v[i].z=g_vtxTransformed[i].z;
+		v[i].w=g_vtxTransformed[i].w;
+#endif		
+/*		if(v[i].x!=0.0f || v[i].y!=0.0f)
+			printf("%.4f %.4f %.4f %.4f\n",v[i].x,v[i].y,v[i].z,v[i].w);*/
 		
 		v[i].u0=g_vtxBuffer[i].tcord[0].u;
 		v[i].v0=g_vtxBuffer[i].tcord[0].v;
 		v[i].u1=g_vtxBuffer[i].tcord[1].u;
 		v[i].v1=g_vtxBuffer[i].tcord[1].v;
 		
-		v[i].color=-1;//(u32&)g_oglVtxColors[i][0];
+		v[i].color=0xff0000ff;//(u32&)g_oglVtxColors[i][0];
 	}
 
 	Xe_VB_Unlock(xe,vertexBuffer);
@@ -633,19 +644,17 @@ bool CxeRender::RenderFlushTris()
 	for(i=0;i<1000;++i)
 	{
 		ind[i]=g_vtxIndex[i];
+/*		if(g_vtxIndex[i])
+			printf("%d\n",g_vtxIndex[i]);*/
 	}
 	
 	Xe_IB_Unlock(xe,indexBuffer);
 	
 	Xe_SetIndices(xe,indexBuffer);
 
-	Xe_SetZEnable(xe,0);
-	Xe_SetZWrite(xe,0);
-	Xe_SetAlphaTestEnable(xe,0);
-	Xe_SetBlendControl(xe,XE_BLEND_ONE,XE_BLENDOP_ADD,XE_BLEND_ZERO,XE_BLEND_ONE,XE_BLENDOP_ADD,XE_BLEND_ZERO);
-	Xe_SetFillMode(xe,XE_FILL_SOLID,XE_FILL_SOLID);
+	Xe_SetFillMode(xe,XE_FILL_WIREFRAME,XE_FILL_WIREFRAME);
 	Xe_SetCullMode(xe,XE_CULL_NONE);
-	
+
 	Xe_DrawIndexedPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST,0,0,gRSP.numVertices,0,gRSP.numVertices/3);
 
     if( !m_bSupportFogCoordExt )    
@@ -827,8 +836,8 @@ void CxeRender::SetViewportRender()
     glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW);
 }
 
-#define NEAR (-10.0)
-#define FAR  (10.0)
+#define NEAR (-1.0)
+#define FAR  (1.0)
 
 void CxeRender::RenderReset()
 {
@@ -1091,7 +1100,7 @@ void CxeRender::glViewportWrapper(int x, int y, int width, int height, bool flag
         m_height=height;
         mflag=flag;
 		
-		printf("glViewportWrapper %d %d %d %d %d %d %d\n",x,y,width,height,windowSetting.uDisplayWidth,windowSetting.uDisplayHeight,flag);
+//		printf("glViewportWrapper %d %d %d %d %d %d %d\n",x,y,width,height,windowSetting.uDisplayWidth,windowSetting.uDisplayHeight,flag);
 		
 		float ortho[4][4] = {
 			{2.0f/windowSetting.uDisplayWidth,0,0,-1},

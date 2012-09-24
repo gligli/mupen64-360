@@ -1841,7 +1841,6 @@ void CRender::UpdateClipRectangle()
         gRSP.clip_ratio_bottom = centery + halfy * gRSP.clip_ratio_posy;
     }
 
-
     UpdateScissorWithClipRatio();
 }
 

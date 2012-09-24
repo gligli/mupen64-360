@@ -39,8 +39,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define INI_FILE        MUPEN_DIR "RiceVideoLinux.ini"
 
+#if 0
 static void* l_ConfigVideoRice = NULL;
 static void* l_ConfigVideoGeneral = NULL;
+#endif
 
 static int FindIniEntry(uint32 dwCRC1, uint32 dwCRC2, uint8 nCountryID, char* szName, int PrintInfo); 
 
@@ -125,7 +127,7 @@ const char *screenUpdateSettings[] =
 "At VI origin update after screen is drawn (default)",
 };
 
-WindowSettingStruct windowSetting;
+WindowSettingStruct windowSetting = {0};
 GlobalOptions options;
 RomOptions defaultRomOptions;
 RomOptions currentRomOptions;

@@ -346,6 +346,7 @@
               <pElem>../../../libsrc/zlib-1.2.5</pElem>
             </incDir>
             <preprocessorList>
+              <Elem>DEBUGGER</Elem>
               <Elem>FASTMEM</Elem>
               <Elem>_BIG_ENDIAN</Elem>
               <Elem>__BIG_ENDIAN__</Elem>
@@ -353,6 +354,7 @@
           </cTool>
           <ccTool>
             <preprocessorList>
+              <Elem>DEBUGGER</Elem>
               <Elem>FASTMEM</Elem>
               <Elem>_BIG_ENDIAN</Elem>
               <Elem>__BIG_ENDIAN__</Elem>

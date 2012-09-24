@@ -22,6 +22,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "wintypes.h"
 #include "Zilmar GFX 1.3.h"
 
+#include "Debugger.h"
+#include "Video.h"
+#include "Render.h"
+#include "DeviceBuilder.h"
+#include "FrameBuffer.h"
+
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include "GraphicsContext.h"
+
 #ifndef DEBUGGER
 void __cdecl DebuggerAppendMsg(const char * Message, ...) {}
 
@@ -571,7 +583,7 @@ void __cdecl DebuggerAppendMsg(const char * Message, ...)
     vsprintf( Msg, Message, ap );
     va_end( ap );
     
-    if( Msg[strlen(Msg)-1]!='\n' ) strcat(Msg,"\n");
+//    if( Msg[strlen(Msg)-1]!='\n' ) strcat(Msg,"\n");
 
     if( logToScreen )
     {

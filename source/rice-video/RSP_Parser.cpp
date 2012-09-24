@@ -692,14 +692,14 @@ uint32 DLParser_CheckUcode(uint32 ucStart, uint32 ucDStart, uint32 ucSize, uint3
         for ( uint32 i = 0; i < 0x1000; i++ )
         {
 
-            if ( g_pRDRAMs8[ base + ((i+0) ^ 3) ] == 'R' &&
-                g_pRDRAMs8[ base + ((i+1) ^ 3) ] == 'S' &&
-                g_pRDRAMs8[ base + ((i+2) ^ 3) ] == 'P' )
+            if ( g_pRDRAMs8[ base + ((i+0)) ] == 'R' &&
+                g_pRDRAMs8[ base + ((i+1)) ] == 'S' &&
+                g_pRDRAMs8[ base + ((i+2)) ] == 'P' )
             {
                 unsigned char * p = str;
-                while ( g_pRDRAMs8[ base + (i ^ 3) ] >= ' ')
+                while ( g_pRDRAMs8[ base + (i) ] >= ' ')
                 {
-                    *p++ = g_pRDRAMs8[ base + (i ^ 3) ];
+                    *p++ = g_pRDRAMs8[ base + (i) ];
                     i++;
                 }
                 *p++ = 0;
@@ -1725,7 +1725,7 @@ static void make_crc_table()
 }
 
 /* ========================================================================= */
-#define DO1(buf) crc = crc_table[((int)crc ^ (*buf++)) & 0xff] ^ (crc >> 8);
+#define DO1(buf) crc = crc_table[((int)crc ^ (buf[(bufpos++)^3])) & 0xff] ^ (crc >> 8);
 #define DO2(buf)  DO1(buf); DO1(buf);
 #define DO4(buf)  DO2(buf); DO2(buf);
 #define DO8(buf)  DO4(buf); DO4(buf);
@@ -1734,6 +1734,8 @@ static void make_crc_table()
 unsigned int ComputeCRC32(unsigned int crc, const uint8 *buf, unsigned int len)
 {
     if (buf == NULL) return 0L;
+	
+	unsigned int bufpos=0;
 
     if (crc_table_empty)
       make_crc_table();
