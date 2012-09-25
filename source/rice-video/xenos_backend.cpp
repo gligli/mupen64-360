@@ -9,6 +9,7 @@
 
 #include <zlx/zlx.h>
 #include <debug.h>
+#include <byteswap.h>
 
 extern Matrix g_MtxReal;
 extern uObjMtxReal gObjMtxReal;
@@ -20,8 +21,10 @@ extern uObjMtxReal gObjMtxReal;
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
-#define MAX_VERTEX_COUNT 4096
-#define MAX_INDICE_COUNT 4096
+#define MAX_VERTEX_COUNT 16384
+
+#define NEAR (-10.0)
+#define FAR  (10.0)
 
 #if 0
 const struct XenosVBFFormat VertexBufferFormat = {
@@ -51,16 +54,22 @@ typedef struct
 	float x,y,z,w;
 	float u0,v0;
 	float u1,v1;
-    unsigned int color;
+	union
+	{
+		unsigned long color;
+		struct
+		{
+			u8 a;
+			u8 r;
+			u8 g;
+			u8 b;
+		};
+	};
 } TVertex;
-
-typedef u16 TIndice;
 
 struct XenosDevice *xe;
 struct XenosShader *sh_ps_fb, *sh_vs;
 struct XenosVertexBuffer *vertexBuffer;
-
-struct XenosIndexBuffer *indexBuffer;
 
 extern u32 vs_table_count;
 extern void * vs_data_table[];
@@ -78,6 +87,46 @@ extern u32 ps_fb_indices[];
 struct XenosSurface * framebuffer[2] = {NULL};
 int curFB=0;
 
+bool needSync=false;
+bool hadTriangles=false;
+bool drawPrepared=false;
+int prevVertexCount=0;
+
+TVertex * firstVertex;
+TVertex * currentVertex;
+
+int vertexCount()
+{
+    return currentVertex-firstVertex;
+}
+
+void resetLockVB()
+{
+	Xe_SetStreamSource(xe, 0, vertexBuffer, 0, 4);
+	firstVertex=currentVertex=(TVertex *)Xe_VB_Lock(xe,vertexBuffer,0,MAX_VERTEX_COUNT*sizeof(TVertex),XE_LOCK_WRITE);
+	prevVertexCount=0;
+}
+
+void nextVertex()
+{
+	++currentVertex;
+	
+    if (vertexCount()>=MAX_VERTEX_COUNT)
+	{
+		printf("[rice_xenos] too many vertices !\n");
+		exit(1);
+    }
+}
+
+void drawVB()
+{
+	if (vertexCount()>prevVertexCount)
+	{
+		Xe_DrawPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST,0,vertexCount()/3);
+        prevVertexCount=vertexCount();
+		hadTriangles=true;
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // CxeGraphicsContext
@@ -96,47 +145,54 @@ CxeGraphicsContext::~CxeGraphicsContext()
 bool CxeGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed )
 {
 	static int done=0;
-    
-    if(done) return true;
 
 	xe = ZLX::g_pVideoDevice;
 
-	/* initialize the GPU */
-
     XenosSurface * fb = Xe_GetFramebufferSurface(xe);
-	Xe_SetRenderTarget(xe, fb);
-	Xe_InvalidateState(xe);
-	Xe_SetClearColor(xe,0);
-	
-    /* load pixel shaders */
 
-    assert(ps_fb_table_count==1 && ps_fb_indice_count==1);
-    sh_ps_fb = Xe_LoadShaderFromMemory(xe, ps_fb_data_table[0]);
-    Xe_InstantiateShader(xe, sh_ps_fb, 0);
+    windowSetting.uDisplayWidth = fb->width;
+    windowSetting.uDisplayHeight = fb->height;
 
-    /* load vertex shader */
+	drawPrepared=false;
+	needSync=false;
+	hadTriangles=false;
 
-    assert(vs_table_count==1 && vs_indice_count==1);
-    sh_vs = Xe_LoadShaderFromMemory(xe, vs_data_table[0]);
-    Xe_InstantiateShader(xe, sh_vs, 0);
-    Xe_ShaderApplyVFetchPatches(xe, sh_vs, 0, &VertexBufferFormat);
+    if(!done)
+	{
 
-    vertexBuffer = Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
-    indexBuffer = Xe_CreateIndexBuffer(xe, MAX_INDICE_COUNT*sizeof(TIndice),XE_FMT_INDEX16);
+		/* initialize the GPU */
 
-    // Create surface for double buffering
-    framebuffer[0] = Xe_CreateTexture(xe, fb->width, fb->height, 0, XE_FMT_8888 | XE_FMT_BGRA, 1);
-    framebuffer[1] = Xe_CreateTexture(xe, fb->width, fb->height, 0, XE_FMT_8888 | XE_FMT_BGRA, 1);        
+		Xe_SetRenderTarget(xe, fb);
+		Xe_InvalidateState(xe);
+		Xe_SetClearColor(xe,0);
 
-    done=1;
-    
+		/* load pixel shaders */
+
+		assert(ps_fb_table_count==1 && ps_fb_indice_count==1);
+		sh_ps_fb = Xe_LoadShaderFromMemory(xe, ps_fb_data_table[0]);
+		Xe_InstantiateShader(xe, sh_ps_fb, 0);
+
+		/* load vertex shader */
+
+		assert(vs_table_count==1 && vs_indice_count==1);
+		sh_vs = Xe_LoadShaderFromMemory(xe, vs_data_table[0]);
+		Xe_InstantiateShader(xe, sh_vs, 0);
+		Xe_ShaderApplyVFetchPatches(xe, sh_vs, 0, &VertexBufferFormat);
+
+		vertexBuffer = Xe_CreateVertexBuffer(xe,MAX_VERTEX_COUNT*sizeof(TVertex));
+
+		// Create surface for double buffering
+		framebuffer[0] = Xe_CreateTexture(xe, fb->width, fb->height, 0, XE_FMT_8888 | XE_FMT_BGRA, 1);
+		framebuffer[1] = Xe_CreateTexture(xe, fb->width, fb->height, 0, XE_FMT_8888 | XE_FMT_BGRA, 1);        
+
+		done=1;
+	}
     return true;
 }
 
 
 void CxeGraphicsContext::InitState(void)
 {
-	
 }
 
 void CxeGraphicsContext::InitOGLExtension(void)
@@ -159,7 +215,6 @@ bool CxeGraphicsContext::IsWglExtensionSupported(const char* pExtName)
 void CxeGraphicsContext::CleanUp()
 {
     if (vertexBuffer->lock.start) Xe_VB_Unlock(xe,vertexBuffer);
-	if (indexBuffer->lock.start) Xe_IB_Unlock(xe,indexBuffer);
 	Xe_SetScissor(xe,0,0,0,0,0);
     Xe_SetFrameBufferSurface(xe,&xe->default_fb);
     Xe_SetRenderTarget(xe,&xe->default_fb);
@@ -171,22 +226,28 @@ void CxeGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
     if( dwFlags&CLEAR_COLOR_BUFFER )    flag |= XE_CLEAR_COLOR;
     if( dwFlags&CLEAR_DEPTH_BUFFER )    flag |= XE_CLEAR_DS;
 
-TRI(flag)    
-    
-    Xe_SetClearColor(xe,__builtin_bswap32(color));
-    Xe_Clear(xe,flag);
-	Xe_Sync(xe);
+	Xe_SetClearColor(xe,color);
+	Xe_Clear(xe,flag);
 }
 
 void CxeGraphicsContext::UpdateFrame(bool swaponly)
 {
 	status.gFrameCount++;
 
-	if(!swaponly)
+	if(!swaponly && hadTriangles && drawPrepared)
 	{
-		Xe_ResolveInto(xe,framebuffer[curFB],XE_SOURCE_COLOR,0);
+		Xe_VB_Unlock(xe,vertexBuffer);
+
+		Xe_ResolveInto(xe,xe->rt,XE_SOURCE_COLOR,0);
 		Xe_Execute(xe); // render everything in background !
+		
+#if 1
 		Xe_Sync(xe);
+#else
+		needSync=true;
+#endif
+		
+		drawPrepared=false;
 	}
 }
 
@@ -264,7 +325,7 @@ bool CxeRender::ClearDeviceObjects()
 
 void CxeRender::Initialize(void)
 {
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 }
 
 void CxeRender::ApplyTextureFilter()
@@ -284,32 +345,28 @@ void CxeRender::ZBufferEnable(BOOL bZBuffer)
         bZBuffer = TRUE;
     if( bZBuffer )
     {
-        Xe_SetZWrite(xe,1);
+        Xe_SetZEnable(xe,1);
 		Xe_SetZFunc(xe,XE_CMP_LESSEQUAL);
     }
     else
     {
-        Xe_SetZWrite(xe,0);
+        Xe_SetZEnable(xe,0);
 		Xe_SetZFunc(xe,XE_CMP_ALWAYS);
     }
 }
 
 void CxeRender::ClearBuffer(bool cbuffer, bool zbuffer)
 {
-    uint32 flag=0;
-    if( cbuffer )    flag |= XE_CLEAR_COLOR;
-    if( zbuffer )    flag |= XE_CLEAR_DS;
+    int flag=0;
+    if( cbuffer )    flag |= CLEAR_COLOR_BUFFER;
+    if( zbuffer )    flag |= CLEAR_DEPTH_BUFFER;
 
-TRI(flag)    
-    
-    Xe_Clear(xe,flag);
-	Xe_Sync(xe);
+	CGraphicsContext::Get()->Clear((ClearFlag)flag,0,1.0);
 }
 
 void CxeRender::ClearZBuffer(float depth)
 {
-    Xe_Clear(xe,XE_CLEAR_DS);
-	Xe_Sync(xe);
+	CGraphicsContext::Get()->Clear(CLEAR_DEPTH_BUFFER,0,depth);
 }
 
 void CxeRender::SetZCompare(BOOL bZCompare)
@@ -379,7 +436,8 @@ void CxeRender::ForceAlphaRef(uint32 dwAlpha)
 
 void CxeRender::SetFillMode(FillMode mode)
 {
-    if( mode == RICE_FILLMODE_WINFRAME )
+/*
+	if( mode == RICE_FILLMODE_WINFRAME )
     {
         Xe_SetFillMode(xe,XE_FILL_WIREFRAME,XE_FILL_WIREFRAME);
     }
@@ -387,6 +445,7 @@ void CxeRender::SetFillMode(FillMode mode)
     {
         Xe_SetFillMode(xe,XE_FILL_SOLID,XE_FILL_SOLID);
     }
+*/
 }
 
 void CxeRender::SetCullMode(bool bCullFront, bool bCullBack)
@@ -499,15 +558,85 @@ void CxeRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
 
 bool CxeRender::RenderTexRect()
 {
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+//return true;
+
+	glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
+
+    float depth = -(g_texRectTVtx[3].z*2-1);;
+
+	currentVertex->x=g_texRectTVtx[0].x;
+	currentVertex->y=g_texRectTVtx[0].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=g_texRectTVtx[0].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[0].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[0].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[0].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[0].tcord[1].v;
+	nextVertex();
+
+	currentVertex->x=g_texRectTVtx[1].x;
+	currentVertex->y=g_texRectTVtx[1].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=g_texRectTVtx[1].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[1].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[1].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[1].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[1].tcord[1].v;
+	nextVertex();
+	
+	currentVertex->x=g_texRectTVtx[2].x;
+	currentVertex->y=g_texRectTVtx[2].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=g_texRectTVtx[2].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[2].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[2].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[2].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[2].tcord[1].v;
+	nextVertex();
+
+	currentVertex->x=g_texRectTVtx[0].x;
+	currentVertex->y=g_texRectTVtx[0].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=g_texRectTVtx[0].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[0].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[0].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[0].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[0].tcord[1].v;
+	nextVertex();
+
+	currentVertex->x=g_texRectTVtx[2].x;
+	currentVertex->y=g_texRectTVtx[2].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=g_texRectTVtx[2].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[2].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[2].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[2].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[2].tcord[1].v;
+	nextVertex();
+	
+	currentVertex->x=g_texRectTVtx[3].x;
+	currentVertex->y=g_texRectTVtx[3].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=g_texRectTVtx[3].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[3].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[3].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[3].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[3].tcord[1].v;
+	nextVertex();
+	
+	drawVB();
 
 #if 0	
     glBegin(GL_TRIANGLE_FAN);
 	
-    float depth = -(g_texRectTVtx[3].z*2-1);
-
     glColor4f(g_texRectTVtx[3].r, g_texRectTVtx[3].g, g_texRectTVtx[3].b, g_texRectTVtx[3].a);
     TexCoord(g_texRectTVtx[3]);
     glVertex3f(g_texRectTVtx[3].x, g_texRectTVtx[3].y, depth);
@@ -535,13 +664,61 @@ bool CxeRender::RenderTexRect()
 
 bool CxeRender::RenderFillRect(uint32 dwColor, float depth)
 {
-    float a = (dwColor>>24)/255.0f;
-    float r = ((dwColor>>16)&0xFF)/255.0f;
-    float g = ((dwColor>>8)&0xFF)/255.0f;
-    float b = (dwColor&0xFF)/255.0f;
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+	glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
+	
+	depth=1.0f-depth;
+
+	currentVertex->x=m_fillRectVtx[0].x;
+	currentVertex->y=m_fillRectVtx[0].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=dwColor;
+	currentVertex->u0=currentVertex->u1=currentVertex->v0=currentVertex->v1=0.0;
+	nextVertex();
+
+	currentVertex->x=m_fillRectVtx[1].x;
+	currentVertex->y=m_fillRectVtx[0].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=dwColor;
+	currentVertex->u0=currentVertex->u1=currentVertex->v0=currentVertex->v1=0.0;
+	nextVertex();
+	
+	currentVertex->x=m_fillRectVtx[1].x;
+	currentVertex->y=m_fillRectVtx[1].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=dwColor;
+	currentVertex->u0=currentVertex->u1=currentVertex->v0=currentVertex->v1=0.0;
+	nextVertex();
+
+	currentVertex->x=m_fillRectVtx[0].x;
+	currentVertex->y=m_fillRectVtx[0].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=dwColor;
+	currentVertex->u0=currentVertex->u1=currentVertex->v0=currentVertex->v1=0.0;
+	nextVertex();
+
+	currentVertex->x=m_fillRectVtx[1].x;
+	currentVertex->y=m_fillRectVtx[1].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=dwColor;
+	currentVertex->u0=currentVertex->u1=currentVertex->v0=currentVertex->v1=0.0;
+	nextVertex();
+	
+	currentVertex->x=m_fillRectVtx[0].x;
+	currentVertex->y=m_fillRectVtx[1].y;
+	currentVertex->z=depth;
+	currentVertex->w=1.0;
+	currentVertex->color=dwColor;
+	currentVertex->u0=currentVertex->u1=currentVertex->v0=currentVertex->v1=0.0;
+	nextVertex();
+	
+	drawVB();
 
 #if 0	
     glBegin(GL_TRIANGLE_FAN);
@@ -601,62 +778,37 @@ bool CxeRender::RenderFlushTris()
 
     ApplyZBias(m_dwZBias);                    // set the bias factors
 
-/*TRI( windowSetting.uDisplayHeight)
-TRI( windowSetting.vpTopW)
-TRI(windowSetting.vpHeightW)
-TRI(windowSetting.statusBarHeightToUse)
- */
-    glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW, false);
+    glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW, true);
 
-	TVertex * v = (TVertex*) Xe_VB_Lock(xe,vertexBuffer,0,1000*sizeof(TVertex),XE_LOCK_WRITE);
-
-	int i;
-	for(i=0;i<1000;++i)
+	u32 i;
+	u32 nvr=gRSP.numVertices;
+	
+//	Xe_SetFillMode(xe,XE_FILL_WIREFRAME,XE_FILL_WIREFRAME);
+	
+	for(i=0;i<nvr;++i)
 	{
-#if 1
-		v[i].x=g_vtxProjected5[i][0];
-		v[i].y=g_vtxProjected5[i][1];
-		v[i].z=g_vtxProjected5[i][2];
-		v[i].w=g_vtxProjected5[i][3];
-#else
-		v[i].x=g_vtxTransformed[i].x;
-		v[i].y=g_vtxTransformed[i].y;
-		v[i].z=g_vtxTransformed[i].z;
-		v[i].w=g_vtxTransformed[i].w;
-#endif		
-/*		if(v[i].x!=0.0f || v[i].y!=0.0f)
-			printf("%.4f %.4f %.4f %.4f\n",v[i].x,v[i].y,v[i].z,v[i].w);*/
+		currentVertex->x=g_vtxBuffer[i].x;
+		currentVertex->y=g_vtxBuffer[i].y;
+		currentVertex->z=g_vtxBuffer[i].z;
+		currentVertex->w=1.0f;//g_vtxBuffer[i].rhw;
 		
-		v[i].u0=g_vtxBuffer[i].tcord[0].u;
-		v[i].v0=g_vtxBuffer[i].tcord[0].v;
-		v[i].u1=g_vtxBuffer[i].tcord[1].u;
-		v[i].v1=g_vtxBuffer[i].tcord[1].v;
+		currentVertex->u0=g_vtxBuffer[i].tcord[0].u;
+		currentVertex->v0=g_vtxBuffer[i].tcord[0].v;
+		currentVertex->u1=g_vtxBuffer[i].tcord[1].u;
+		currentVertex->v1=g_vtxBuffer[i].tcord[1].v;
 		
-		v[i].color=0xff0000ff;//(u32&)g_oglVtxColors[i][0];
+		currentVertex->r=g_vtxBuffer[i].r;
+		currentVertex->g=g_vtxBuffer[i].g;
+		currentVertex->b=g_vtxBuffer[i].b;
+		currentVertex->a=g_vtxBuffer[i].a;
+		
+//		printf("%.3f %.3f %.3f %.3f\n",currentVertex->x,currentVertex->y,currentVertex->z,currentVertex->w);
+		
+		nextVertex();
 	}
 
-	Xe_VB_Unlock(xe,vertexBuffer);
+	drawVB();
 	
-	Xe_SetStreamSource(xe,0,vertexBuffer,0,0);
-
-	TIndice * ind = (TIndice*) Xe_IB_Lock(xe,indexBuffer,0,1000*sizeof(TIndice),XE_LOCK_WRITE);
-
-	for(i=0;i<1000;++i)
-	{
-		ind[i]=g_vtxIndex[i];
-/*		if(g_vtxIndex[i])
-			printf("%d\n",g_vtxIndex[i]);*/
-	}
-	
-	Xe_IB_Unlock(xe,indexBuffer);
-	
-	Xe_SetIndices(xe,indexBuffer);
-
-	Xe_SetFillMode(xe,XE_FILL_WIREFRAME,XE_FILL_WIREFRAME);
-	Xe_SetCullMode(xe,XE_CULL_NONE);
-
-	Xe_DrawIndexedPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST,0,0,gRSP.numVertices,0,gRSP.numVertices/3);
-
     if( !m_bSupportFogCoordExt )    
         RestoreFogFlag();
     else
@@ -671,7 +823,9 @@ TRI(windowSetting.statusBarHeightToUse)
 
 void CxeRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)
 {
-    if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
+//return;
+
+	if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
         CGraphicsContext::Get()->UpdateFrame();
@@ -682,8 +836,76 @@ void CxeRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
 	
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
+	currentVertex->x=g_texRectTVtx[0].x;
+	currentVertex->y=g_texRectTVtx[0].y;
+	currentVertex->z=-g_texRectTVtx[0].z;
+	currentVertex->w=rhw;
+	currentVertex->color=g_texRectTVtx[0].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[0].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[0].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[0].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[0].tcord[1].v;
+	nextVertex();
+
+	currentVertex->x=g_texRectTVtx[1].x;
+	currentVertex->y=g_texRectTVtx[1].y;
+	currentVertex->z=-g_texRectTVtx[1].z;
+	currentVertex->w=rhw;
+	currentVertex->color=g_texRectTVtx[1].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[1].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[1].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[1].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[1].tcord[1].v;
+	nextVertex();
+	
+	currentVertex->x=g_texRectTVtx[2].x;
+	currentVertex->y=g_texRectTVtx[2].y;
+	currentVertex->z=-g_texRectTVtx[2].z;
+	currentVertex->w=rhw;
+	currentVertex->color=g_texRectTVtx[2].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[2].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[2].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[2].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[2].tcord[1].v;
+	nextVertex();
+
+	currentVertex->x=g_texRectTVtx[0].x;
+	currentVertex->y=g_texRectTVtx[0].y;
+	currentVertex->z=-g_texRectTVtx[0].z;
+	currentVertex->w=rhw;
+	currentVertex->color=g_texRectTVtx[0].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[0].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[0].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[0].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[0].tcord[1].v;
+	nextVertex();
+
+	currentVertex->x=g_texRectTVtx[2].x;
+	currentVertex->y=g_texRectTVtx[2].y;
+	currentVertex->z=-g_texRectTVtx[2].z;
+	currentVertex->w=rhw;
+	currentVertex->color=g_texRectTVtx[2].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[2].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[2].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[2].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[2].tcord[1].v;
+	nextVertex();
+	
+	currentVertex->x=g_texRectTVtx[3].x;
+	currentVertex->y=g_texRectTVtx[3].y;
+	currentVertex->z=-g_texRectTVtx[3].z;
+	currentVertex->w=rhw;
+	currentVertex->color=g_texRectTVtx[3].dcDiffuse;
+	currentVertex->u0=g_texRectTVtx[3].tcord[0].u;
+	currentVertex->v0=g_texRectTVtx[3].tcord[0].v;
+	currentVertex->u1=g_texRectTVtx[3].tcord[1].u;
+	currentVertex->v1=g_texRectTVtx[3].tcord[1].v;
+	nextVertex();
+	
+	drawVB();
+	
 #if 0    
 	OPENGL_CHECK_ERRORS;
 
@@ -721,9 +943,57 @@ void CxeRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
 
 void CxeRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor, float depth, float rhw)
 {
+//return;
+
     StartDrawSimpleRect(nX0, nY0, nX1, nY1, dwColor, depth, rhw);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
+
+    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
+
+	currentVertex->x=m_simpleRectVtx[0].x;
+	currentVertex->y=m_simpleRectVtx[0].y;
+	currentVertex->z=-depth;
+	currentVertex->w=rhw;
+	currentVertex->color=dwColor;
+	nextVertex();
+
+	currentVertex->x=m_simpleRectVtx[1].x;
+	currentVertex->y=m_simpleRectVtx[0].y;
+	currentVertex->z=-depth;
+	currentVertex->w=rhw;
+	currentVertex->color=dwColor;
+	nextVertex();
+	
+	currentVertex->x=m_simpleRectVtx[1].x;
+	currentVertex->y=m_simpleRectVtx[1].y;
+	currentVertex->z=-depth;
+	currentVertex->w=rhw;
+	currentVertex->color=dwColor;
+	nextVertex();
+
+	currentVertex->x=m_simpleRectVtx[0].x;
+	currentVertex->y=m_simpleRectVtx[0].y;
+	currentVertex->z=-depth;
+	currentVertex->w=rhw;
+	currentVertex->color=dwColor;
+	nextVertex();
+
+	currentVertex->x=m_simpleRectVtx[1].x;
+	currentVertex->y=m_simpleRectVtx[1].y;
+	currentVertex->z=-depth;
+	currentVertex->w=rhw;
+	currentVertex->color=dwColor;
+	nextVertex();
+	
+	currentVertex->x=m_simpleRectVtx[0].x;
+	currentVertex->y=m_simpleRectVtx[1].y;
+	currentVertex->z=-depth;
+	currentVertex->w=rhw;
+	currentVertex->color=dwColor;
+	nextVertex();
+	
+	drawVB();
 
 #if 0    
     glBegin(GL_TRIANGLE_FAN);
@@ -753,7 +1023,7 @@ void CxeRender::DrawText(const char* str, RECT *rect)
 
 void CxeRender::DrawSpriteR_Render()    // With Rotation
 {
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
 
@@ -833,17 +1103,17 @@ COLOR CxeRender::PostProcessSpecularColor()
 
 void CxeRender::SetViewportRender()
 {
-    glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW);
+    glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW,true);
 }
-
-#define NEAR (-1.0)
-#define FAR  (1.0)
 
 void CxeRender::RenderReset()
 {
     CRender::RenderReset();
 
-//	Xe_Sync(xe); // wait for background render to finish !
+	if (drawPrepared) return;
+
+	if(needSync)
+		Xe_Sync(xe); // wait for background render to finish !
 
     Xe_SetFrameBufferSurface(xe,framebuffer[curFB]);
     curFB=1-curFB;
@@ -854,14 +1124,15 @@ void CxeRender::RenderReset()
 	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
 	Xe_SetShader(xe,SHADER_TYPE_VERTEX,sh_vs,0);
 
-	float ortho[4][4] = {
-        {2.0f/windowSetting.uDisplayWidth,0,0,-1},
-        {0,-2.0f/windowSetting.uDisplayHeight,0,1},
-	    {0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
-	    {0,0,0,1},
-    };
-
-    Xe_SetVertexShaderConstantF(xe,4,(float*)ortho,4);
+	drawPrepared=true;
+	hadTriangles=false;
+	resetLockVB();
+	
+    for( int i=0; i<8; i++ )
+    {
+        m_curBoundTex[i]=0;
+        m_texUnitEnabled[i]=FALSE;
+    }
 }
 
 void CxeRender::SetAlphaTestEnable(BOOL bAlphaTestEnable)
@@ -888,7 +1159,7 @@ void CxeRender::BindTexture(struct XenosSurface *tex, int unitno)
 #endif
     if( m_curBoundTex[unitno] != tex )
     {
-        Xe_SetTexture(xe,unitno,tex);
+		Xe_SetTexture(xe,unitno,tex);
         m_curBoundTex[unitno] = tex;
     }
 }
@@ -1086,43 +1357,50 @@ void CxeRender::EndRendering(void)
         CRender::gRenderReferenceCount--;
 }
 
-void CxeRender::glViewportWrapper(int x, int y, int width, int height, bool flag)
+void CxeRender::glViewportWrapper(int x, int y, int width, int height, bool ortho)
 {
     static int mx=0,my=0;
     static int m_width=0, m_height=0;
     static bool mflag=true;
 
-//    if( x!=mx || y!=my || width!=m_width || height!=m_height || mflag!=flag)
+    if( x!=mx || y!=my || width!=m_width || height!=m_height || mflag!=ortho)
     {
         mx=x;
         my=y;
         m_width=width;
         m_height=height;
-        mflag=flag;
+        mflag=ortho;
 		
-//		printf("glViewportWrapper %d %d %d %d %d %d %d\n",x,y,width,height,windowSetting.uDisplayWidth,windowSetting.uDisplayHeight,flag);
+//		printf("glViewportWrapper %d %d %d %d %d %d %d\n",x,y,width,height,windowSetting.uDisplayWidth,windowSetting.uDisplayHeight,ortho);
 		
-		float ortho[4][4] = {
+		float ortho_matrix[4][4] = {
 			{2.0f/windowSetting.uDisplayWidth,0,0,-1},
 			{0,-2.0f/windowSetting.uDisplayHeight,0,1},
 			{0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
 			{0,0,0,1},
 		};
-
-		Xe_SetVertexShaderConstantF(xe,4,(float*)ortho,4);
-		
-		
-		float persp[4][4] = {
+/*
+		float persp_matrix[4][4] = {
 			{width,0,0,2*x+width-1.0f},
 			{0,height,0,-2*y-height+1.0f},
 			{0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
 			{0,0,0,1},
 		};
-
-		Xe_SetVertexShaderConstantF(xe,0,(float*)persp,4);
-		
-		Xe_SetVertexShaderConstantB(xe,0,1);
-		Xe_SetVertexShaderConstantB(xe,1,flag);
+*/
+		float persp_matrix[4][4] = {
+			{2*NEAR/width,0,0,0},
+			{0,2*NEAR/height,0,0},
+			{0,0,FAR/(FAR-NEAR),NEAR*FAR/(NEAR-FAR)},
+			{0,0,1,0},
+		};
+		if (ortho)
+		{
+			Xe_SetVertexShaderConstantF(xe,0,(float*)ortho_matrix,4);
+		}
+		else
+		{
+			Xe_SetVertexShaderConstantF(xe,0,(float*)persp_matrix,4);
+		}
     }
 }
 
@@ -1136,7 +1414,7 @@ CxeColorCombiner::CxeColorCombiner(CRender *pRender)
 
     m_pDecodedMux = new DecodedMux;
     m_pDecodedMux->m_maxConstants = 0;
-    m_pDecodedMux->m_maxTextures = 1;
+    m_pDecodedMux->m_maxTextures = 2;
 	m_pxeRender=(CxeRender*)pRender;
 }
 
@@ -1266,7 +1544,7 @@ CxeTexture::CxeTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage) :
 
 	tex=Xe_CreateTexture(xe,m_dwCreatedTextureWidth,m_dwCreatedTextureHeight,0,XE_FMT_8888|XE_FMT_BGRA,0);
 	
-    m_pTexture = Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
+	m_pTexture = Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
 	Xe_Surface_Unlock(xe,tex);
 }
 
@@ -1281,8 +1559,6 @@ CxeTexture::~CxeTexture()
 
 bool CxeTexture::StartUpdate(DrawInfo *di)
 {
-	m_pTexture = Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
-
     di->dwHeight = (uint16)m_dwHeight;
     di->dwWidth = (uint16)m_dwWidth;
     di->dwCreatedHeight = m_dwCreatedTextureHeight;
@@ -1295,5 +1571,6 @@ bool CxeTexture::StartUpdate(DrawInfo *di)
 
 void CxeTexture::EndUpdate(DrawInfo *di)
 {
+	Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
 	Xe_Surface_Unlock(xe,tex);
 }

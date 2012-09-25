@@ -159,9 +159,9 @@ typedef struct {
     union {
         COLOR  dcDiffuse;
         struct {
-            uint8 b;
-            uint8 g;
             uint8 r;
+            uint8 g;
+            uint8 b;
             uint8 a;
         };
     };
@@ -174,9 +174,9 @@ typedef struct {
     union {
         COLOR  dcDiffuse;
         struct {
-            uint8 b;
-            uint8 g;
             uint8 r;
+            uint8 g;
+            uint8 b;
             uint8 a;
         };
     };
@@ -190,9 +190,9 @@ typedef struct {
     union {
         COLOR  dcDiffuse;
         struct {
-            uint8 b;
-            uint8 g;
             uint8 r;
+            uint8 g;
+            uint8 b;
             uint8 a;
         };
     };
@@ -217,9 +217,9 @@ typedef struct
     union {
         COLOR  dcDiffuse;
         struct {
-            uint8 b;
-            uint8 g;
             uint8 r;
+            uint8 g;
+            uint8 b;
             uint8 a;
         };
     };
@@ -280,29 +280,29 @@ typedef struct
 
 typedef struct
 {
-    char na;
-    char nz;    // b
-    char ny;    //g
     char nx;    //r
+    char ny;    //g
+    char nz;    // b
+    char na;
 }NormalStruct;
 
 typedef struct
 {
-    short y;
     short x;
+    short y;
     
-    short flag;
     short z;
+    short flag;
     
-    short tv;
     short tu;
+    short tv;
     
     union {
         struct {
-            uint8 a;
-            uint8 b;
-            uint8 g;
             uint8 r;
+            uint8 g;
+            uint8 b;
+            uint8 a;
         } rgba;
         NormalStruct norma;
     };
@@ -310,26 +310,25 @@ typedef struct
 
 typedef struct
 {
-    short y;
     short x;
+    short y;
     
-    uint8 a;
-    uint8 b;
     short z;
-    
-    uint8 g;
     uint8 r;
-    
+    uint8 g;
+
+    uint8 b;
+    uint8 a;
 } FiddledVtxDKR;
 
 typedef struct 
 {
+    short x;
     short y;
-    short   x;
-    uint16  cidx;
     short z;
-    short t;
+    uint16  cidx;
     short s;
+    short t;
 } N64VtxPD;
 
 class CTexture;

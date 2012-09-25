@@ -492,14 +492,14 @@ void TexRectToFrameBuffer_8b(uint32 dwXL, uint32 dwYL, uint32 dwXH, uint32 dwYH,
 
         for (uint32 x = 0; x < dwWidth; x++)
         {
-            if( (((y+dwTop)*dwDstPitch+x+dwLeft)^0x3) > maxOff )
+            if( (((y+dwTop)*dwDstPitch+x+dwLeft)) > maxOff )
             {
 #ifdef DEBUGGER
                 TRACE0("Warning: Offset exceeds limit");
 #endif
                 continue;
             }
-            dwDst[((y+dwTop)*dwDstPitch+x+dwLeft)^0x3] = dwSrc[(uint32)(dwByteOffset+x*xScale) ^ 0x3];
+            dwDst[((y+dwTop)*dwDstPitch+x+dwLeft)] = dwSrc[(uint32)(dwByteOffset+x*xScale)];
         }
     }
 
@@ -1887,7 +1887,7 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
                     uint8 a = pS0[indexes[j]+3];
 
                     // Liner
-                    *(pD+(j^1)) = ConvertRGBATo555( r, g, b, a);
+                    *(pD+(j)) = ConvertRGBATo555( r, g, b, a);
 
                 }
             }
@@ -1918,7 +1918,7 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
                         (pS[pos+0]),        // B
                         (pS[pos+3]));       // Alpha
                     //*pD = CIFindIndex(tempword);
-                    *(pD+(j^3)) = RevTlutTable[tempword];
+                    *(pD+(j)) = RevTlutTable[tempword];
                 }
             }
         }
@@ -1952,7 +1952,7 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
                     uint32 b = pS0[indexes[j]+0];
 
                     // Liner
-                    *(pD+(j^3)) = (uint8)((r+b+g)/3);
+                    *(pD+(j)) = (uint8)((r+b+g)/3);
 
                 }
             }

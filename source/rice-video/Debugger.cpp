@@ -326,8 +326,8 @@ void DumpMatrixAt(uint32 dwPC)
     for (dwI = 0; dwI < 4; dwI++) {
         for (dwJ = 0; dwJ < 4; dwJ++) {
 
-            int nDataHi = *(short  *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1)     )^0x2));
-            int nDataLo = *(uint16 *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1) + 32)^0x2));
+            int nDataHi = *(short  *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1)     )));
+            int nDataLo = *(uint16 *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1) + 32)));
             mat.m[dwI][dwJ] = (float)((nDataHi << 16) | nDataLo) * fRecip;
         }
     }
@@ -599,14 +599,14 @@ void __cdecl DebuggerAppendMsg(const char * Message, ...)
 
 void DebuggerPause()
 {
-    while( debuggerPause )
+	while( debuggerPause )
     {
-        if( debuggerDrawRenderTexture )
+/* gli        if( debuggerDrawRenderTexture )
         {
             g_pFrameBufferManager->DisplayRenderTexture(debuggerDrawRenderTextureNo);
             debuggerDrawRenderTexture = false;
         }
-        usleep(100 * 1000);
+        usleep(100 * 1000);*/
         debuggerPause = false;
     }
 }

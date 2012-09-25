@@ -235,25 +235,25 @@ void DisplayVertexInfo(uint32 dwAddr, uint32 dwV0, uint32 dwN)
 
         for (uint32 dwV = dwV0; dwV < dwV0 + dwN; dwV++)
         {
-            float x = (float)psSrc[0^0x1];
-            float y = (float)psSrc[1^0x1];
-            float z = (float)psSrc[2^0x1];
+            float x = (float)psSrc[0];
+            float y = (float)psSrc[1];
+            float z = (float)psSrc[2];
 
-            //uint32 wFlags = g_dwVtxFlags[dwV]; //(uint16)psSrc[3^0x1];
+            //uint32 wFlags = g_dwVtxFlags[dwV]; //(uint16)psSrc[3];
             uint32 wFlags = 0;
 
-            uint8 a = pcSrc[12^0x3];
-            uint8 b = pcSrc[13^0x3];
-            uint8 c = pcSrc[14^0x3];
-            uint8 d = pcSrc[15^0x3];
+            uint8 a = pcSrc[12];
+            uint8 b = pcSrc[13];
+            uint8 c = pcSrc[14];
+            uint8 d = pcSrc[15];
             
-            //int nTU = (int)(short)(psSrc[4^0x1]<<4);
-            //int nTV = (int)(short)(psSrc[5^0x1]<<4);
+            //int nTU = (int)(short)(psSrc[4]<<4);
+            //int nTV = (int)(short)(psSrc[5]<<4);
 
             //float tu = (float)(nTU>>4);
             //float tv = (float)(nTV>>4);
-            float tu = (float)(short)(psSrc[4^0x1]);
-            float tv = (float)(short)(psSrc[5^0x1]);
+            float tu = (float)(short)(psSrc[4]);
+            float tv = (float)(short)(psSrc[5]);
 
             XVECTOR4 & t = g_vecProjected[dwV];
 
@@ -293,9 +293,9 @@ void RSP_MoveMemLight(uint32 dwLight, uint32 dwAddr)
     {
         gRSPn64lights[dwLight].dwRGBA       = pdwBase[0];
         gRSPn64lights[dwLight].dwRGBACopy   = pdwBase[1];
-        x       = pcBase[8 ^ 0x3];
-        y       = pcBase[9 ^ 0x3];
-        z       = pcBase[10 ^ 0x3];
+        x       = pcBase[8];
+        y       = pcBase[9];
+        z       = pcBase[10];
     }
 
                     

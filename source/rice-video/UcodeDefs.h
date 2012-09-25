@@ -239,6 +239,7 @@ typedef struct {
     unsigned int    :6;
     unsigned int    enable_gbi2:1;
     unsigned int    enable_gbi0:1;
+	
     unsigned int    scaleS:16;
     unsigned int    scaleT:16;
 } GTexture;

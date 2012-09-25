@@ -450,7 +450,7 @@ static void ReadConfiguration(void)
     options.bSmallTextureOnly = FALSE;
     options.bLoadHiResTextures = FALSE;
     options.bDumpTexturesToFiles = FALSE;
-    options.bShowFPS = FALSE;
+    options.bShowFPS = TRUE;
 
     options.mipmapping = 2;
     options.fogMethod = 0;

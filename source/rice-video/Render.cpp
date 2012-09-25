@@ -1383,7 +1383,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
 
         for( int i=0; i<16; i++ )
         {
-            pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i^1]) : ConvertIA16ToRGBA(pPal[i^1]);
+            pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i]) : ConvertIA16ToRGBA(pPal[i]);
         }
     }
     else
@@ -1394,7 +1394,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
 
         for( int i=0; i<256; i++ )
         {
-            pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i^1]) : ConvertIA16ToRGBA(pPal[i^1]);
+            pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i]) : ConvertIA16ToRGBA(pPal[i]);
         }
     }
 

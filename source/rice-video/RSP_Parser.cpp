@@ -1307,7 +1307,7 @@ void DLParser_FillRect(Gfx *gfx)
             {
                 for( uint32 j=x0; j<x1; j++ )
                 {
-                    *(uint16*)((base+pitch*i+j)^2) = color;
+                    *(uint16*)((base+pitch*i+j)) = color;
                 }
             }
         }
@@ -1334,7 +1334,7 @@ void DLParser_FillRect(Gfx *gfx)
                 {
                     for( uint32 j=x0; j<x1; j++ )
                     {
-                        *(uint16*)((base+pitch*i+j)^2) = color;
+                        *(uint16*)((base+pitch*i+j)) = color;
                     }
                 }
             }
@@ -1347,7 +1347,7 @@ void DLParser_FillRect(Gfx *gfx)
                 {
                     for( uint32 j=x0; j<x1; j++ )
                     {
-                        *(uint8*)((base+pitch*i+j)^3) = color;
+                        *(uint8*)((base+pitch*i+j)) = color;
                     }
                 }
             }
@@ -1768,8 +1768,8 @@ void LoadMatrix(uint32 addr)
     {
         for (j = 0; j < 4; j++) 
         {
-            int     hi = *(short *)(g_pRDRAMu8 + ((addr+(i<<3)+(j<<1)     )^0x2));
-            int  lo = *(unsigned short *)(g_pRDRAMu8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));
+            int     hi = *(short *)(g_pRDRAMu8 + ((addr+(i<<3)+(j<<1)     )));
+            int  lo = *(unsigned short *)(g_pRDRAMu8 + ((addr+(i<<3)+(j<<1) + 32)));
             matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
         }
     }

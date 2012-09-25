@@ -247,14 +247,14 @@ void RDP_GFX_DumpVtxInfoDKR(uint32 dwAddr, uint32 dwV0, uint32 dwN)
         i = 0;
         for (dwV = dwV0; dwV < dwV0 + dwN; dwV++)
         {
-            float x = (float)psSrc[(i + 0) ^ 1];
-            float y = (float)psSrc[(i + 1) ^ 1];
-            float z = (float)psSrc[(i + 2) ^ 1];
+            float x = (float)psSrc[(i + 0)];
+            float y = (float)psSrc[(i + 1)];
+            float z = (float)psSrc[(i + 2)];
 
-            //uint16 wFlags = CRender::g_pRender->m_dwVecFlags[dwV]; //(uint16)psSrc[3^0x1];
+            //uint16 wFlags = CRender::g_pRender->m_dwVecFlags[dwV]; //(uint16)psSrc[3];
 
-            uint16 wA = psSrc[(i + 3) ^ 1];
-            uint16 wB = psSrc[(i + 4) ^ 1];
+            uint16 wA = psSrc[(i + 3)];
+            uint16 wB = psSrc[(i + 4)];
 
             uint8 a = wA>>8;
             uint8 b = (uint8)wA;
@@ -276,11 +276,11 @@ void RDP_GFX_DumpVtxInfoDKR(uint32 dwAddr, uint32 dwV0, uint32 dwN)
         for (dwV = dwV0; dwV < dwV0 + dwN; dwV++)
         {
             LOG_UCODE(" #%02d %04x %04x %04x %04x %04x",
-                dwV, pwSrc[(i + 0) ^ 1],
-                pwSrc[(i + 1) ^ 1],
-                pwSrc[(i + 2) ^ 1],
-                pwSrc[(i + 3) ^ 1],
-                pwSrc[(i + 4) ^ 1]);
+                dwV, pwSrc[(i + 0)],
+                pwSrc[(i + 1)],
+                pwSrc[(i + 2)],
+                pwSrc[(i + 3)],
+                pwSrc[(i + 4)]);
 
             i += 5;
         }
@@ -1480,8 +1480,8 @@ void PD_LoadMatrix_0xb4(uint32 addr)
     {
         for (j = 0; j < 4; j++) 
         {
-            int     hi = *(short *)((unsigned char*)data + (((i<<3)+(j<<1)     )^0x2));
-            int  lo = *(uint16*)((unsigned char*)data + (((i<<3)+(j<<1) + 32)^0x2));
+            int     hi = *(short *)((unsigned char*)data + (((i<<3)+(j<<1)     )));
+            int  lo = *(uint16*)((unsigned char*)data + (((i<<3)+(j<<1) + 32)));
             matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
         }
     }

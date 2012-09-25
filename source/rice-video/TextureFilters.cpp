@@ -1652,7 +1652,7 @@ bool LoadRGBABufferFromColorIndexedFile(char *filename, TxtrCacheEntry &entry, u
             // 4-bit table
             for( int i=0; i<16; i++ )
             {
-                pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i^1]) : ConvertIA16ToRGBA(pPal[i^1]);
+                pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i]) : ConvertIA16ToRGBA(pPal[i]);
             }
         }
         else
@@ -1660,7 +1660,7 @@ bool LoadRGBABufferFromColorIndexedFile(char *filename, TxtrCacheEntry &entry, u
             // 8-bit table
             for( int i=0; i<256; i++ )
             {
-                pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i^1]) : ConvertIA16ToRGBA(pPal[i^1]);
+                pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i]) : ConvertIA16ToRGBA(pPal[i]);
             }
         }
 

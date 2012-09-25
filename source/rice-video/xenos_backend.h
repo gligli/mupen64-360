@@ -11,7 +11,7 @@
 #include "Blender.h"
 #include "TextureManager.h"
 
-#define xe_GetTicks() (mftb()/(PPC_TIMEBASE_FREQ/1000))
+#define xe_GetTicks() (mftb()/(PPC_TIMEBASE_FREQ/(u64)1000))
 #define usleep(x) udelay(x)
 
 class CxeGraphicsContext : public CGraphicsContext
@@ -109,7 +109,7 @@ public:
     void EnableMultiTexture() {m_bEnableMultiTexture=true;}
     void EndRendering(void);
 
-    void glViewportWrapper(int x, int y, int width, int height, bool flag=true);
+    void glViewportWrapper(int x, int y, int width, int height, bool ortho);
     virtual void EnableTexUnit(int unitno, BOOL flag);
 
 protected:

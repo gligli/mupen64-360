@@ -726,13 +726,13 @@ EXPORT void CALL updateScreen(void)
 {
     if(options.bShowFPS)
     {
-        static unsigned int lastTick=0;
+        static unsigned int lastTick=-1;
         static int frames=0;
         unsigned int nowTick = xe_GetTicks();
         frames++;
-        if(lastTick + 5000 <= nowTick)
+        if(lastTick + 2000 <= nowTick)
         {
-            printf("%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
+            printf("%.3f VI/S\n", frames/2.0);
             frames = 0;
             lastTick = nowTick;
         }

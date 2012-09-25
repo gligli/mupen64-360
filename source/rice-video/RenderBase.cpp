@@ -871,8 +871,8 @@ void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
     {
         v.x = g_vecProjected[dwV].x*gRSP.vtxXMul+gRSP.vtxXAdd;
         v.y = g_vecProjected[dwV].y*gRSP.vtxYMul+gRSP.vtxYAdd;
-        v.z = (g_vecProjected[dwV].z + 1.0f) * 0.5f;    // DirectX minZ=0, maxZ=1
-        //v.z = g_vecProjected[dwV].z;  // DirectX minZ=0, maxZ=1
+        //v.z = (g_vecProjected[dwV].z + 1.0f) * 0.5f;    // DirectX minZ=0, maxZ=1
+        v.z = g_vecProjected[dwV].z;  // DirectX minZ=0, maxZ=1
         v.rhw = g_vecProjected[dwV].w;
         VTX_DUMP(TRACE4("  Proj : x=%f, y=%f, z=%f, rhw=%f",  v.x,v.y,v.z,v.rhw));
 
@@ -1539,7 +1539,7 @@ bool PrepareTriangle(uint32 dwV0, uint32 dwV1, uint32 dwV2)
         SP_Timing(SP_Each_Triangle);
 
         bool textureFlag = (CRender::g_pRender->IsTextureEnabled() || gRSP.ucode == 6 );
-        bool openGL = CDeviceBuilder::m_deviceGeneralType == XENOS_DEVICE;
+        bool openGL = 0; //CDeviceBuilder::m_deviceGeneralType == XENOS_DEVICE;
 
         InitVertex(dwV0, gRSP.numVertices, textureFlag, openGL);
         InitVertex(dwV1, gRSP.numVertices+1, textureFlag, openGL);
@@ -1773,9 +1773,9 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     {
         XVECTOR3 w;
 
-        g_vtxNonTransformed[i].x = (float)*(short*)((pVtxBase+nOff + 0) ^ 2);
-        g_vtxNonTransformed[i].y = (float)*(short*)((pVtxBase+nOff + 2) ^ 2);
-        g_vtxNonTransformed[i].z = (float)*(short*)((pVtxBase+nOff + 4) ^ 2);
+        g_vtxNonTransformed[i].x = (float)*(short*)((pVtxBase+nOff + 0));
+        g_vtxNonTransformed[i].y = (float)*(short*)((pVtxBase+nOff + 2));
+        g_vtxNonTransformed[i].z = (float)*(short*)((pVtxBase+nOff + 4));
 
         //if( status.isSSEEnabled )
         //  SSEVec3TransformDKR(g_vtxTransformed[i], g_vtxNonTransformed[i]);
@@ -1816,8 +1816,8 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         RSP_Vtx_Clipping(i);
 
-        short wA = *(short*)((pVtxBase+nOff + 6) ^ 2);
-        short wB = *(short*)((pVtxBase+nOff + 8) ^ 2);
+        short wA = *(short*)((pVtxBase+nOff + 6));
+        short wB = *(short*)((pVtxBase+nOff + 8));
 
         s8 r = (s8)(wA >> 8);
         s8 g = (s8)(wA);
@@ -2076,9 +2076,9 @@ void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
         // can't generate tex coord)
         if (gRSP.bTextureGen && gRSP.bLightingEnable )
         {
-                g_normal.x = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+0)^3)+dwConkerVtxZAddr);
-                g_normal.y = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+1)^3)+dwConkerVtxZAddr);
-                g_normal.z = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+2)^3)+dwConkerVtxZAddr);
+                g_normal.x = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+0))+dwConkerVtxZAddr);
+                g_normal.y = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+1))+dwConkerVtxZAddr);
+                g_normal.z = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+2))+dwConkerVtxZAddr);
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
                 TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
         }
