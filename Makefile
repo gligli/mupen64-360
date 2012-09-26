@@ -30,7 +30,7 @@ INCLUDES	:=	files
 MCHK = -Wl,-wrap,malloc  -Wl,-wrap,memalign -Wl,-wrap,realloc -Wl,-wrap,calloc -Wl,-wrap,free -DMCHK
 
 OPTIFLAGS =  -O2 -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -flto -fuse-linker-plugin 
-OPTIFLAGS =  -O2 -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1
+#OPTIFLAGS =  -O2 -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1
 
 ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32
 CFLAGS	= $(OPTIFLAGS) -g -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DDEBUG_ -DUSE_RECOMP_CACHE -DUSE_EXPANSION -DFASTMEM -DNO_ASM
@@ -42,7 +42,7 @@ LDFLAGS	= $(MACHDEP) $(OPTIFLAGS) -Wl,-Map,$(notdir $@).map
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:=	-lzlx -lpng  -lz -lfat -lext2fs -lntfs -lxtaf -lxenon -lm
+LIBS	:=	-lxemit -lzlx -lpng  -lz -lfat -lext2fs -lntfs -lxtaf -lxenon -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

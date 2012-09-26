@@ -4,6 +4,11 @@
 
 #include <xenos/xe.h>
 
+extern "C" 
+{
+	#include <libxemit/xemit.h>
+}
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,9 +18,6 @@
 #include <debug.h>
 #include <byteswap.h>
 
-extern Matrix g_MtxReal;
-extern uObjMtxReal gObjMtxReal;
-
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
@@ -23,21 +25,11 @@ extern uObjMtxReal gObjMtxReal;
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
-#define MAX_VERTEX_COUNT (8192*3)
+#define MAX_VERTEX_COUNT (10000*3)
 
 #define NEAR (-1.0)
 #define FAR  (1.0)
 
-#if 0
-const struct XenosVBFFormat VertexBufferFormat = {
-    4, {
-        {XE_USAGE_POSITION, 0, XE_TYPE_FLOAT4},
-        {XE_USAGE_COLOR,    0, XE_TYPE_UBYTE4},
-        {XE_USAGE_COLOR,    1, XE_TYPE_UBYTE4},
-	    {XE_USAGE_TEXCOORD, 0, XE_TYPE_FLOAT2},
-    }
-};
-#else
 const struct XenosVBFFormat VertexBufferFormat = {
     4, {
         {XE_USAGE_POSITION, 0, XE_TYPE_FLOAT4},
@@ -46,7 +38,6 @@ const struct XenosVBFFormat VertexBufferFormat = {
         {XE_USAGE_COLOR,    0, XE_TYPE_UBYTE4},
     }
 };
-#endif
 
 typedef struct
 #ifdef __GNUC__
@@ -303,14 +294,18 @@ UVFlagMap xeXUVFlagMaps[] =
 CxeRender::CxeRender()
 {
     m_bSupportFogCoordExt = false;
-    m_bMultiTexture = true;
     m_bSupportClampToEdge = true;
+
+    m_maxTexUnits = 8;
+
     for( int i=0; i<8; i++ )
     {
         m_curBoundTex[i]=0;
-        m_texUnitEnabled[i]=FALSE;
+        m_textureUnitMap[i] = -1;
     }
-    m_bEnableMultiTexture = true;
+
+    m_textureUnitMap[0] = 0;    // T0 is usually using texture unit 0
+    m_textureUnitMap[1] = 1;    // T1 is usually using texture unit 1
 }
 
 CxeRender::~CxeRender()
@@ -341,6 +336,7 @@ void CxeRender::Initialize(void)
 	xe_zenable=true;
 	xe_zwrite=true;
 	xe_zcompare=true;
+	m_bPolyOffset=false;
 	
     glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 	
@@ -349,7 +345,18 @@ void CxeRender::Initialize(void)
 
 void CxeRender::ApplyTextureFilter()
 {
-
+    for( int i=0; i<m_maxTexUnits; i++ )
+    {
+        int iMinFilter = (m_dwMinFilter == FILTER_LINEAR ? 1 : 0);
+        int iMagFilter = (m_dwMagFilter == FILTER_LINEAR ? 1 : 0);
+        if( m_texUnitEnabled[i] )
+        {
+			if (m_curBoundTex[i]) 
+			{
+				m_curBoundTex[i]->tex->use_filtering=iMinFilter | iMagFilter;
+			}
+        }
+    }
 }
 
 void CxeRender::SetShadeMode(RenderShadeMode mode)
@@ -403,7 +410,14 @@ void CxeRender::SetZUpdate(BOOL bZUpdate)
 
 void CxeRender::ApplyZBias(int bias)
 {
-	
+	if (bias > 0)
+	{
+		m_bPolyOffset = true;
+	}
+	else 
+	{
+		m_bPolyOffset = false;
+	}
 //	float f1 = bias > 0 ? -3.0f : 0.0f;  // z offset = -3.0 * max(abs(dz/dx),abs(dz/dy)) per pixel delta z slope
 //	loat f2 = bias > 0 ? -3.0f : 0.0f;  // z offset += -3.0 * 1 bit
 }
@@ -425,6 +439,7 @@ void CxeRender::SetAlphaRef(uint32 dwAlpha)
     {
         m_dwAlpha = dwAlpha;
         Xe_SetAlphaRef(xe,(dwAlpha-1)/255.0f);
+		Xe_SetAlphaFunc(xe,XE_CMP_GREATER);
     }
 }
 
@@ -514,44 +529,100 @@ bool CxeRender::SetCurrentTexture(int tile, TxtrCacheEntry *pEntry)
     return true;
 }
 
-void CxeRender::SetAddressUAllStages(uint32 dwTile, TextureUVFlag dwFlag)
+void CxeRender::SetTexWrapS(int unitno,u32 flag)
 {
-    SetTextureUFlag(dwFlag, dwTile);
+	assert(false);
 }
-
-void CxeRender::SetAddressVAllStages(uint32 dwTile, TextureUVFlag dwFlag)
+void CxeRender::SetTexWrapT(int unitno,u32 flag)
 {
-    SetTextureVFlag(dwFlag, dwTile);
+	assert(false);
 }
 
 void CxeRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
 {
     TileUFlags[dwTile] = dwFlag;
-    if( dwTile == gRSP.curTile )    // For basic OGL, only support the 1st texel
+    int tex;
+    if( dwTile == gRSP.curTile )
+        tex=0;
+    else if( dwTile == ((gRSP.curTile+1)&7) )
+        tex=1;
+    else
     {
-        CxeTexture* pTexture = g_textures[gRSP.curTile].m_pCxeTexture;
-        if( pTexture )
+        if( dwTile == ((gRSP.curTile+2)&7) )
+            tex=2;
+        else if( dwTile == ((gRSP.curTile+3)&7) )
+            tex=3;
+        else
         {
-            EnableTexUnit(0,TRUE);
-			pTexture->tex->u_addressing=xeXUVFlagMaps[dwFlag].realFlag;
-            BindTexture(pTexture->tex, 0);
+            TRACE2("Incorrect tile number for OGL SetTextureUFlag: cur=%d, tile=%d", gRSP.curTile, dwTile);
+            return;
+        }
+    }
+
+    for( int textureNo=0; textureNo<8; textureNo++)
+    {
+        if( m_textureUnitMap[textureNo] == tex )
+        {
+            CxeTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCxeTexture;
+            if( pTexture ) 
+            {
+                EnableTexUnit(textureNo,TRUE);
+				
+				pTexture->tex->u_addressing=xeXUVFlagMaps[dwFlag].realFlag;
+				
+	            BindTexture(pTexture, textureNo);
+            }
+            //SetTexWrapS(textureNo, xeXUVFlagMaps[dwFlag].realFlag);
         }
     }
 }
+
 void CxeRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
 {
     TileVFlags[dwTile] = dwFlag;
-    if( dwTile == gRSP.curTile )    // For basic OGL, only support the 1st texel
+    int tex;
+    if( dwTile == gRSP.curTile )
+        tex=0;
+    else if( dwTile == ((gRSP.curTile+1)&7) )
+        tex=1;
+    else
     {
-        CxeTexture* pTexture = g_textures[gRSP.curTile].m_pCxeTexture;
-        if( pTexture ) 
+        if( dwTile == ((gRSP.curTile+2)&7) )
+            tex=2;
+        else if( dwTile == ((gRSP.curTile+3)&7) )
+            tex=3;
+        else
         {
-            EnableTexUnit(0,TRUE);
-			pTexture->tex->v_addressing=xeXUVFlagMaps[dwFlag].realFlag;
-            BindTexture(pTexture->tex, 0);
+            TRACE2("Incorrect tile number for OGL SetTextureVFlag: cur=%d, tile=%d", gRSP.curTile, dwTile);
+            return;
+        }
+    }
+	
+    for( int textureNo=0; textureNo<8; textureNo++)
+    {
+        if( m_textureUnitMap[textureNo] == tex )
+        {
+            CxeTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCxeTexture;
+            if( pTexture )
+            {
+                EnableTexUnit(textureNo,TRUE);
+	           
+				pTexture->tex->v_addressing=xeXUVFlagMaps[dwFlag].realFlag;
+				
+				BindTexture(pTexture, textureNo);
+            }
+            //SetTexWrapT(textureNo, xeXUVFlagMaps[dwFlag].realFlag);
         }
     }
 }
+
+void CxeRender::SetTextureToTextureUnitMap(int tex, int unit)
+{
+    if( unit < 8 && (tex >= -1 || tex <= 1))
+        m_textureUnitMap[unit] = tex;
+}
+
+
 
 // Basic render drawing functions
 
@@ -978,7 +1049,7 @@ void CxeRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
 
 void CxeRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor, float depth, float rhw)
 {
-    StartDrawSimpleRect(nX0, nY0, nX1, nY1, dwColor, depth, rhw);
+	StartDrawSimpleRect(nX0, nY0, nX1, nY1, dwColor, depth, rhw);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
 
@@ -1175,55 +1246,50 @@ void CxeRender::SetAlphaTestEnable(BOOL bAlphaTestEnable)
         Xe_SetAlphaTestEnable(xe,0);
 }
 
-void CxeRender::BindTexture(struct XenosSurface *tex, int unitno)
+void CxeRender::BindTexture(CxeTexture *texture, int unitno)
 {
-
-#ifdef DEBUGGER
-    if( unitno != 0 )
-    {
-        DebuggerAppendMsg("Check me, base ogl bind texture, unit no != 0");
-    }
-#endif
-    if( m_curBoundTex[unitno] != tex )
-    {
-		Xe_SetTexture(xe,unitno,tex);
-        m_curBoundTex[unitno] = tex;
-    }
+	if( unitno < m_maxTexUnits )
+	{
+		if( m_curBoundTex[unitno] != texture )
+		{
+			texture->tex->use_filtering=m_dwMinFilter == FILTER_LINEAR || m_dwMagFilter == FILTER_LINEAR;
+			Xe_SetTexture(xe,unitno,texture->tex);
+			m_curBoundTex[unitno] = texture;
+		}
+	}
 }
 
-void CxeRender::DisBindTexture(struct XenosSurface *tex, int unitno)
+void CxeRender::DisBindTexture(CxeTexture *texture, int unitno)
 {
-    //EnableTexUnit(0,FALSE);
-    //glBindTexture(GL_TEXTURE_2D, 0);  //Not to bind any texture
+	assert(false);
 }
 
 void CxeRender::EnableTexUnit(int unitno, BOOL flag)
 {
-
-#ifdef DEBUGGER
-    if( unitno != 0 )
-    {
-        DebuggerAppendMsg("Check me, in the base ogl render, unitno!=0");
-    }
-#endif
     if( m_texUnitEnabled[unitno] != flag )
     {
         m_texUnitEnabled[unitno] = flag;
-        if( flag == TRUE )
-	        Xe_SetTexture(xe,unitno,m_curBoundTex[unitno]);
-        else
-	        Xe_SetTexture(xe,unitno,NULL);
+		
+		CxeTexture * t=m_curBoundTex[unitno];
+		m_curBoundTex[unitno]=NULL;
+		BindTexture(t,unitno);
     }
 }
 
 void CxeRender::TexCoord2f(float u, float v)
 {
-//    glTexCoord2f(u, v);
+	assert(false);
 }
 
 void CxeRender::TexCoord(TLITVERTEX &vtxInfo)
 {
-//    glTexCoord2f(vtxInfo.tcord[0].u, vtxInfo.tcord[0].v);
+	for( int i=0; i<8; i++ )
+	{
+		if( m_textureUnitMap[i] >= 0 )
+		{
+			//TODO
+		}
+	}
 }
 
 void CxeRender::UpdateScissor()
@@ -1366,12 +1432,6 @@ void CxeRender::SetFogColor(uint32 r, uint32 g, uint32 b, uint32 a)
 #endif
 }
 
-void CxeRender::DisableMultiTexture()
-{
-//    Xe_SetTexture(xe,0,NULL);
-    Xe_SetTexture(xe,1,NULL);
-}
-
 void CxeRender::EndRendering(void)
 {
     if( CRender::gRenderReferenceCount > 0 ) 
@@ -1383,28 +1443,32 @@ void CxeRender::glViewportWrapper(int x, int y, int width, int height, bool orth
     static int mx=0,my=0;
     static int m_width=0, m_height=0;
     static bool mflag=true;
+    static bool mbias=false;
 
-    if( x!=mx || y!=my || width!=m_width || height!=m_height || mflag!=ortho)
+    if( x!=mx || y!=my || width!=m_width || height!=m_height || mflag!=ortho || mbias!=m_bPolyOffset)
     {
         mx=x;
         my=y;
         m_width=width;
         m_height=height;
         mflag=ortho;
+		mbias=m_bPolyOffset;
 		
 //		printf("glViewportWrapper %d %d %d %d %d %d %d\n",x,y,width,height,windowSetting.uDisplayWidth,windowSetting.uDisplayHeight,ortho);
+		
+		float bias=m_bPolyOffset?-0.0002:0;
 		
 		float ortho_matrix[4][4] = {
 			{2.0f/windowSetting.uDisplayWidth,0,0,-1},
 			{0,-2.0f/windowSetting.uDisplayHeight,0,1},
-			{0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
+			{0,0,1/(FAR-NEAR),bias+NEAR/(NEAR-FAR)},
 			{0,0,0,1},
 		};
 
 		float viewport_matrix[4][4] = {
 			{(float)width/windowSetting.uDisplayWidth,0,0,2.0f*x/windowSetting.uDisplayWidth},
 			{0,(float)height/windowSetting.uDisplayHeight,0,2.0f*y/windowSetting.uDisplayHeight},
-			{0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
+			{0,0,1/(FAR-NEAR),bias+NEAR/(NEAR-FAR)},
 			{0,0,0,1},
 		};
 
@@ -1431,102 +1495,6 @@ void CxeRender::glViewportWrapper(int x, int y, int width, int height, bool orth
 			Xe_SetVertexShaderConstantF(xe,0,(float*)viewport_matrix,4);
 		}
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// CxeColorCombiner
-////////////////////////////////////////////////////////////////////////////////
-
-CxeColorCombiner::CxeColorCombiner(CRender *pRender)
-: CColorCombiner(pRender)
-{
-
-    m_pDecodedMux = new DecodedMux;
-    m_pDecodedMux->m_maxConstants = 0;
-    m_pDecodedMux->m_maxTextures = 2;
-	m_pxeRender=(CxeRender*)pRender;
-}
-
-CxeColorCombiner::~CxeColorCombiner()
-{
-
-}
-
-bool CxeColorCombiner::Initialize(void)
-{
-  return true;
-}
-
-void CxeColorCombiner::InitCombinerCycle12(void)
-{
-    m_pxeRender->DisableMultiTexture();
-    if( !m_bTexelsEnable )
-    {
-//        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        m_pxeRender->EnableTexUnit(0,FALSE);
-        return;
-    }
-
-//    uint32 mask = 0x1f;
-    CxeTexture* pTexture = g_textures[gRSP.curTile].m_pCxeTexture;
-    if( pTexture )
-    {
-        m_pxeRender->EnableTexUnit(0,TRUE);
-        m_pxeRender->BindTexture(pTexture->tex, 0);
-        m_pxeRender->SetAllTexelRepeatFlag();
-    }
-#ifdef _DEBUG
-    else
-    {
-        DebuggerAppendMsg("Check me, texture is NULL");
-    }
-#endif
-}
-
-void CxeColorCombiner::DisableCombiner(void)
-{
-
-}
-
-void CxeColorCombiner::InitCombinerCycleCopy(void)
-{
-    m_pxeRender->DisableMultiTexture();
-    m_pxeRender->EnableTexUnit(0,TRUE);
-    CxeTexture* pTexture = g_textures[gRSP.curTile].m_pCxeTexture;
-    if( pTexture )
-    {
-        m_pxeRender->BindTexture(pTexture->tex, 0);
-        m_pxeRender->SetTexelRepeatFlags(gRSP.curTile);
-    }
-#ifdef _DEBUG
-    else
-    {
-        DebuggerAppendMsg("Check me, texture is NULL");
-    }
-#endif
-}
-
-void CxeColorCombiner::InitCombinerCycleFill(void)
-{
-	m_pxeRender->DisableMultiTexture();
-	m_pxeRender->EnableTexUnit(0,FALSE);
-}
-
-void CxeColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
-{
-	m_pxeRender->DisableMultiTexture();
-    if( g_textures[tile].m_pCxeTexture )
-    {
-        m_pxeRender->EnableTexUnit(0,TRUE);
-
-		g_textures[tile].m_pCxeTexture->tex->use_filtering=1;
-		g_textures[tile].m_pCxeTexture->tex->u_addressing=XE_TEXADDR_CLAMP;
-		g_textures[tile].m_pCxeTexture->tex->v_addressing=XE_TEXADDR_CLAMP;
-
-		Xe_SetTexture(xe,0,g_textures[tile].m_pCxeTexture->tex);
-    }
-    m_pxeRender->SetAllTexelRepeatFlag();
-    m_pxeRender->SetAlphaTestEnable(FALSE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1637,4 +1605,356 @@ void CxeTexture::EndUpdate(DrawInfo *di)
 {
 	Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
 	Xe_Surface_Unlock(xe,tex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// CxeColorCombiner
+////////////////////////////////////////////////////////////////////////////////
+
+CxeColorCombiner::CxeColorCombiner(CRender *pRender)
+: CColorCombiner(pRender)
+{
+	m_pxeRender=(CxeRender*)pRender;
+	m_pDecodedMux = new DecodedMuxForPixelShader;
+}
+
+CxeColorCombiner::~CxeColorCombiner()
+{
+    int size = m_vCompiledShaders.size();
+    for (int i=0; i<size; i++)
+    {
+		// TODO: !!! destroy it
+        m_vCompiledShaders[i].shader = 0;
+    }
+
+    m_vCompiledShaders.clear();
+}
+
+bool CxeColorCombiner::Initialize(void)
+{
+	return true;
+}
+
+void CxeColorCombiner::DisableCombiner(void)
+{
+	assert(false);
+}
+
+void CxeColorCombiner::InitCombinerCycle12(void)
+{
+#ifdef _DEBUG
+    if( debuggerDropCombiners )
+    {
+        UpdateCombiner(m_pDecodedMux->m_dwMux0,m_pDecodedMux->m_dwMux1);
+        m_vCompiledShaders.clear();
+        m_dwLastMux0 = m_dwLastMux1 = 0;
+        debuggerDropCombiners = false;
+    }
+#endif
+
+    bool combinerIsChanged = false;
+
+    if( m_pDecodedMux->m_dwMux0 != m_dwLastMux0 || m_pDecodedMux->m_dwMux1 != m_dwLastMux1 || m_lastIndex < 0 )
+    {
+        combinerIsChanged = true;
+        m_lastIndex = FindCompiledMux();
+        if( m_lastIndex < 0 )       // Can not found
+        {
+            m_lastIndex = ParseDecodedMux();
+        }
+
+        m_dwLastMux0 = m_pDecodedMux->m_dwMux0;
+        m_dwLastMux1 = m_pDecodedMux->m_dwMux1;
+    }
+
+
+    GenerateCombinerSettingConstants(m_lastIndex);
+    if( m_bCycleChanged || combinerIsChanged || gRDP.texturesAreReloaded || gRDP.colorsAreReloaded )
+    {
+        if( m_bCycleChanged || combinerIsChanged )
+        {
+            GenerateCombinerSettingConstants(m_lastIndex);
+            GenerateCombinerSetting(m_lastIndex);
+        }
+        else if( gRDP.colorsAreReloaded )
+        {
+            GenerateCombinerSettingConstants(m_lastIndex);
+        }
+
+        m_pxeRender->SetAllTexelRepeatFlag();
+
+        gRDP.colorsAreReloaded = false;
+        gRDP.texturesAreReloaded = false;
+    }
+    else
+    {
+        m_pxeRender->SetAllTexelRepeatFlag();
+    }
+}
+
+void CxeColorCombiner::InitCombinerCycleCopy(void)
+{
+	Xe_SetPixelShaderConstantB(xe,0,1); // texture
+	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
+
+    m_pxeRender->EnableTexUnit(0,TRUE);
+    CxeTexture* pTexture = g_textures[gRSP.curTile].m_pCxeTexture;
+    if( pTexture )
+    {
+        m_pxeRender->BindTexture(pTexture, 0);
+        m_pxeRender->SetTexelRepeatFlags(gRSP.curTile);
+    }
+#ifdef _DEBUG
+    else
+    {
+        DebuggerAppendMsg("Check me, texture is NULL");
+    }
+#endif
+}
+
+void CxeColorCombiner::InitCombinerCycleFill(void)
+{
+	Xe_SetPixelShaderConstantB(xe,0,0); //no texture
+	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
+
+    for( int i=0; i<m_supportedStages; i++ )
+    {
+        m_pxeRender->EnableTexUnit(i,FALSE);
+    }
+}
+
+void CxeColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
+{
+	Xe_SetPixelShaderConstantB(xe,0,1); // texture
+	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
+
+    if( g_textures[tile].m_pCxeTexture )
+    {
+        m_pxeRender->EnableTexUnit(0,TRUE);
+
+		g_textures[tile].m_pCxeTexture->tex->use_filtering=1;
+		g_textures[tile].m_pCxeTexture->tex->u_addressing=XE_TEXADDR_CLAMP;
+		g_textures[tile].m_pCxeTexture->tex->v_addressing=XE_TEXADDR_CLAMP;
+
+		Xe_SetTexture(xe,0,g_textures[tile].m_pCxeTexture->tex);
+    }
+    m_pxeRender->SetAllTexelRepeatFlag();
+    m_pxeRender->SetAlphaTestEnable(FALSE);
+}
+
+
+void CxeColorCombiner::GenerateCombinerSettingConstants(int index)
+{
+	float frac = gRDP.LODFrac / 255.0f;
+    float frac2 = gRDP.primLODFrac / 255.0f;
+
+    float consts[7][4]=
+	{
+		{0,0,0,0},
+		{1,1,1,1},
+		{gRDP.fvPrimitiveColor[0],gRDP.fvPrimitiveColor[1],gRDP.fvPrimitiveColor[2],gRDP.fvPrimitiveColor[3]},
+		{gRDP.fvEnvColor[0],gRDP.fvEnvColor[1],gRDP.fvEnvColor[2],gRDP.fvEnvColor[3]},
+		{frac,frac,frac,frac},
+		{frac2,frac2,frac2,frac2},
+		{-1,-1,-1,-1},
+	};
+	
+    Xe_SetPixelShaderConstantF(xe,0,(float*)consts,7);
+}
+
+struct muxToReg_s
+{
+	char * rt;
+	int rn;
+	char * sw;
+};
+
+#define CM1 6
+
+#define RCB 4
+#define RT0 5
+#define RT1 6
+#define RTP 7
+#define RLAST 7 
+
+struct muxToReg_s muxToReg_Map[][2] = 
+{
+	{{"c",0,"rgba"},	{"c",0,"aaaa"},		},
+	{{"c",1,"rgba"},	{"c",1,"aaaa"},		},
+	{{"r",RCB,"rgba"},	{"r",RCB,"aaaa"},	},
+	{{"r",RT0,"rgba"},	{"r",RT0,"aaaa"},	},
+	{{"r",RT1,"rgba"},	{"r",RT1,"aaaa"},	},
+	{{"c",2,"rgba"},	{"c",2,"aaaa"},		},
+	{{"r",2,"rgba"},	{"r",2,"aaaa"},		},
+	{{"c",3,"rgba"},	{"c",3,"aaaa"},		},
+	{{"r",RCB,"aaaa"},	{"r",RCB,"aaaa"},	},
+	{{"r",RT0,"aaaa"},	{"r",RT0,"aaaa"},	},
+	{{"r",RT1,"aaaa"},	{"r",RT1,"aaaa"},	},
+	{{"c",2,"aaaa"},	{"c",2,"aaaa"},		},
+	{{"r",2,"aaaa"},	{"r",2,"aaaa"},		},
+	{{"c",3,"aaaa"},	{"c",3,"aaaa"},		},
+	{{"c",4,"rgba"},	{"c",4,"aaaa"},		},
+	{{"c",5,"rgba"},	{"c",5,"aaaa"},		},
+	{{"c",1,"rgba"},	{"c",1,"aaaa"},		},
+	{{"c",1,"rgba"},	{"c",1,"aaaa"},		},
+};
+
+
+struct muxToReg_s * MuxToOC(uint8 val)
+{
+// For color channel
+if( val&MUX_ALPHAREPLICATE )
+    return &muxToReg_Map[val&0x1F][1];
+else
+    return &muxToReg_Map[val&0x1F][0];
+}
+
+struct muxToReg_s * MuxToOA(uint8 val)
+{
+// For alpha channel
+return &muxToReg_Map[val&0x1F][1];
+}
+
+struct XenosShader * CxeColorCombiner::GenerateShader()
+{
+    DecodedMuxForPixelShader &mux = *(DecodedMuxForPixelShader*)m_pDecodedMux;
+
+    mux.splitType[0] = mux.splitType[1] = mux.splitType[2] = mux.splitType[3] = CM_FMT_TYPE_NOT_CHECKED;
+    m_pDecodedMux->Reformat(false);
+	
+	struct XemitShader * em = Xemit_Create(SHADER_TYPE_PIXEL,RLAST);
+#if 1	
+	Xemit_Op3(em,"tfetch2D","r",RT0,"r",0,"tf",0);
+	Xemit_Op3(em,"tfetch2D","r",RT1,"r",1,"tf",1);
+	
+    // New solution
+//    bool bFog = gRDP.bFogEnableInBlender && gRSP.bFogEnabled;
+
+    for( int cycle=0; cycle<2; cycle++ )
+    {
+        for( int channel=0; channel<2; channel++)
+        {
+            struct muxToReg_s * (*func)(uint8) = channel==0?MuxToOC:MuxToOA;
+            char *dst = channel==0?(char*)"rgb":(char*)"a";
+            char *dst_sw = channel==0?(char*)"rgbb":(char*)"aaaa";
+            N64CombinerType &m = mux.m_n64Combiners[cycle*2+channel];
+					
+			struct muxToReg_s * fa=func(m.a);
+			struct muxToReg_s * fb=func(m.b);
+			struct muxToReg_s * fc=func(m.c);
+			struct muxToReg_s * fd=func(m.d);
+			
+			CombinerFormatType spl=mux.splitType[cycle*2+channel];
+//			TRI(spl)
+					
+            switch( spl )
+            {
+            case CM_FMT_TYPE_NOT_USED:
+                // nothing here...
+                break;
+            case CM_FMT_TYPE_D:
+                Xemit_Op2Ex(em,"mov","r",RCB,dst,fd->rt,fd->rn,fd->sw);
+                break;
+            case CM_FMT_TYPE_A_MOD_C:
+                Xemit_Op3Ex(em,"mul","r",RCB,dst,fa->rt,fa->rn,fa->sw,fc->rt,fc->rn,fc->sw);
+                break;
+            case CM_FMT_TYPE_A_ADD_D:
+                Xemit_Op3Ex(em,"add_sat","r",RCB,dst,fa->rt,fa->rn,fa->sw,fd->rt,fd->rn,fd->sw);
+                break;
+            case CM_FMT_TYPE_A_SUB_B:
+                // TODO: poor man sub, until I implement register modifiers
+				Xemit_Op4Ex(em,"mad","r",RCB,dst,"c",CM1,fb->sw,fb->rt,fb->rn,fb->sw,fa->rt,fa->rn,fa->sw);
+                break;
+            case CM_FMT_TYPE_A_MOD_C_ADD_D:
+                Xemit_Op4Ex(em,"mad_sat","r",RCB,dst,fa->rt,fa->rn,fa->sw,fc->rt,fc->rn,fc->sw,fd->rt,fd->rn,fd->sw);
+                break;
+            case CM_FMT_TYPE_A_LERP_B_C:
+                // TODO: poor man sub, until I implement register modifiers
+                Xemit_Op4Ex(em,"mad","r",RTP,dst,"c",CM1,fb->sw,fb->rt,fb->rn,fb->sw,fa->rt,fa->rn,fa->sw);
+                Xemit_Op4Ex(em,"mad_sat","r",RCB,dst,"r",RTP,dst_sw,fc->rt,fc->rn,fc->sw,fb->rt,fb->rn,fb->sw);
+                break;
+            case CM_FMT_TYPE_A_B_C_D:
+                // TODO: poor man sub, until I implement register modifiers
+                Xemit_Op4Ex(em,"mad","r",RTP,dst,"c",CM1,fb->sw,fb->rt,fb->rn,fb->sw,fa->rt,fa->rn,fa->sw);
+                Xemit_Op4Ex(em,"mad_sat","r",RCB,dst,"r",RTP,dst_sw,fc->rt,fc->rn,fc->sw,fd->rt,fd->rn,fd->sw);
+                break;
+            case CM_FMT_TYPE_A_B_C_A:
+                // TODO: poor man sub, until I implement register modifiers
+                Xemit_Op4Ex(em,"mad","r",RTP,dst,"c",CM1,fb->sw,fb->rt,fb->rn,fb->sw,fa->rt,fa->rn,fa->sw);
+                Xemit_Op4Ex(em,"mad_sat","r",RCB,dst,"r",RTP,dst_sw,fc->rt,fc->rn,fc->sw,fa->rt,fa->rn,fa->sw);
+                break;
+			case CM_FMT_TYPE_A_SUB_B_ADD_D:
+                // TODO: poor man sub, until I implement register modifiers
+                Xemit_Op4Ex(em,"mad","r",RTP,dst,"c",CM1,fb->sw,fb->rt,fb->rn,fb->sw,fa->rt,fa->rn,fa->sw);
+                Xemit_Op3Ex(em,"add_sat","r",RCB,dst,"r",RTP,dst_sw,fd->rt,fd->rn,fd->sw);
+                break;
+            default:
+				printf("[CxeColorCombiner] unhandled split type: %d ##########################\n",spl);
+            }
+        }
+    }
+	
+	Xemit_Op2(em,"mov","oC",0,"r",RCB);
+	
+#else
+	Xemit_Op3(em,"tfetch2D","r",RCB,"r",0,"tf",0);
+	Xemit_Op3(em,"mul","oC",0,"r",RCB,"r",2);
+#endif	
+	
+	struct XenosShader * shader=Xemit_LoadGeneratedShader(xe,em);
+	Xe_InstantiateShader(xe,shader,0);
+	
+//	Xemit_Destroy(em);
+	
+#if 0
+	char fn[100]="";
+	sprintf(fn,"uda0:/sh%d.bin",m_vCompiledShaders.size());
+	
+	Xemit_DumpGeneratedShaderToFile(em,fn);
+#endif	
+	
+	return shader;
+}
+
+int CxeColorCombiner::ParseDecodedMux()
+{
+    xeShaderCombinerSaveType res;
+	
+	res.shader=GenerateShader();
+    res.dwMux0 = m_pDecodedMux->m_dwMux0;
+    res.dwMux1 = m_pDecodedMux->m_dwMux1;
+    res.fogIsUsed = gRDP.bFogEnableInBlender && gRSP.bFogEnabled;
+
+    m_vCompiledShaders.push_back(res);
+    m_lastIndex = m_vCompiledShaders.size()-1;
+
+//	TRI(m_lastIndex);
+	
+    return m_lastIndex;
+}
+
+void CxeColorCombiner::GenerateCombinerSetting(int index)
+{
+	Xe_SetShader(xe,SHADER_TYPE_PIXEL,m_vCompiledShaders[index].shader,0);
+}
+
+int CxeColorCombiner::FindCompiledMux()
+{
+#ifdef _DEBUG
+    if( debuggerDropCombiners )
+    {
+        m_vCompiledShaders.clear();
+        //m_dwLastMux0 = m_dwLastMux1 = 0;
+        debuggerDropCombiners = false;
+    }
+#endif
+    for( uint32 i=0; i<m_vCompiledShaders.size(); i++ )
+    {
+        if( m_vCompiledShaders[i].dwMux0 == m_pDecodedMux->m_dwMux0 
+            && m_vCompiledShaders[i].dwMux1 == m_pDecodedMux->m_dwMux1 
+            && m_vCompiledShaders[i].fogIsUsed == (gRDP.bFogEnableInBlender && gRSP.bFogEnabled) )
+            return (int)i;
+    }
+
+    return -1;
 }

@@ -464,9 +464,9 @@ int main ()
 	strcpy(g_WorkingDir, cwd);
 
 	//dynacore=CORE_INTERPRETER; // interpreter
-	dynacore=CORE_PURE_INTERPRETER; // pure interpreter
-	//dynacore=CORE_DYNAREC; //  dynamic recompiler
-	use_framelimit=0;
+	//dynacore=CORE_PURE_INTERPRETER; // pure interpreter
+	dynacore=CORE_DYNAREC; //  dynamic recompiler
+	//use_framelimit=0;
 	
 	console_close();
 
