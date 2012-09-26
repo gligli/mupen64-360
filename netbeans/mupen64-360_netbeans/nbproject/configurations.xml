@@ -13,8 +13,8 @@
         <in>Rsp_#1.1.h</in>
         <in>adler32.c</in>
         <in>bininc.S</in>
-        <in>config.c</in>
-        <in>config.h</in>
+        <in>config_mupen.c</in>
+        <in>config_mupen.h</in>
         <in>guifuncs.h</in>
         <in>ioapi.c</in>
         <in>ioapi.h</in>
@@ -33,6 +33,7 @@
         <in>savestates.h</in>
         <in>unzip.c</in>
         <in>unzip.h</in>
+        <in>version.h</in>
         <in>winlnxdefs.h</in>
       </df>
       <df name="memory">
@@ -139,30 +140,15 @@
         <in>special.c</in>
         <in>tlb_r4300.c</in>
       </df>
-      <df name="rice-video">
-        <df name="liblinux">
-          <in>BMGDLL.h</in>
-          <in>BMGImage.c</in>
-          <in>BMGImage.h</in>
-          <in>BMGLibPNG.h</in>
-          <in>BMGUtils.c</in>
-          <in>BMGUtils.h</in>
-          <in>bmp.c</in>
-          <in>jpegrw.h</in>
-          <in>pngrw.c</in>
-          <in>pngrw.h</in>
-          <in>tiffrw.h</in>
-        </df>
-        <in>Blender.cpp</in>
-        <in>Blender.h</in>
+      <df name="Rice_GX_Xenos">
         <in>COLOR.h</in>
         <in>CSortedList.h</in>
         <in>Combiner.cpp</in>
         <in>Combiner.h</in>
         <in>CombinerDefs.h</in>
         <in>CombinerTable.cpp</in>
-        <in>Config_rice.cpp</in>
-        <in>Config_rice.h</in>
+        <in>Config.cpp</in>
+        <in>Config.h</in>
         <in>ConvertImage.cpp</in>
         <in>ConvertImage.h</in>
         <in>ConvertImage16.cpp</in>
@@ -176,10 +162,12 @@
         <in>ExtendedRender.h</in>
         <in>FrameBuffer.cpp</in>
         <in>FrameBuffer.h</in>
+        <in>GFXPlugin.h</in>
         <in>GeneralCombiner.cpp</in>
         <in>GeneralCombiner.h</in>
         <in>GraphicsContext.cpp</in>
         <in>GraphicsContext.h</in>
+        <in>Graphics_1.3.h</in>
         <in>IColor.h</in>
         <in>RDP_Texture.h</in>
         <in>RSP_GBI0.h</in>
@@ -213,23 +201,23 @@
         <in>TextureManager.h</in>
         <in>Timing.h</in>
         <in>UcodeDefs.h</in>
-        <in>VectorMath.cpp</in>
-        <in>VectorMath.h</in>
         <in>VertexShaderConstantDef.h</in>
         <in>Video.cpp</in>
         <in>Video.h</in>
-        <in>Zilmar GFX 1.3.h</in>
-        <in>m64p_common.h</in>
-        <in>m64p_config.h</in>
-        <in>m64p_types.h</in>
-        <in>osal_dynamiclib.h</in>
-        <in>osal_files.h</in>
-        <in>osal_files_unix.c</in>
-        <in>osal_preproc.h</in>
+        <in>blender.cpp</in>
+        <in>blender.h</in>
+        <in>gl.h</in>
+        <in>glATI.h</in>
+        <in>glext.h</in>
+        <in>math.cpp</in>
+        <in>math.h</in>
+        <in>messagebox.h</in>
+        <in>messagebox_nogui.cpp</in>
+        <in>stdafx.h</in>
         <in>typedefs.h</in>
         <in>ucode.h</in>
         <in>version.h</in>
-        <in>wintypes.h</in>
+        <in>winlnxdefs.h</in>
         <in>xenos_backend.cpp</in>
         <in>xenos_backend.h</in>
       </df>

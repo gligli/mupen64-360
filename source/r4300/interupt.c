@@ -364,7 +364,7 @@ void gen_interupt()
       return;
     break;
     case VI_INT:
-      updateScreen();
+      UpdateScreen();
 #ifdef PROFILE
       refresh_stat();
 #endif

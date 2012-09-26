@@ -33,7 +33,8 @@
 
 // Emulateur Nintendo 64, MUPEN64, Fichier Principal 
 // main.c
-#define VERSION "0.96 Beta"
+
+#include "version.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -68,7 +69,7 @@ extern "C" {
 #ifdef XENOS_GFX
 # include "../xenos_gfx/Textures.h"
 #endif
-#include "config.h"
+#include "config_mupen.h"
 
 #undef X_OK
 #include <zlx/Browser.h>
@@ -150,7 +151,7 @@ void ActionAbout(void * other) {
 
 	Browser.getFont()->Begin();
 
-	Browser.getFont()->DrawTextF("Mupen64-360 version " VERSION, -1, x,y);y+=nl;
+	Browser.getFont()->DrawTextF(MUPEN_NAME " version " MUPEN_VERSION, -1, x,y);y+=nl;
 	y+=nl*2;
 	Browser.getFont()->DrawTextF("Credits:", -1, x,y);y+=nl;
 	Browser.getFont()->DrawTextF("Wii64 / Mupen64 teams (guess why :)", -1, x,y);y+=nl;
@@ -402,7 +403,7 @@ int run_rom(char * romfile)
 
 	plugin_load_plugins(NULL,NULL,NULL,NULL);
 
-	romOpen_gfx();
+	RomOpen(); //gfx
 	romOpen_audio();
 	romOpen_input();
 
@@ -433,7 +434,7 @@ int run_rom(char * romfile)
 	romClosed_RSP();
 	romClosed_input();
 	romClosed_audio();
-	romClosed_gfx();
+	RomClosed(); //gfx
 	
 	free(rom_buf);
 	free(ROM_HEADER);
@@ -451,7 +452,7 @@ int main ()
 	console_set_colors(0xD8444E00,0x00ffff00); // yellow on blue
 	console_init();
 
-	printf("\nMupen64-360 version : %s\n\n", VERSION);
+	printf("\n" MUPEN_NAME " version " MUPEN_VERSION "\n\n");
 
 	xenon_sound_init();
 
@@ -463,9 +464,10 @@ int main ()
 	strcpy(g_WorkingDir, cwd);
 
 	//dynacore=CORE_INTERPRETER; // interpreter
-	//dynacore=CORE_PURE_INTERPRETER; // pure interpreter
-	dynacore=CORE_DYNAREC; //  dynamic recompiler
-
+	dynacore=CORE_PURE_INTERPRETER; // pure interpreter
+	//dynacore=CORE_DYNAREC; //  dynamic recompiler
+	use_framelimit=0;
+	
 	console_close();
 
 	do_GUI();

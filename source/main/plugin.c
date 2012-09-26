@@ -405,7 +405,7 @@ void plugin_load_plugins(const char *gfx_name,
 		gfx_info.VI_X_SCALE_REG = &(vi_register.vi_x_scale);
 		gfx_info.VI_Y_SCALE_REG = &(vi_register.vi_y_scale);
 		gfx_info.CheckInterrupts = sucre;
-		initiateGFX(gfx_info);
+		InitiateGFX(gfx_info);
 #if 0
 	} else {
 		changeWindow = dummy_void;
@@ -549,10 +549,10 @@ void plugin_load_plugins(const char *gfx_name,
 		rsp_info.DPC_PIPEBUSY_REG = &dpc_register.dpc_pipebusy;
 		rsp_info.DPC_TMEM_REG = &dpc_register.dpc_tmem;
 		rsp_info.CheckInterrupts = sucre;
-		rsp_info.ProcessDlistList = processDList;
+		rsp_info.ProcessDlistList = ProcessDList;
 		rsp_info.ProcessAlistList = processAList;
-		rsp_info.ProcessRdpList = processRDPList;
-		rsp_info.ShowCFB = showCFB;
+		rsp_info.ProcessRdpList = ProcessRDPList;
+		rsp_info.ShowCFB = ShowCFB;
 		initiateRSP(rsp_info, (DWORD*) & i);
 #if 0
 	} else {

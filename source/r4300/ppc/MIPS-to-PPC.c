@@ -3694,16 +3694,17 @@ void genCallDynaMem(memType type, int base, short immed){
 extern unsigned char invalid_code[0x100000];
 
 #define CHECK_INVALID_CODE()                                                   \
+    flushRegisters();														   \
     invalidateRegisters();                                                     \
     EMIT_ADDI(3, base, immed);                                                 \
     /* test invalid code */                                                    \
-    EMIT_LIS(12, HA((unsigned int)&invalid_code));                             \ 
-    EMIT_RLWINM(5, 3, 20, 12, 31);                                             \ 
-    EMIT_ADD(12, 12, 5);                                                       \ 
-    EMIT_LBZ(12,((unsigned int)&invalid_code),12);                             \ 
-    EMIT_CMPI(12,0,6);                                                         \ 
+    EMIT_LIS(12, HA((unsigned int)&invalid_code));                             \
+    EMIT_RLWINM(5, 3, 20, 12, 31);                                             \
+    EMIT_ADD(12, 12, 5);                                                       \
+    EMIT_LBZ(12,((unsigned int)&invalid_code),12);                             \
+    EMIT_CMPI(12,0,6);                                                         \
     EMIT_BNE(6,4,0,0);                                                         \
-    /* invalidate code if needed */                                            \ 
+    /* invalidate code if needed */                                            \
     EMIT_B(add_jump((int)(&invalidate_func), 1, 1),0,1);                       \
     /* restore LR */                                                           \
     EMIT_LWZ(0, DYNAOFF_LR, 1);                                                \
@@ -3852,13 +3853,12 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
     }
     
     flushRegisters();
-    
+    invalidateRegisters();
+
 	// Skip over else
 	int not_fastmem_id = add_jump_special(1);
 	EMIT_B(not_fastmem_id, 0, 0);
 	PowerPC_instr* preCall = get_curr_dst();
-
-	invalidateRegisters();
 
 	// load into rt
     if(type<MEM_SW)

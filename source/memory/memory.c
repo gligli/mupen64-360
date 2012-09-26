@@ -1572,7 +1572,7 @@ void write_dp() {
 			dpc_register.dpc_current = dpc_register.dpc_start;
 			break;
 		case 0x4:
-			processRDPList();
+			ProcessRDPList();
 			MI_register.mi_intr_reg |= 0x20;
 			check_interupt();
 			break;
@@ -1624,7 +1624,7 @@ void write_dpb() {
 		case 0x5:
 		case 0x6:
 		case 0x7:
-			processRDPList();
+			ProcessRDPList();
 			MI_register.mi_intr_reg |= 0x20;
 			check_interupt();
 			break;
@@ -1660,7 +1660,7 @@ void write_dph() {
 			break;
 		case 0x4:
 		case 0x6:
-			processRDPList();
+			ProcessRDPList();
 			MI_register.mi_intr_reg |= 0x20;
 			check_interupt();
 			break;
@@ -1684,7 +1684,7 @@ void write_dpd() {
 	switch (*address_low) {
 		case 0x0:
 			dpc_register.dpc_current = dpc_register.dpc_start;
-			processRDPList();
+			ProcessRDPList();
 			MI_register.mi_intr_reg |= 0x20;
 			check_interupt();
 			break;
@@ -1884,14 +1884,14 @@ void write_vi() {
 		case 0x0:
 			if (vi_register.vi_status != word) {
 				vi_register.vi_status = word;
-				viStatusChanged();
+				ViStatusChanged();
 			}
 			return;
 			break;
 		case 0x8:
 			if (vi_register.vi_width != word) {
 				vi_register.vi_width = word;
-				viWidthChanged();
+				ViWidthChanged();
 			}
 			return;
 			break;
@@ -1916,7 +1916,7 @@ void write_vib() {
 					+ ((*address_low & 3)^S8)) = byte;
 			if (vi_register.vi_status != temp) {
 				vi_register.vi_status = temp;
-				viStatusChanged();
+				ViStatusChanged();
 			}
 			return;
 			break;
@@ -1929,7 +1929,7 @@ void write_vib() {
 					+ ((*address_low & 3)^S8)) = byte;
 			if (vi_register.vi_width != temp) {
 				vi_register.vi_width = temp;
-				viWidthChanged();
+				ViWidthChanged();
 			}
 			return;
 			break;
@@ -1956,7 +1956,7 @@ void write_vih() {
 					+ ((*address_low & 3)^S16))) = hword;
 			if (vi_register.vi_status != temp) {
 				vi_register.vi_status = temp;
-				viStatusChanged();
+				ViStatusChanged();
 			}
 			return;
 			break;
@@ -1967,7 +1967,7 @@ void write_vih() {
 					+ ((*address_low & 3)^S16))) = hword;
 			if (vi_register.vi_width != temp) {
 				vi_register.vi_width = temp;
-				viWidthChanged();
+				ViWidthChanged();
 			}
 			return;
 			break;
@@ -1987,7 +1987,7 @@ void write_vid() {
 		case 0x0:
 			if (vi_register.vi_status != dword >> 32) {
 				vi_register.vi_status = dword >> 32;
-				viStatusChanged();
+				ViStatusChanged();
 			}
 			vi_register.vi_origin = dword & 0xFFFFFFFF;
 			return;
@@ -1995,7 +1995,7 @@ void write_vid() {
 		case 0x8:
 			if (vi_register.vi_width != dword >> 32) {
 				vi_register.vi_width = dword >> 32;
-				viWidthChanged();
+				ViWidthChanged();
 			}
 			vi_register.vi_v_intr = dword & 0xFFFFFFFF;
 			return;

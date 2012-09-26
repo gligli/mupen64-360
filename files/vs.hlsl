@@ -14,28 +14,16 @@ struct _OUT
   float4 col: COLOR;
 };
 
-float4x4 persp: register (c0);
-float4x4 ortho: register (c4);
-
-bool transform: register(b0);
-bool isortho: register(b1);
+float4x4 ortho: register (c0);
 
 _OUT main(_IN In )
 {
-  _OUT Out;
+	_OUT Out;
 
-  if(transform){
-	if(isortho)
-	  Out.pos = mul(In.pos,ortho);
-	else
-	  Out.pos = mul(In.pos,persp);
-  }else{
-	  Out.pos = In.pos;
-  }
-
-  Out.col = In.col;
-  Out.uv0 = In.uv0;
-  Out.uv1 = In.uv1;
-  return Out;
+	Out.pos = mul(In.pos,ortho);
+	Out.col = In.col;
+	Out.uv0 = In.uv0;
+	Out.uv1 = In.uv1;
+	return Out;
 }
 
