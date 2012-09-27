@@ -131,6 +131,13 @@ protected:
     int m_textureUnitMap[8];
     BOOL    m_texUnitEnabled[8];
     CxeTexture*  m_curBoundTex[8];
+	
+private:
+	void OneCLRVtx(u32 i,u32 j, float depth);
+	void OneRTRVtx(u32 i);
+	void OneRFRVtx(u32 i,u32 j, u32 dwColor, float depth);
+	void OneDSTVtx(u32 i);
+	void OneDSRRVtx(u32 i);
 };
 
 class CxeBlender : public CBlender

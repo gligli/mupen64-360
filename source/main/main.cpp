@@ -316,9 +316,9 @@ char *get_savespath()
 
 void display_loading_progress(int p)
 {
-   printf("loading rom : %d%%\r", p);
+/*   printf("loading rom : %d%%\r", p);
    fflush(stdout);
-   if (p==100) printf("\n");
+   if (p==100) printf("\n");*/
    Browser.SetProgressValue(p/100.0f);
 }
 

@@ -576,15 +576,16 @@ static void genJumpPad(void){
 	EMIT_BLR(0);
 }
 
+// Free the code for all the functions in this block
+PowerPC_func_node* free_tree(PowerPC_func_node* node){
+	if(!node) return NULL;
+	node->left = free_tree(node->left);
+	node->right = free_tree(node->right);
+	RecompCache_Free(node->function->start_addr);
+	return NULL;
+}
+
 void invalidate_block(PowerPC_block* ppc_block){
-	// Free the code for all the functions in this block
-	PowerPC_func_node* free_tree(PowerPC_func_node* node){
-		if(!node) return NULL;
-		node->left = free_tree(node->left);
-		node->right = free_tree(node->right);
-		RecompCache_Free(node->function->start_addr);
-		return NULL;
-	}
 	ppc_block->funcs = free_tree(ppc_block->funcs);
 	// NULL out code_addr
 	//memset(ppc_block->code_addr, 0, 1024 * sizeof(PowerPC_instr*));
