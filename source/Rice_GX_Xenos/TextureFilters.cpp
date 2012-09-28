@@ -693,7 +693,7 @@ void EnhanceTexture(TxtrCacheEntry *pEntry)
     {
         if(pSurfaceHandler->StartUpdate(&destInfo))
         {
-            if( options.textureEnhancement == TEXTURE_2XSAI_ENHANCEMENT )
+			if( options.textureEnhancement == TEXTURE_2XSAI_ENHANCEMENT )
             {
                 if( pEntry->pTexture->GetPixelSize() == 4 )
                     Super2xSaI_32((uint32*)(srcInfo.lpSurface),(uint32*)(destInfo.lpSurface), nWidth, realheight, nWidth);

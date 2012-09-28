@@ -153,7 +153,7 @@ SettingInfo ForceTextureFilterSettings[] =
 
 SettingInfo TextureEnhancementSettings[] =
 {
-{"N64 original texture (No enhancement)", TEXTURE_NO_ENHANCEMENT},
+{"N64 original (No enhancement)", TEXTURE_NO_ENHANCEMENT},
 {"2x (Double the texture size)", TEXTURE_2X_ENHANCEMENT},
 {"2xSaI", TEXTURE_2XSAI_ENHANCEMENT},
 {"hq2x", TEXTURE_HQ2X_ENHANCEMENT},
@@ -596,7 +596,11 @@ void ReadConfiguration(void)
     defaultRomOptions.N64FrameBufferWriteBackControl = FRM_BUF_WRITEBACK_NORMAL;
     defaultRomOptions.N64RenderToTextureEmuType = TXT_BUF_NONE;
 
-    if(TestRegistry() == FALSE)
+#ifdef XENON 
+	if(true)
+#else
+	if(TestRegistry() == FALSE)
+#endif		
     {
         options.bEnableFog = TRUE;
         options.bWinFrameMode = FALSE;
@@ -619,7 +623,11 @@ void ReadConfiguration(void)
         options.DirectXDepthBufferSetting = 0;
         options.OpenglDepthBufferSetting = 16;
         options.colorQuality = TEXTURE_FMT_A8R8G8B8;
+
+#ifndef XENON 
         options.textureEnhancement = 0;
+#endif
+
         options.textureEnhancementControl = 0;
         options.OpenglRenderSetting = OGL_DEVICE;
         options.bSkipFrame = FALSE;
@@ -633,7 +641,11 @@ void ReadConfiguration(void)
         options.DirectXMaxFSAA = 16;
         options.FPSColor = 0xFFFFFFFF;
         options.DirectXMaxAnisotropy = 16;
-
+		
+#ifdef XENON 
+		options.bShowFPS = TRUE;
+#endif
+				
         defaultRomOptions.N64FrameBufferEmuType = FRM_BUF_NONE;
         defaultRomOptions.N64FrameBufferWriteBackControl = FRM_BUF_WRITEBACK_NORMAL;
         defaultRomOptions.N64RenderToTextureEmuType = TXT_BUF_NONE;

@@ -1450,8 +1450,7 @@ CxeTexture::CxeTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage) :
     for (w = 1; w < dwHeight; w <<= 1);
     m_dwCreatedTextureHeight = w;
    
-	m_dwCreatedTextureWidth=max(m_dwCreatedTextureWidth,8);
-	m_dwCreatedTextureHeight=max(m_dwCreatedTextureHeight,8);
+	indirect=dwWidth<32 || dwHeight<32;
 	
     if (dwWidth*dwHeight > 256*256)
         TRACE4("Large texture: (%d x %d), created as (%d x %d)", 
@@ -1462,12 +1461,21 @@ CxeTexture::CxeTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage) :
 
 	tex=Xe_CreateTexture(xe,m_dwCreatedTextureWidth,m_dwCreatedTextureHeight,0,XE_FMT_8888|XE_FMT_ARGB,0);
 	
-	m_pTexture = Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
-	Xe_Surface_Unlock(xe,tex);
+	if(!indirect)
+	{
+		m_pTexture = Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
+		Xe_Surface_Unlock(xe,tex);
+	}
+	else
+	{
+		m_pTexture = malloc(m_dwCreatedTextureWidth * m_dwCreatedTextureHeight * GetPixelSize());
+	}
 }
 
 CxeTexture::~CxeTexture()
 {
+	if (indirect) free(m_pTexture);
+	
 	Xe_DestroyTexture(xe,tex);
 	tex = NULL;
     m_pTexture = NULL;
@@ -1477,20 +1485,38 @@ CxeTexture::~CxeTexture()
 
 bool CxeTexture::StartUpdate(DrawInfo *di)
 {
+	Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_READ | XE_LOCK_WRITE);	
+	
     di->dwHeight = (uint16)m_dwHeight;
     di->dwWidth = (uint16)m_dwWidth;
     di->dwCreatedHeight = m_dwCreatedTextureHeight;
     di->dwCreatedWidth = m_dwCreatedTextureWidth;
     di->lpSurface = m_pTexture;
-    di->lPitch = tex->wpitch;
+
+	if(!indirect)
+	{
+		di->lPitch = tex->wpitch;
+	}
+	else
+	{
+		di->lPitch = GetPixelSize()*m_dwCreatedTextureWidth;
+	}
 
     return true;
 }
 
 void CxeTexture::EndUpdate(DrawInfo *di)
 {
-	Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
-	handle_small_surface(tex,m_pTexture);
+	if(indirect)
+	{
+		int i;
+		for(i=0;i<m_dwCreatedTextureHeight;++i)
+		{
+			memcpy(&((u8*)tex->base)[i*tex->wpitch],&((u8*)m_pTexture)[i*di->lPitch],di->lPitch);
+		}
+	}
+	
+	handle_small_surface(tex,tex->base);
 	Xe_Surface_Unlock(xe,tex);
 }
 

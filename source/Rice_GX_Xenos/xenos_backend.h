@@ -171,6 +171,8 @@ public:
     struct XenosSurface * tex;
 protected:
     friend class CxeDeviceBuilder;
+	
+	bool indirect;
 };
 
 typedef struct {

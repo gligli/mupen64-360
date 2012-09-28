@@ -33,6 +33,11 @@ typedef int LONG;
 typedef void VOID, *LPVOID;
 typedef float FLOAT;
 
+typedef int HINSTANCE;
+typedef int HWND;
+typedef int WPARAM;
+typedef int LPARAM;
+
 #define __int16 short
 #define __int32 int
 #define __int64 long long

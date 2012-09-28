@@ -39,6 +39,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "../Rice_GX_Xenos/winlnxdefs.h"
+
 extern "C" {
 	#include "main.h"
 	#include "guifuncs.h"
@@ -46,13 +48,14 @@ extern "C" {
 	#include "../r4300/r4300.h"
 	#include "../r4300/recomph.h"
 	#include "../memory/memory.h"
-	#include "winlnxdefs.h"
 	#include "plugin.h"
 	#include "savestates.h"
 	#include "../memory/Saves.h"
 }
 
 #include <malloc.h>
+#include <signal.h>
+#include <math.h>
 #include <debug.h>
 #include <diskio/ata.h>
 #include <ppc/cache.h>
@@ -66,25 +69,23 @@ extern "C" {
 #include <xenon_smc/xenon_smc.h>
 #include <time/time.h>
 #include <xenos/xe.h>
-#ifdef XENOS_GFX
-# include "../xenos_gfx/Textures.h"
-#endif
+
 #include "config_mupen.h"
 
+#undef MAX_PATH
 #undef X_OK
 #include <zlx/Browser.h>
 #include <zlx/Draw.h>
 #include <zlx/Hw.h>
 
+#include "../Rice_GX_Xenos/math.h"
+#include "../Rice_GX_Xenos/COLOR.h"
+#include "../Rice_GX_Xenos/Config.h"
+
 #undef hi
 #undef lo
 #define hi (reg[32])
 #define lo (reg[33])
-
-#if defined (__linux__)
-#include <signal.h>
-#include <math.h>
-#endif
 
 extern unsigned char inc_about[];
 XenosSurface * tex_about;
@@ -117,6 +118,7 @@ const char * pad_mode_name[]=
 	"C-buttons / Stick / D-pad",
 };
 
+extern SettingInfo TextureEnhancementSettings[];
 
 int autoinc_slot = 0;
 int *autoinc_save_slot = &autoinc_slot;
@@ -129,37 +131,6 @@ char g_WorkingDir[PATH_MAX];
 char txtbuffer[1024];
 
 int run_rom(char * romfile);
-
-void ActionLaunchFile(char * filename) {
-	if( run_rom(filename) ){
-		sprintf(txtbuffer,"Could not load file:\n\n%s\n\nIt is probably not a N64 rom.",filename);
-		Browser.Alert(txtbuffer);
-	}else{
-	}
-}
-
-void ActionShutdown(void * unused) {
-    xenon_smc_power_shutdown();
-	for(;;);
-}
-
-void ActionReboot(void * unused) {
-    xenon_smc_power_reboot();
-	for(;;);
-}
-
-void ActionXell(void * unused) {
-    exit(0);
-}
-
-void SetEnhName(){
-#ifdef XENOS_GFX
-	if(cache.enable2xSaI)
-        enh_action->name = "Texture enhancement: 2xSAI";
-	else
-        enh_action->name = "Texture enhancement: None";
-#endif
-}
 
 void ActionAbout(void * other) {
 	struct controller_data_s ctrl;
@@ -198,9 +169,48 @@ void ActionAbout(void * other) {
 	}
 }
 
+void ActionLaunchFile(char * filename) {
+	if( run_rom(filename) ){
+		sprintf(txtbuffer,"Could not load file:\n\n%s\n\nIt is probably not a N64 rom.",filename);
+		Browser.Alert(txtbuffer);
+	}else{
+	}
+}
+
+void ActionShutdown(void * unused) {
+    xenon_smc_power_shutdown();
+	for(;;);
+}
+
+void ActionReboot(void * unused) {
+    xenon_smc_power_reboot();
+	for(;;);
+}
+
+void ActionXell(void * unused) {
+    exit(0);
+}
+
+void SetEnhName(){
+#ifdef XENOS_GFX
+	if(cache.enable2xSaI)
+        enh_action->name = "Texture enhancement: 2xSAI";
+	else
+        enh_action->name = "Texture enhancement: None";
+#else
+	static char en[256]="";
+	
+	strcpy(en,"Textures: ");
+	strcat(en,TextureEnhancementSettings[options.textureEnhancement].description);
+	enh_action->name = en;
+#endif
+}
+
 void ActionToggleEnh(void * other) {
 #ifdef XENOS_GFX
 	cache.enable2xSaI=!cache.enable2xSaI;
+#else
+	options.textureEnhancement=(options.textureEnhancement+1)%TEXTURE_SHARPEN_ENHANCEMENT;
 #endif
 	
 	SetEnhName();
@@ -276,6 +286,15 @@ void do_GUI() {
         action->param = NULL;
         Browser.AddAction(action);
     }
+
+    {
+        pad_action = new BrowserActionEntry();
+        pad_action->param = NULL;
+		SetPadName();
+        pad_action->action = ActionTogglePad;
+        Browser.AddAction(pad_action);
+    }
+
     {
         enh_action = new BrowserActionEntry();
         enh_action->param = NULL;
@@ -299,14 +318,6 @@ void do_GUI() {
         lim_action->action = ActionToggleLim;
         Browser.AddAction(lim_action);
     }
-    {
-        pad_action = new BrowserActionEntry();
-        pad_action->param = NULL;
-		SetPadName();
-        pad_action->action = ActionTogglePad;
-        Browser.AddAction(pad_action);
-    }
-
 
 	{
         lpBrowserActionEntry action = new BrowserActionEntry();
