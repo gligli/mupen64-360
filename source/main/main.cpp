@@ -83,6 +83,7 @@ extern "C" {
 
 #if defined (__linux__)
 #include <signal.h>
+#include <math.h>
 #endif
 
 extern unsigned char inc_about[];
@@ -93,9 +94,29 @@ ZLX::Browser Browser;
 lpBrowserActionEntry enh_action;
 lpBrowserActionEntry cpu_action;
 lpBrowserActionEntry lim_action;
+lpBrowserActionEntry pad_action;
 
 int regular_quit=0;
 int use_framelimit = 1;
+int pad_mode = 0;
+
+#define PADMODE_SDC 0
+#define PADMODE_SCD 1
+#define PADMODE_DSC 2
+#define PADMODE_DCS 3
+#define PADMODE_CDS 4
+#define PADMODE_CSD 5
+
+const char * pad_mode_name[]=
+{
+	"Stick / D-pad / C-buttons",
+	"Stick / C-buttons / D-pad",
+	"D-pad / Stick / C-buttons",
+	"D-pad / C-buttons / Stick",
+	"C-buttons / D-pad / Stick",
+	"C-buttons / Stick / D-pad",
+};
+
 
 int autoinc_slot = 0;
 int *autoinc_save_slot = &autoinc_slot;
@@ -214,6 +235,22 @@ void ActionToggleLim(void * other) {
 	SetLimName();
 }
 
+
+void SetPadName(){
+	static char pm[256]="";
+	
+	strcpy(pm,"Controls (l->r): ");
+	strcat(pm,pad_mode_name[pad_mode]);
+	
+	pad_action->name=pm;
+}
+
+void ActionTogglePad(void * other) {
+	pad_mode=(pad_mode+1)%6;
+	
+	SetPadName();
+}
+
 void cls_GUI() {
 	Browser.Begin();
 	ZLX::Draw::DrawColoredRect(-1,-1,2,2,0xff000000);
@@ -262,6 +299,14 @@ void do_GUI() {
         lim_action->action = ActionToggleLim;
         Browser.AddAction(lim_action);
     }
+    {
+        pad_action = new BrowserActionEntry();
+        pad_action->param = NULL;
+		SetPadName();
+        pad_action->action = ActionTogglePad;
+        Browser.AddAction(pad_action);
+    }
+
 
 	{
         lpBrowserActionEntry action = new BrowserActionEntry();
@@ -485,14 +530,25 @@ void initiateControllers(CONTROL_INFO ControlInfo)
 	control_info.Controls[0].Plugin = PLUGIN_MEMPAK;
 }
 
-#define	STICK_DEAD_ZONE (32768*0.4)
-#define HANDLE_STICK_DEAD_ZONE(x) ((((x)>-STICK_DEAD_ZONE) && (x)<STICK_DEAD_ZONE)?0:(x-x/abs(x)*STICK_DEAD_ZONE))
-
-#define	TRIGGER_DEAD_ZONE (256*0.3)
-#define HANDLE_TRIGGER_DEAD_ZONE(x) (((x)<TRIGGER_DEAD_ZONE)?0:(x-TRIGGER_DEAD_ZONE))
+#define	STICK_DEAD_ZONE (32768*0.15)
+#define	STICK_FACTOR (0.6)
 
 #define TRIGGER_THRESHOLD 100
-#define STICK_THRESHOLD 25000
+#define STICK_THRESHOLD 20000
+
+s32 handleStickDeadZone(s32 value)
+{
+	if(abs(value)<STICK_DEAD_ZONE)
+		return 0;
+
+	int sign=-1;
+	if (value>=0) sign=1;
+	
+	int dz=STICK_DEAD_ZONE*sign;
+	
+	return (value-dz)*STICK_FACTOR;
+}
+
 
 void getKeys(int Control, BUTTONS *Keys)
 {
@@ -517,19 +573,95 @@ void getKeys(int Control, BUTTONS *Keys)
         
     b.L_TRIG=c->lb;
     b.R_TRIG=c->rb;
-        
-    b.U_DPAD=c->up;
-    b.D_DPAD=c->down;
-    b.L_DPAD=c->left;
-    b.R_DPAD=c->right;
+     
+	
+	switch(pad_mode)
+	{
+		case PADMODE_SDC:
+			b.X_AXIS=handleStickDeadZone(c->s1_x)/256;
+			b.Y_AXIS=handleStickDeadZone(c->s1_y)/256;
 
-    b.X_AXIS=HANDLE_STICK_DEAD_ZONE(c->s1_x)/256;
-    b.Y_AXIS=HANDLE_STICK_DEAD_ZONE(c->s1_y)/256;
+			b.U_DPAD=c->up;
+			b.D_DPAD=c->down;
+			b.L_DPAD=c->left;
+			b.R_DPAD=c->right;
 
-    b.D_CBUTTON=c->s2_y<-STICK_THRESHOLD;
-    b.U_CBUTTON=c->s2_y>STICK_THRESHOLD;
-    b.L_CBUTTON=c->s2_x<-STICK_THRESHOLD;
-    b.R_CBUTTON=c->s2_x>STICK_THRESHOLD;
+			b.U_CBUTTON=c->s2_y>STICK_THRESHOLD;
+			b.D_CBUTTON=c->s2_y<-STICK_THRESHOLD;
+			b.L_CBUTTON=c->s2_x<-STICK_THRESHOLD;
+			b.R_CBUTTON=c->s2_x>STICK_THRESHOLD;
+			break;
+		case PADMODE_SCD:
+			b.X_AXIS=handleStickDeadZone(c->s1_x)/256;
+			b.Y_AXIS=handleStickDeadZone(c->s1_y)/256;
+
+			b.U_CBUTTON=c->up;
+			b.D_CBUTTON=c->down;
+			b.L_CBUTTON=c->left;
+			b.R_CBUTTON=c->right;
+
+			b.U_DPAD=c->s2_y>STICK_THRESHOLD;
+			b.D_DPAD=c->s2_y<-STICK_THRESHOLD;
+			b.L_DPAD=c->s2_x<-STICK_THRESHOLD;
+			b.R_DPAD=c->s2_x>STICK_THRESHOLD;
+			break;
+		case PADMODE_DSC:
+			b.U_DPAD=c->s1_y>STICK_THRESHOLD;
+			b.D_DPAD=c->s1_y<-STICK_THRESHOLD;
+			b.L_DPAD=c->s1_x<-STICK_THRESHOLD;
+			b.R_DPAD=c->s1_x>STICK_THRESHOLD;
+
+			b.X_AXIS=(c->left?-128:0) + (c->right?128:0);
+			b.Y_AXIS=(c->up?-128:0) + (c->down?128:0);
+
+			b.U_CBUTTON=c->s2_y>STICK_THRESHOLD;
+			b.D_CBUTTON=c->s2_y<-STICK_THRESHOLD;
+			b.L_CBUTTON=c->s2_x<-STICK_THRESHOLD;
+			b.R_CBUTTON=c->s2_x>STICK_THRESHOLD;
+			break;
+		case PADMODE_DCS:
+			b.U_DPAD=c->s1_y>STICK_THRESHOLD;
+			b.D_DPAD=c->s1_y<-STICK_THRESHOLD;
+			b.L_DPAD=c->s1_x<-STICK_THRESHOLD;
+			b.R_DPAD=c->s1_x>STICK_THRESHOLD;
+
+			b.U_CBUTTON=c->up;
+			b.D_CBUTTON=c->down;
+			b.L_CBUTTON=c->left;
+			b.R_CBUTTON=c->right;
+
+			b.X_AXIS=handleStickDeadZone(c->s2_x)/256;
+			b.Y_AXIS=handleStickDeadZone(c->s2_y)/256;
+			break;
+		case PADMODE_CDS:
+			b.U_CBUTTON=c->s1_y>STICK_THRESHOLD;
+			b.D_CBUTTON=c->s1_y<-STICK_THRESHOLD;
+			b.L_CBUTTON=c->s1_x<-STICK_THRESHOLD;
+			b.R_CBUTTON=c->s1_x>STICK_THRESHOLD;
+
+			b.U_DPAD=c->up;
+			b.D_DPAD=c->down;
+			b.L_DPAD=c->left;
+			b.R_DPAD=c->right;
+
+			b.X_AXIS=handleStickDeadZone(c->s2_x)/256;
+			b.Y_AXIS=handleStickDeadZone(c->s2_y)/256;
+			break;
+		case PADMODE_CSD:
+			b.U_CBUTTON=c->s1_y>STICK_THRESHOLD;
+			b.D_CBUTTON=c->s1_y<-STICK_THRESHOLD;
+			b.L_CBUTTON=c->s1_x<-STICK_THRESHOLD;
+			b.R_CBUTTON=c->s1_x>STICK_THRESHOLD;
+
+			b.X_AXIS=(c->left?-128:0) + (c->right?128:0);
+			b.Y_AXIS=(c->up?-128:0) + (c->down?128:0);
+
+			b.U_DPAD=c->s2_y>STICK_THRESHOLD;
+			b.D_DPAD=c->s2_y<-STICK_THRESHOLD;
+			b.L_DPAD=c->s2_x<-STICK_THRESHOLD;
+			b.R_DPAD=c->s2_x>STICK_THRESHOLD;
+			break;
+	}
 
     Keys->Value = b.Value;
 }
