@@ -75,9 +75,6 @@ extern u32 ps_fb_indices[];
 struct XenosSurface * framebuffer[2] = {NULL};
 int curFB=0;
 
-bool needSync=false;
-bool hadTriangles=false;
-bool drawPrepared=false;
 int prevVertexCount=0;
 
 TVertex * firstVertex;
@@ -93,6 +90,8 @@ float xe_origx=0;
 float xe_origy=0;
 float xe_scalex=1;
 float xe_scaley=1;
+
+bool xe_needEndRender=false;
 
 int vertexCount()
 {
@@ -123,8 +122,22 @@ void drawVB()
 	{
 		Xe_DrawPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST,prevVertexCount,(vertexCount()-prevVertexCount)/3);
         prevVertexCount=vertexCount();
-		hadTriangles=true;
     }
+}
+
+void endRenderSync()
+{
+	if(!xe_needEndRender) return;
+	
+	Xe_Sync(xe);
+
+    Xe_SetFrameBufferSurface(xe,framebuffer[curFB]);
+    curFB=1-curFB;
+    Xe_SetRenderTarget(xe,framebuffer[curFB]);
+    
+	resetLockVB();
+	
+	xe_needEndRender=false;
 }
 
 void setZStuff()
@@ -215,6 +228,8 @@ bool CxeGraphicsContext::IsWglExtensionSupported(const char* pExtName)
 
 void CxeGraphicsContext::CleanUp()
 {
+   	endRenderSync();
+	
     if (vertexBuffer->lock.start) Xe_VB_Unlock(xe,vertexBuffer);
 	Xe_SetScissor(xe,0,0,0,0,0);
     Xe_SetFrameBufferSurface(xe,&xe->default_fb);
@@ -223,7 +238,9 @@ void CxeGraphicsContext::CleanUp()
 
 void CxeGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
 {
-    uint32 flag=0;
+   	endRenderSync();
+	
+	uint32 flag=0;
     if( dwFlags&CLEAR_COLOR_BUFFER )    flag |= XE_CLEAR_COLOR;
     if( dwFlags&CLEAR_DEPTH_BUFFER )	flag |= XE_CLEAR_DS;
 
@@ -243,22 +260,21 @@ void CxeGraphicsContext::UpdateFrame(bool swaponly)
 {
 	status.gFrameCount++;
 
-	if(!swaponly && hadTriangles && drawPrepared)
+	if (vertexBuffer->lock.start)
 	{
-		drawVB();
-		
 		Xe_VB_Unlock(xe,vertexBuffer);
 
 		Xe_ResolveInto(xe,xe->rt,XE_SOURCE_COLOR,0);
-		Xe_Execute(xe); // render everything in background !
-		
-#if 0
-		Xe_Sync(xe);
-#else
-		needSync=true;
-#endif
-		
-		drawPrepared=false;
+
+		Xe_Execute(xe);
+		xe_needEndRender=true;
+
+		Xe_InvalidateState(xe);
+
+		if(g_curRomInfo.bForceScreenClear ) 
+			needCleanScene = true;
+
+		status.bScreenIsDrawn = false;	
 	}
 }
 
@@ -353,11 +369,10 @@ void CxeRender::Initialize(void)
 	Xe_SetRenderTarget(xe,framebuffer[1]);
 	Xe_Clear(xe,XE_CLEAR_COLOR|XE_CLEAR_DS);
 
-	needSync=true;
-	drawPrepared=false;
-	hadTriangles=false;
+	xe_needEndRender=false;
 	
-	RenderReset();
+	resetLockVB();
+    RenderReset();
 }
 
 void CxeRender::ApplyTextureFilter()
@@ -406,6 +421,8 @@ void CxeRender::ClearBuffer(bool cbuffer, bool zbuffer)
 
 	CGraphicsContext::Get()->Clear((ClearFlag)flag,0,depth);
 #else
+	endRenderSync();
+	
 	Xe_SetScissor(xe,0,0,0,0,0);
 
 	glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
@@ -458,6 +475,8 @@ void CxeRender::ClearZBuffer(float depth)
 #if 1	
 	CGraphicsContext::Get()->Clear(CLEAR_DEPTH_BUFFER,0,depth);
 #else	
+	endRenderSync();
+	
 	glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetScissor(xe,0,0,0,0,0);
@@ -769,6 +788,8 @@ void CxeRender::OneRTRVtx(u32 i)
 bool CxeRender::RenderTexRect()
 {
 //return true;
+	endRenderSync();
+	
 	glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
@@ -807,6 +828,8 @@ void CxeRender::OneRFRVtx(u32 i,u32 j, u32 dwColor, float depth)
 bool CxeRender::RenderFillRect(uint32 dwColor, float depth)
 {
 //return true;
+	endRenderSync();
+	
 	glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
@@ -858,6 +881,8 @@ extern FiddledVtx * g_pVtxBase;
 // OpenGL internal transform
 bool CxeRender::RenderFlushTris()
 {
+	endRenderSync();
+	
     if( !m_bSupportFogCoordExt )    
         SetFogFlagForNegativeW();
     else
@@ -955,6 +980,8 @@ void CxeRender::OneDSTVtx(u32 i)
 
 void CxeRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)
 {
+	endRenderSync();
+	
 	if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
@@ -1013,6 +1040,8 @@ void CxeRender::OneDSRRVtx(u32 i)
 
 void CxeRender::DrawSpriteR_Render()    // With Rotation
 {
+	endRenderSync();
+	
     glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
@@ -1083,25 +1112,12 @@ void CxeRender::SetViewportRender()
 
 void CxeRender::RenderReset()
 {
+	endRenderSync();
+
     CRender::RenderReset();
-
-	if (drawPrepared) return;
-
-	if(needSync)
-		Xe_Sync(xe); // wait for background render to finish !
-
-    Xe_SetFrameBufferSurface(xe,framebuffer[curFB]);
-    curFB=1-curFB;
-    Xe_SetRenderTarget(xe,framebuffer[curFB]);
-    
-	Xe_InvalidateState(xe);
-
+	
 	Xe_SetShader(xe,SHADER_TYPE_VERTEX,sh_vs,0);
 	m_pColorCombiner->DisableCombiner();
-
-	drawPrepared=true;
-	hadTriangles=false;
-	resetLockVB();
 }
 
 
@@ -1509,7 +1525,7 @@ void CxeTexture::EndUpdate(DrawInfo *di)
 {
 	if(indirect)
 	{
-		int i;
+		u32 i;
 		for(i=0;i<m_dwCreatedTextureHeight;++i)
 		{
 			memcpy(&((u8*)tex->base)[i*tex->wpitch],&((u8*)m_pTexture)[i*di->lPitch],di->lPitch);

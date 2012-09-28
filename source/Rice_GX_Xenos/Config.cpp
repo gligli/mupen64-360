@@ -1978,7 +1978,7 @@ int FindIniEntry(uint32 dwCRC1, uint32 dwCRC2, uint8 nCountryID, char* szName)
 
     for (i = 0; i < IniSections.size(); i++)
     {
-        if (strcasecmp((char*)szCRC, IniSections[i].crccheck) == 0)
+        if (strncasecmp((char*)szCRC, IniSections[i].crccheck,16) == 0) //gli: HACK: don't check Country ID
         {
 #ifndef __GX__
             printf("[RiceVideo] Found ROM '%s', CRC %s\n", IniSections[i].name, szCRC);
