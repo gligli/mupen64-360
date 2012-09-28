@@ -9,7 +9,7 @@
 #include "GraphicsContext.h"
 #include "Render.h"
 #include "Combiner.h"
-#include "Blender.h"
+#include "blender.h"
 #include "TextureManager.h"
 #include "GeneralCombiner.h"
 

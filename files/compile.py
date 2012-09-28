@@ -18,28 +18,6 @@ SHADER_DEFS= \
         "ps_fb.hlsl",
         "ps_3_0"
     ],
-    [
-         "ps_combiner_slow.hlsl",
-         "ps_3_0"
-    ],
-#     [
-#         "ps_combiner.hlsl",
-#         "/ps",
-#         [
-#             # optional list of defines, with list of possible values per define
-#             # each combination of those will be a new shader ...
-#             ["NUM_COL_OPS ",[1,2,3,4]],
-#             ["NUM_ALPHA_OPS ",[1,2,3,4]],
-#             ["COL_OP0_B",[0,1]],
-#             ["COL_OP1_B",[0,1]],
-#             ["COL_OP2_B",[0,1]],
-#             ["COL_OP3_B",[0,1]],
-#             ["ALPHA_OP0_B",[0,1]],
-#             ["ALPHA_OP1_B",[0,1]],
-#             ["ALPHA_OP2_B",[0,1]],
-#             ["ALPHA_OP3_B",[0,1]],
-#         ]
-#     ]
 ]
 
 # things that shouldn't be changed  (code)

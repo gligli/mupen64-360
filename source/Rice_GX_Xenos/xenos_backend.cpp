@@ -32,8 +32,8 @@ extern "C"
 
 #define MAX_VERTEX_COUNT (16384*3)
 
-#define NEAR (-1.0)
-#define FAR  (1.0)
+#define NEAR (-10.0)
+#define FAR  (10.0)
 
 const struct XenosVBFFormat VertexBufferFormat = {
     4, {
@@ -219,29 +219,6 @@ void CxeGraphicsContext::CleanUp()
 	Xe_SetScissor(xe,0,0,0,0,0);
     Xe_SetFrameBufferSurface(xe,&xe->default_fb);
     Xe_SetRenderTarget(xe,&xe->default_fb);
-}
-
-
-static inline float float_24_to_32(DWORD in)
-{
-    const float sgn = in & 0x800000 ? -1.0f : 1.0f;
-    const unsigned short e = (in & 0x780000) >> 19;
-    const unsigned int m = in & 0x7ffff;
-
-    if (e == 0)
-    {
-        if (m == 0) return sgn * 0.0f; /* +0.0 or -0.0 */
-        else return sgn * powf(2, -6.0f) * ((float)m / 524288.0f);
-    }
-    else if (e < 15)
-    {
-        return sgn * powf(2, (float)e - 7.0f) * (1.0f + ((float)m / 524288.0f));
-    }
-    else
-    {
-        if (m == 0) return sgn / 0.0f; /* +INF / -INF */
-        else return 0.0f / 0.0f; /* NAN */
-    }
 }
 
 void CxeGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
@@ -560,32 +537,39 @@ void CxeRender::ApplyZBias(int bias)
 
 void CxeRender::SetZBias(int bias)
 {
-#if defined(DEBUGGER)
-    if( pauseAtNext == true )
-      DebuggerAppendMsg("Set zbias = %d", bias);
-#endif
     // set member variable and apply the setting in opengl
     m_dwZBias = bias;
     ApplyZBias(bias);
 }
 
+void CxeRender::SetAlphaTestEnable(BOOL bAlphaTestEnable)
+{
+    if( bAlphaTestEnable )
+        xe_alphatest=true;
+    else
+        xe_alphatest=false;
+	
+	setAlphaStuff();
+}
+
 void CxeRender::SetAlphaRef(uint32 dwAlpha)
 {
-    if (m_dwAlpha != dwAlpha)
-    {
-        m_dwAlpha = dwAlpha;
-	    float ref = dwAlpha/255.0f-0.5f/255.0f;
-		if(ref<0.0f) ref=0.0f;
-        Xe_SetAlphaRef(xe,ref);
-		setAlphaStuff();
-    }
+	m_dwAlpha = dwAlpha;
+	float ref = dwAlpha/255.0f-1.0f/255.0f;
+	if(ref<0.0f) ref=0.0f;
+
+	Xe_SetAlphaRef(xe,ref);
+
+	setAlphaStuff();
 }
 
 void CxeRender::ForceAlphaRef(uint32 dwAlpha)
 {
-    float ref = dwAlpha/255.0f-0.5f/255.0f;
+    float ref = dwAlpha/255.0f-1.0f/255.0f;
 	if(ref<0.0f) ref=0.0f;
+
     Xe_SetAlphaRef(xe,ref);
+
 	setAlphaStuff();
 }
 
@@ -784,7 +768,7 @@ void CxeRender::OneRTRVtx(u32 i)
 
 bool CxeRender::RenderTexRect()
 {
-//return false;
+//return true;
 	glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
@@ -822,7 +806,7 @@ void CxeRender::OneRFRVtx(u32 i,u32 j, u32 dwColor, float depth)
 
 bool CxeRender::RenderFillRect(uint32 dwColor, float depth)
 {
-//return false;
+//return true;
 	glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,true);
 
 	Xe_SetCullMode(xe,XE_CULL_NONE);
@@ -886,9 +870,11 @@ bool CxeRender::RenderFlushTris()
 
     ApplyZBias(m_dwZBias);                    // set the bias factors
 	
-//	printf("z %d %d %d\n",xe_zenable,xe_zwrite,xe_zcompare);
-//	setZStuff();
-
+//	Xe_SetZEnable(xe,0);
+//	Xe_SetZWrite(xe,0);
+//	Xe_SetCullMode(xe,XE_CULL_NONE);
+//	Xe_SetFillMode(xe,XE_FILL_WIREFRAME,XE_FILL_WIREFRAME);
+	
     glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW, false);
 
 	u32 i;
@@ -902,12 +888,10 @@ bool CxeRender::RenderFlushTris()
 		currentVertex->z=g_vtxBuffer[i].z;
 		currentVertex->w=1.0f;//g_vtxBuffer[i].rhw;
 		
-		currentVertex->r=g_vtxBuffer[i].r;
-		currentVertex->g=g_vtxBuffer[i].g;
-		currentVertex->b=g_vtxBuffer[i].b;
-		currentVertex->a=g_vtxBuffer[i].a;
+		currentVertex->color=MAKE_COLOR4(g_vtxBuffer[i].r,g_vtxBuffer[i].g,g_vtxBuffer[i].b,g_vtxBuffer[i].a);
 #else
 		int vi=g_vtxIndex[i];
+		float zoffset=m_bPolyOffset?0.999f:1.0f;
 #if 0
 		float invW = 1.0f/g_vtxProjected5[vi][3];
 
@@ -918,7 +902,7 @@ bool CxeRender::RenderFlushTris()
 #else
 		currentVertex->x=g_vtxProjected5[vi][0];
 		currentVertex->y=g_vtxProjected5[vi][1];
-		currentVertex->z=g_vtxProjected5[vi][2];
+		currentVertex->z=g_vtxProjected5[vi][2]*zoffset;
 		currentVertex->w=g_vtxProjected5[vi][3];
 #endif
 		
@@ -1112,28 +1096,14 @@ void CxeRender::RenderReset()
     
 	Xe_InvalidateState(xe);
 
-	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
 	Xe_SetShader(xe,SHADER_TYPE_VERTEX,sh_vs,0);
+	m_pColorCombiner->DisableCombiner();
 
 	drawPrepared=true;
 	hadTriangles=false;
 	resetLockVB();
 }
 
-
-void CxeRender::SetAlphaTestEnable(BOOL bAlphaTestEnable)
-{
-#ifdef DEBUGGER
-    if( bAlphaTestEnable && debuggerEnableAlphaTest )
-#else
-    if( bAlphaTestEnable )
-#endif
-        xe_alphatest=true;
-    else
-        xe_alphatest=false;
-	
-	setAlphaStuff();
-}
 
 void CxeRender::BindTexture(CxeTexture *texture, int unitno)
 {
@@ -1334,14 +1304,12 @@ void CxeRender::glViewportWrapper(int x, int y, int width, int height, bool orth
 		
 //		printf("glViewportWrapper %d %d %d %d %d %d %d\n",x,y,width,height,windowSetting.uDisplayWidth,windowSetting.uDisplayHeight,ortho);
 		
-		float zfactor=m_bPolyOffset?0.999:1;
-		
 		if (ortho)
 		{
 			float ortho_matrix[4][4] = {
 				{2.0f/windowSetting.uDisplayWidth,0,0,-1},
 				{0,-2.0f/windowSetting.uDisplayHeight,0,1},
-				{0,0,zfactor/(FAR-NEAR),NEAR/(NEAR-FAR)},
+				{0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
 				{0,0,0,1},
 			};
 
@@ -1351,13 +1319,13 @@ void CxeRender::glViewportWrapper(int x, int y, int width, int height, bool orth
 		{
 			float vp_x=(f32) (xe_origx + x) / windowSetting.uDisplayWidth;
 			float vp_y=(f32) (xe_origy + (windowSetting.uDisplayHeight-(y+height))*xe_scaley) / windowSetting.uDisplayHeight;
-			float vp_w=windowSetting.uDisplayWidth / (f32) (xe_scalex * width);
-			float vp_h=windowSetting.uDisplayHeight / (f32) (xe_scaley * height);
+			float vp_w=(f32) (xe_scalex * width) / windowSetting.uDisplayWidth;
+			float vp_h=(f32) (xe_scaley * height) / windowSetting.uDisplayHeight;
 
 			float viewport_matrix[4][4] = {
 				{vp_w,0,0,2.0f*vp_x},
 				{0,vp_h,0,-2.0f*vp_y},
-				{0,0,zfactor/(FAR-NEAR),NEAR/(NEAR-FAR)},
+				{0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
 				{0,0,0,1},
 			};
 
@@ -1423,6 +1391,55 @@ void CxeBlender::Disable()
 // CxeTexture
 ////////////////////////////////////////////////////////////////////////////////
 
+// thank you ced2911 for this :)
+static inline void handle_small_surface(struct XenosSurface * surf, void * buffer){
+	int width;
+	int height;
+	int wpitch;
+	int hpitch;
+	uint32_t * surf_data;
+	uint32_t * data;
+	uint32_t * src;	
+	
+	// don't handle big texture
+	if( surf->width>128 && surf->height>32) {
+		return;
+	}	
+	
+	width = surf->width;
+	height = surf->height;
+	wpitch = surf->wpitch / 4;
+	hpitch = surf->hpitch;	
+	
+	if(buffer)
+        surf_data = (uint32_t *)buffer;
+    else
+        surf_data = (uint32_t *)Xe_Surface_LockRect(xe, surf, 0, 0, 0, 0, XE_LOCK_WRITE);
+	
+	src = data = surf_data;
+		
+	for(int yp=0; yp<hpitch;yp+=height) {
+		int max_h = height;
+		if (yp + height> hpitch)
+				max_h = hpitch % height;
+		for(int y = 0; y<max_h; y++){
+			//x order
+			for(int xp = 0;xp<wpitch;xp+=width) {
+				int max_w = width;
+				if (xp + width> wpitch)
+					max_w = wpitch % width;
+
+				for(int x = 0; x<max_w; x++) {
+					data[x+xp + ((y+yp)*wpitch)]=src[x+ (y*wpitch)];
+				}
+			}
+		}
+	}
+	
+    if(!buffer)
+        Xe_Surface_Unlock(xe, surf);
+} 
+
 CxeTexture::CxeTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage) :
     CTexture(dwWidth,dwHeight,usage)
 {
@@ -1433,8 +1450,8 @@ CxeTexture::CxeTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage) :
     for (w = 1; w < dwHeight; w <<= 1);
     m_dwCreatedTextureHeight = w;
    
-	m_dwCreatedTextureWidth=max(m_dwCreatedTextureWidth,32);
-	m_dwCreatedTextureHeight=max(m_dwCreatedTextureHeight,32);
+	m_dwCreatedTextureWidth=max(m_dwCreatedTextureWidth,8);
+	m_dwCreatedTextureHeight=max(m_dwCreatedTextureHeight,8);
 	
     if (dwWidth*dwHeight > 256*256)
         TRACE4("Large texture: (%d x %d), created as (%d x %d)", 
@@ -1473,6 +1490,7 @@ bool CxeTexture::StartUpdate(DrawInfo *di)
 void CxeTexture::EndUpdate(DrawInfo *di)
 {
 	Xe_Surface_LockRect(xe,tex,0,0,0,0,XE_LOCK_WRITE);	
+	handle_small_surface(tex,m_pTexture);
 	Xe_Surface_Unlock(xe,tex);
 }
 
@@ -1508,7 +1526,8 @@ bool CxeColorCombiner::Initialize(void)
 
 void CxeColorCombiner::DisableCombiner(void)
 {
-	assert(false);
+	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
+	m_lastIndex=-1;
 }
 
 void CxeColorCombiner::InitCombinerCycle12(void)
@@ -1539,7 +1558,7 @@ void CxeColorCombiner::InitCombinerCycle12(void)
     }
 
 
-    GenerateCombinerSettingConstants(m_lastIndex);
+//    GenerateCombinerSettingConstants(m_lastIndex);
     if( m_bCycleChanged || combinerIsChanged || gRDP.texturesAreReloaded || gRDP.colorsAreReloaded )
     {
         if( m_bCycleChanged || combinerIsChanged )
@@ -1566,9 +1585,8 @@ void CxeColorCombiner::InitCombinerCycle12(void)
 void CxeColorCombiner::InitCombinerCycleCopy(void)
 {
 	Xe_SetPixelShaderConstantB(xe,0,1); // texture
-	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
-	m_lastIndex=-1;
-
+	DisableCombiner();
+	
     m_pxeRender->EnableTexUnit(0,TRUE);
     CxeTexture* pTexture = g_textures[gRSP.curTile].m_pCxeTexture;
     if( pTexture )
@@ -1587,8 +1605,7 @@ void CxeColorCombiner::InitCombinerCycleCopy(void)
 void CxeColorCombiner::InitCombinerCycleFill(void)
 {
 	Xe_SetPixelShaderConstantB(xe,0,0); //no texture
-	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
-	m_lastIndex=-1;
+	DisableCombiner();
 
     for( int i=0; i<m_supportedStages; i++ )
     {
@@ -1599,8 +1616,7 @@ void CxeColorCombiner::InitCombinerCycleFill(void)
 void CxeColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
 {
 	Xe_SetPixelShaderConstantB(xe,0,1); // texture
-	Xe_SetShader(xe,SHADER_TYPE_PIXEL,sh_ps_fb,0);
-	m_lastIndex=-1;
+	DisableCombiner();
 
     if( g_textures[tile].m_pCxeTexture )
     {

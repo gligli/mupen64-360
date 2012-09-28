@@ -33,7 +33,7 @@ OPTIFLAGS =  -O2 -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vector
 #OPTIFLAGS =  -O2 -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1
 
 ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32
-CFLAGS	= $(OPTIFLAGS) -g -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DDEBUG_ -DUSE_RECOMP_CACHE -DUSE_EXPANSION -DFASTMEM -DNO_ASM
+CFLAGS	= $(OPTIFLAGS) -g -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DDEBUG_ -DUSE_RECOMP_CACHE -DFASTMEM -DNO_ASM # -D_DEBUG -DUSE_EXPANSION 
 CXXFLAGS	=	$(CFLAGS)
 
 #MACHDEP_LD =  -DXENON -m32 -maltivec -fno-pic -mhard-float -L$(DEVKITXENON)/xenon/lib/32
