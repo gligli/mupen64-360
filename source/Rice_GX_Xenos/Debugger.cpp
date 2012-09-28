@@ -318,8 +318,8 @@ void DumpMatrixAt(uint32 dwPC)
     for (dwI = 0; dwI < 4; dwI++) {
         for (dwJ = 0; dwJ < 4; dwJ++) {
 
-            int nDataHi = *(((short  *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1)     ))))^S16);
-            int nDataLo = *(((uint16 *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1) + 32))))^S16);
+            int nDataHi = (*((short  *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1)     ))))^S16);
+            int nDataLo = (*((uint16 *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1) + 32))))^S16);
             mat.m[dwI][dwJ] = (float)((nDataHi << 16) | nDataLo) * fRecip;
         }
     }

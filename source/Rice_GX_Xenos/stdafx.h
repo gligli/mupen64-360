@@ -31,6 +31,7 @@
 #include <SDL/SDL.h>
 #else
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <malloc.h>
 #include <debug.h>
