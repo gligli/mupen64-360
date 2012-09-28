@@ -346,24 +346,19 @@ void RecompCache_Init(void){
 	}
     kmeminit(&cache_mempool,cache_buf,RECOMP_CACHE_ALLOC_SIZE);
 		
-	if(!meta_cache_buf){
+/*	if(!meta_cache_buf){
 		meta_cache_buf=malloc(META_CACHE_ALLOC_SIZE);
 	}
-    kmeminit(&meta_cache_mempool,meta_cache_buf,META_CACHE_ALLOC_SIZE);
+    kmeminit(&meta_cache_mempool,meta_cache_buf,META_CACHE_ALLOC_SIZE);*/
 }
 
 void* MetaCache_Alloc(unsigned int size){
-	void* ptr = kmalloc(&meta_cache_mempool,size,32);
-	 // While there's no room to allocate, call release
-	 while(!ptr){
-			 release(size);
-			 ptr = kmalloc(&meta_cache_mempool,size,32);
-	 }
-
-	 return ptr;
+	//return kmalloc(&meta_cache_mempool,size,0);
+	return malloc(size);
 }
 
 void MetaCache_Free(void* ptr){
-	kfree(&meta_cache_mempool,ptr);
+	//kfree(&meta_cache_mempool,ptr);
+	free(ptr);
 }
 

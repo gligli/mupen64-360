@@ -563,7 +563,7 @@ s32 handleStickDeadZone(s32 value)
 
 void getKeys(int Control, BUTTONS *Keys)
 {
-    static struct controller_data_s cdata[3],*c;
+    static struct controller_data_s cdata[4],*c;
     BUTTONS b;
 
 	usb_do_poll();
