@@ -480,7 +480,7 @@ EXPORT void CALL RomOpen(void)
     }
     status.bDisableFPS=false;
 
-#ifdef __GX__
+#if defined(__GX__) || defined(XENON)
 # ifdef USE_EXPANSION
    g_dwRamSize = 0x800000;
 # else

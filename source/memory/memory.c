@@ -177,13 +177,13 @@ void (*rw_pif[8])() ={read_pif, read_pifb, read_pifh, read_pifd,
 
 
 // memory sections
-static unsigned long *readrdramreg[0xFFFF];
+static unsigned long *readrdramreg[0x10000];
 static unsigned long *readrspreg[0x30];
 static unsigned long *readrsp[0x10];
 static unsigned long *readmi[0x20];
 static unsigned long *readvi[0x40];
 static unsigned long *readai[0x20];
-static unsigned long *readpi[0xFFFF];
+static unsigned long *readpi[0x10000];
 static unsigned long *readri[0x30];
 static unsigned long *readsi[0x20];
 static unsigned long *readdp[0x30];
@@ -223,8 +223,9 @@ void memory_vm_init()
 
     // map rdram
     vm_create_user_mapping(base,(uint32_t)rdram_buf&0x7fffffff,MEMMASK+1,VM_WIMG_CACHED);
-    vm_create_user_mapping(base+0x20000000,(uint32_t)rdram_buf&0x7fffffff,MEMMASK+1,VM_WIMG_CACHED);
-    rdram=(unsigned long *)base;
+    vm_create_user_mapping(base+0x20000000,(uint32_t)rdram_buf&0x7fffffff,MEMMASK+1,VM_WIMG_CACHED);    
+	
+	rdram=(unsigned long *)base;
     rdramb=(unsigned char *)base;
     
     // map rom
@@ -925,8 +926,7 @@ void update_DPC() {
 	if (dpc_register.w_dpc_status & 0x4)
     {
 		dpc_register.freeze = 0;
-        dpc_register.dpc_status &= ~0x2;
-        if (!(sp_register.sp_status_reg & 0x3)) // !halt && !broke
+        if (!sp_register.halt && !sp_register.broke) // !halt && !broke
             do_SP_Task();
     }
 	if (dpc_register.w_dpc_status & 0x8)
