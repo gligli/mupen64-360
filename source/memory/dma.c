@@ -1,347 +1,381 @@
-/**
- * Mupen64 - dma.c
- * Copyright (C) 2002 Hacktarux
- *
- * Mupen64 homepage: http://mupen64.emulation64.com
- * email address: hacktarux@yahoo.fr
- *
- * If you want to contribute to the project please contact
- * me first (maybe someone is already making what you are
- * planning to do).
- *
- *
- * This program is free software; you can redistribute it and/
- * or modify it under the terms of the GNU General Public Li-
- * cence as published by the Free Software Foundation; either
- * version 2 of the Licence, or any later version.
- *
- * This program is distributed in the hope that it will be use-
- * ful, but WITHOUT ANY WARRANTY; without even the implied war-
- * ranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public Licence for more details.
- *
- * You should have received a copy of the GNU General Public
- * Licence along with this program; if not, write to the Free
- * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139,
- * USA.
- *
-**/
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *   Mupen64plus - dma.c                                                   *
+ *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Copyright (C) 2002 Hacktarux                                          *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
+ *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifdef USE_GUI
-#include "../gui/GUI.h"
-//#define PRINT GUI_print
-#else
-//#define PRINT printf
-#endif
-
+#include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
-#include <malloc.h>
+
+#include "api/m64p_types.h"
+
 #include "dma.h"
 #include "memory.h"
-#include "../main/rom.h"
-#include "../main/guifuncs.h"
-#include "../r4300/r4300.h"
-#include "../r4300/interupt.h"
-#include "../r4300/macros.h"
-#include "../r4300/ARAM-blocks.h"
-#include "../r4300/Invalid_Code.h"
-#include "../r4300/ops.h"
 #include "pif.h"
 #include "flashram.h"
-#include "Saves.h"
 
-#ifdef USE_EXPANSION
-	#define MEMMASK 0x7FFFFF
-#else
-	#define MEMMASK 0x3FFFFF
-#endif
+#include "r4300/r4300.h"
+#include "r4300/interupt.h"
+#include "r4300/macros.h"
+#include "r4300/ops.h"
 
-#ifdef HW_RVL
-#include "MEM2.h"
-static unsigned char *sram = (unsigned char*)(SRAM_LO);
-#else //GC
-static unsigned char sram[0x8000] __attribute__((aligned(32)));
-#endif
+#define M64P_CORE_PROTOTYPES 1
+#include "api/m64p_config.h"
+#include "api/config_core.h"
+#include "api/callbacks.h"
+#include "main/main.h"
+#include "main/rom.h"
+#include "main/util.h"
 
-BOOL sramWritten = FALSE;
+static unsigned char sram[0x8000];
 
-int loadSram(fileBrowser_file* savepath){
-	int i, result = 0;
-	fileBrowser_file saveFile;
-	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
-	memset(&saveFile.name[0],0,FILE_BROWSER_MAX_PATH_LEN);
-	sprintf((char*)saveFile.name,"%s/%s%s.sra",savepath->name,ROM_SETTINGS.goodname,saveregionstr());
-
-	if(saveFile_readFile(&saveFile, &i, 4) == 4){ //file exists
-		saveFile.offset = 0;
-		if(saveFile_readFile(&saveFile, sram, 0x8000)!=0x8000) {  //error reading file
-  		for (i=0; i<0x8000; i++) sram[i] = 0;
-  		sramWritten = FALSE;
-  		return -1;
-		}
-  	result = 1;
-  	sramWritten = 1;
-		return result;  //file read ok
-	} else for (i=0; i<0x8000; i++) sram[i] = 0;  //file doesn't exist
-
-	sramWritten = FALSE;
-
-	return result;    //no file
-}
-
-int saveSram(fileBrowser_file* savepath){
-	if(!sramWritten) return 0;
-	fileBrowser_file saveFile;
-	memcpy(&saveFile, savepath, sizeof(fileBrowser_file));
-	memset(&saveFile.name[0],0,FILE_BROWSER_MAX_PATH_LEN);
-	sprintf((char*)saveFile.name,"%s/%s%s.sra",savepath->name,ROM_SETTINGS.goodname,saveregionstr());
-
-	if(saveFile_writeFile(&saveFile, sram, 0x8000)!=0x8000)
-	  return -1;
-
-	return 1;
-}
-
-void dma_pi_read()
+static char *get_sram_path(void)
 {
-   int i;
-
-   if (pi_register.pi_cart_addr_reg >= 0x08000000 &&
-       pi_register.pi_cart_addr_reg < 0x08010000)
-     {
-	if (use_flashram != 1)
-	  {
-
-	     sramWritten = TRUE;
-
-	     for (i=0; i<(pi_register.pi_rd_len_reg & 0xFFFFFF)+1; i++)
-	       sram[((pi_register.pi_cart_addr_reg-0x08000000)+i)^S8]=
-	       ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8];
-
-	     use_flashram = -1;
-	  }
-	else
-	  dma_write_flashram();
-     }
- //  else
- //    printf("unknown dma read\n");
-
-   pi_register.read_pi_status_reg |= 1;
-   update_count();
-   add_interupt_event(PI_INT, 0x1000/*pi_register.pi_rd_len_reg*/);
+    return formatstr("%s%s.sra", get_savesrampath(), ROM_SETTINGS.goodname);
 }
 
-void dma_pi_write()
+static void sram_format(void)
 {
-   unsigned long longueur;
-   int i;
+    memset(sram, 0, sizeof(sram));
+}
 
-   if (pi_register.pi_cart_addr_reg < 0x10000000)
-     {
-	if (pi_register.pi_cart_addr_reg >= 0x08000000 &&
-	    pi_register.pi_cart_addr_reg < 0x08010000)
-	  {
-	     if (use_flashram != 1)
-	       {
+static void sram_read_file(void)
+{
+    char *filename = get_sram_path();
 
-		  for (i=0; i<(pi_register.pi_wr_len_reg & 0xFFFFFF)+1; i++)
-		    ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
-		    sram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)+i)^S8];
-		  use_flashram = -1;
-	       }
-	     else
-	       dma_read_flashram();
-	  }
-	else if (pi_register.pi_cart_addr_reg >= 0x06000000 &&
-		 pi_register.pi_cart_addr_reg < 0x08000000)
-	  {
-	  }
-//	else
-//	  printf("unknown dma write:%x\n", (int)pi_register.pi_cart_addr_reg);
+    sram_format();
+    switch (read_from_file(filename, sram, sizeof(sram)))
+    {
+        case file_open_error:
+            DebugMessage(M64MSG_VERBOSE, "couldn't open sram file '%s' for reading", filename);
+            sram_format();
+            break;
+        case file_read_error:
+            DebugMessage(M64MSG_WARNING, "fread() failed on 32kb read from sram file '%s'", filename);
+            sram_format();
+            break;
+        default: break;
+    }
 
-	pi_register.read_pi_status_reg |= 1;
-	update_count();
-	add_interupt_event(PI_INT, /*pi_register.pi_wr_len_reg*/0x1000);
+    free(filename);
+}
 
-	return;
-     }
+static void sram_write_file(void)
+{
+    char *filename = get_sram_path();
 
-   if (pi_register.pi_cart_addr_reg >= 0x1fc00000) // for paper mario
-     {
-	pi_register.read_pi_status_reg |= 1;
-	update_count();
-	add_interupt_event(PI_INT, 0x1000);
-	return;
-     }
+    switch (write_to_file(filename, sram, sizeof(sram)))
+    {
+        case file_open_error:
+            DebugMessage(M64MSG_WARNING, "couldn't open sram file '%s' for writing.", filename);
+            break;
+        case file_write_error:
+            DebugMessage(M64MSG_WARNING, "fwrite() failed on 32kb write to sram file '%s'", filename);
+            break;
+        default: break;
+    }
 
-   longueur = (pi_register.pi_wr_len_reg & 0xFFFFFF)+1;
-   i = (pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF;
-   longueur = (i + longueur) > taille_rom ?
-     (taille_rom - i) : longueur;
-   longueur = (pi_register.pi_dram_addr_reg + longueur) > MEMMASK ?
-     (MEMMASK - pi_register.pi_dram_addr_reg) : longueur;
+    free(filename);
+}
 
-   if(i>taille_rom || pi_register.pi_dram_addr_reg > MEMMASK)
-     {
-	pi_register.read_pi_status_reg |= 3;
-	update_count();
-	add_interupt_event(PI_INT, longueur/8);
-	return;
-     }
+void dma_pi_read(void)
+{
+    unsigned int i;
 
-   if(!interpcore)
-     {
-     	// FIXME: This must be adjusted for GC
-     	//gli ROMCache_read((unsigned int*)((char*)rdram + ((unsigned int)(pi_register.pi_dram_addr_reg)^S8)), ((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)^S8, longueur);
-	for (i=0; i<longueur; i++)
-	  {
-	     unsigned long rdram_address1 = pi_register.pi_dram_addr_reg+i+0x80000000;
-	     unsigned long rdram_address2 = pi_register.pi_dram_addr_reg+i+0xa0000000;
+    if (pi_register.pi_cart_addr_reg >= 0x08000000
+            && pi_register.pi_cart_addr_reg < 0x08010000)
+    {
+        if (flashram_info.use_flashram != 1)
+        {
+            sram_read_file();
 
-	     ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
-	       rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
-	     //ROMCache_read((char*)rdram + (pi_register.pi_dram_addr_reg+i)^S8, (((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8, 1);
+            for (i=0; i < (pi_register.pi_rd_len_reg & 0xFFFFFF)+1; i++)
+            {
+                sram[((pi_register.pi_cart_addr_reg-0x08000000)+i)^S8] =
+                    ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8];
+            }
 
-#if 0
-	     if(!invalid_code_get(rdram_address1>>12))
-    		 invalid_code_set(rdram_address1>>12, 1);
+            sram_write_file();
 
-	     if(!invalid_code_get(rdram_address2>>12))
-    		 invalid_code_set(rdram_address2>>12, 1);
-#else
-	     PowerPC_func* func;
-	     PowerPC_block* temp_block = blocks_get(rdram_address1>>12);
-	     if(temp_block){
-	     func = find_func(&temp_block->funcs, rdram_address1);
-         if(!invalid_code_get(rdram_address1>>12))
-	       //if(blocks[rdram_address1>>12]->code_addr[(rdram_address1&0xFFF)/4])
-        	 if(func) RecompCache_Free(func->start_addr);//invalid_code_set(rdram_address1>>12, 1);
-	     }
+            flashram_info.use_flashram = -1;
+        }
+        else
+        {
+            dma_write_flashram();
+        }
+    }
+    else
+    {
+        DebugMessage(M64MSG_WARNING, "Unknown dma read in dma_pi_read()");
+    }
 
-	     temp_block = blocks_get(rdram_address2>>12);
-	     if(temp_block){
-         func = find_func(&temp_block->funcs, rdram_address2);
-	     if(!invalid_code_get(rdram_address2>>12))
-	       //if(blocks[rdram_address2>>12]->code_addr[(rdram_address2&0xFFF)/4])
-	    	 if(func) RecompCache_Free(func->start_addr);//invalid_code_set(rdram_address2>>12, 1);
-	     }
-#endif
-	  }
-     }
-   else
-     {
-     	/*printf("DMA transfer from cart address: %08x\n"
-     	       "To RDRAM address: %08x of length %u\n",
-     	       ((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)^S8,
-     	       ((unsigned int)(pi_register.pi_dram_addr_reg)^S8),
-     	       longueur);*/
-	//gli ROMCache_read((unsigned int*)((char*)rdram + ((unsigned int)(pi_register.pi_dram_addr_reg)^S8)),
-	//lgi              (((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF))^S8, longueur);
-	for (i=0; i<longueur; i++)
-	  {
-	     ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
-	       rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
-	  }
-     }
+    pi_register.read_pi_status_reg |= 1;
+    update_count();
+    add_interupt_event(PI_INT, 0x1000/*pi_register.pi_rd_len_reg*/);
+}
 
-   /*for (i=0; i<=((longueur+0x800)>>12); i++)
-     invalid_code[(((pi_register.pi_dram_addr_reg&0xFFFFFF)|0x80000000)>>12)+i] = 1;*/
+void dma_pi_write(void)
+{
+    unsigned int longueur;
+    int i;
+
+    if (pi_register.pi_cart_addr_reg < 0x10000000)
+    {
+        if (pi_register.pi_cart_addr_reg >= 0x08000000
+                && pi_register.pi_cart_addr_reg < 0x08010000)
+        {
+            if (flashram_info.use_flashram != 1)
+            {
+                int i;
+
+                sram_read_file();
+
+                for (i=0; i<(int)(pi_register.pi_wr_len_reg & 0xFFFFFF)+1; i++)
+                {
+                    ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+                        sram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)+i)^S8];
+                }
+
+                flashram_info.use_flashram = -1;
+            }
+            else
+            {
+                dma_read_flashram();
+            }
+        }
+        else if (pi_register.pi_cart_addr_reg >= 0x06000000
+                 && pi_register.pi_cart_addr_reg < 0x08000000)
+        {
+        }
+        else
+        {
+            DebugMessage(M64MSG_WARNING, "Unknown dma write 0x%x in dma_pi_write()", (int)pi_register.pi_cart_addr_reg);
+        }
+
+        pi_register.read_pi_status_reg |= 1;
+        update_count();
+        add_interupt_event(PI_INT, /*pi_register.pi_wr_len_reg*/0x1000);
+
+        return;
+    }
+
+    if (pi_register.pi_cart_addr_reg >= 0x1fc00000) // for paper mario
+    {
+        pi_register.read_pi_status_reg |= 1;
+        update_count();
+        add_interupt_event(PI_INT, 0x1000);
+
+        return;
+    }
+
+    longueur = (pi_register.pi_wr_len_reg & 0xFFFFFF)+1;
+    i = (pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF;
+    longueur = (i + (int) longueur) > rom_size ?
+               (rom_size - i) : longueur;
+    longueur = (pi_register.pi_dram_addr_reg + longueur) > 0x7FFFFF ?
+               (0x7FFFFF - pi_register.pi_dram_addr_reg) : longueur;
+
+    if (i>rom_size || pi_register.pi_dram_addr_reg > 0x7FFFFF)
+    {
+        pi_register.read_pi_status_reg |= 3;
+        update_count();
+        add_interupt_event(PI_INT, longueur/8);
+
+        return;
+    }
+
+    if (r4300emu != CORE_PURE_INTERPRETER)
+    {
+        for (i=0; i<(int)longueur; i++)
+        {
+            unsigned long rdram_address1 = pi_register.pi_dram_addr_reg+i+0x80000000;
+            unsigned long rdram_address2 = pi_register.pi_dram_addr_reg+i+0xa0000000;
+            ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+                rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
+
+            if (!invalid_code[rdram_address1>>12])
+            {
+                if (blocks[rdram_address1>>12]->block[(rdram_address1&0xFFF)/4].ops !=
+                    current_instruction_table.NOTCOMPILED)
+                {
+                    invalid_code[rdram_address1>>12] = 1;
+                }
+            }
+            if (!invalid_code[rdram_address2>>12])
+            {
+                if (blocks[rdram_address2>>12]->block[(rdram_address2&0xFFF)/4].ops !=
+                    current_instruction_table.NOTCOMPILED)
+                {
+                    invalid_code[rdram_address2>>12] = 1;
+                }
+            }
+        }
+    }
+    else
+    {
+        for (i=0; i<(int)longueur; i++)
+        {
+            ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+                rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
+        }
+    }
 
     // Set the RDRAM memory size when copying main ROM code
     // (This is just a convenient way to run this code once at the beginning)
     if (pi_register.pi_cart_addr_reg == 0x10001000)
     {
-      switch(CIC_Chip)
-	  {
-	   case 1:
-	   case 2:
-	   case 3:
-	   case 6:
-#ifdef USE_EXPANSION
-	     rdram[0x318/4] = 0x800000;
-#else
-	     rdram[0x318/4] = 0x400000;
-#endif
-	     break;
-	   case 5:
-#ifdef USE_EXPANSION
-	     rdram[0x3F0/4] = 0x800000;
-#else
-	     rdram[0x3F0/4] = 0x400000;
-#endif
-	     break;
-	  }
-	  /* DK64 Fix */
-	/*if(strncmp(ROM_HEADER->nom, "DONKEY KONG 64", 14) == 0)
-		rdram[0x2FE1C0/4] = 0xAD170014;*/
-     }
+        switch (CIC_Chip)
+        {
+        case 1:
+        case 2:
+        case 3:
+        case 6:
+        {
+            if (ConfigGetParamInt(g_CoreConfig, "DisableExtraMem"))
+            {
+                rdram[0x318/4] = 0x400000;
+            }
+            else
+            {
+                rdram[0x318/4] = 0x800000;
+            }
+            break;
+        }
+        case 5:
+        {
+            if (ConfigGetParamInt(g_CoreConfig, "DisableExtraMem"))
+            {
+                rdram[0x3F0/4] = 0x400000;
+            }
+            else
+            {
+                rdram[0x3F0/4] = 0x800000;
+            }
+            break;
+        }
+        }
+    }
 
-   pi_register.read_pi_status_reg |= 3;
-   update_count();
-   add_interupt_event(PI_INT, longueur/8);
-   return;
+    pi_register.read_pi_status_reg |= 3;
+    update_count();
+    add_interupt_event(PI_INT, longueur/8);
+
+    return;
 }
 
-void dma_sp_write()
+void dma_sp_write(void)
 {
-   int i;
-   if ((sp_register.sp_mem_addr_reg & 0x1000) > 0)
-     {
-	for (i=0; i<((sp_register.sp_rd_len_reg & 0xFFF)+1); i++)
-	  ((unsigned char *)(SP_IMEM))[((sp_register.sp_mem_addr_reg & 0xFFF)+i)^S8]=
-	  ((unsigned char *)(rdram))[((sp_register.sp_dram_addr_reg & 0xFFFFFF)+i)^S8];
-     }
-   else
-     {
-	for (i=0; i<((sp_register.sp_rd_len_reg & 0xFFF)+1); i++)
-	  ((unsigned char *)(SP_DMEM))[((sp_register.sp_mem_addr_reg & 0xFFF)+i)^S8]=
-	  ((unsigned char *)(rdram))[((sp_register.sp_dram_addr_reg & 0xFFFFFF)+i)^S8];
-     }
+    unsigned int i,j;
+
+    unsigned int l = sp_register.sp_rd_len_reg;
+
+    unsigned int length = ((l & 0xfff) | 7) + 1;
+    unsigned int count = ((l >> 12) & 0xff) + 1;
+    unsigned int skip = ((l >> 20) & 0xfff);
+ 
+    unsigned int memaddr = sp_register.sp_mem_addr_reg & 0xfff;
+    unsigned int dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
+
+    unsigned char *spmem = ((sp_register.sp_mem_addr_reg & 0x1000) != 0) ? (unsigned char*)SP_IMEM : (unsigned char*)SP_DMEM;
+    unsigned char *dram = (unsigned char*)rdram;
+
+    for(j=0; j<count; j++) {
+        for(i=0; i<length; i++) {
+            spmem[memaddr^S8] = dram[dramaddr^S8];
+            memaddr++;
+            dramaddr++;
+        }
+        dramaddr+=skip;
+    }
 }
 
-void dma_sp_read()
+void dma_sp_read(void)
 {
-   int i;
-   if ((sp_register.sp_mem_addr_reg & 0x1000) > 0)
-     {
-	for (i=0; i<((sp_register.sp_wr_len_reg & 0xFFF)+1); i++)
-	  ((unsigned char *)(rdram))[((sp_register.sp_dram_addr_reg & 0xFFFFFF)+i)^S8]=
-	  ((unsigned char *)(SP_IMEM))[((sp_register.sp_mem_addr_reg & 0xFFF)+i)^S8];
-     }
-   else
-     {
-	for (i=0; i<((sp_register.sp_wr_len_reg & 0xFFF)+1); i++)
-	  ((unsigned char *)(rdram))[((sp_register.sp_dram_addr_reg & 0xFFFFFF)+i)^S8]=
-	  ((unsigned char *)(SP_DMEM))[((sp_register.sp_mem_addr_reg & 0xFFF)+i)^S8];
-     }
+    unsigned int i,j;
+
+    unsigned int l = sp_register.sp_wr_len_reg;
+
+    unsigned int length = ((l & 0xfff) | 7) + 1;
+    unsigned int count = ((l >> 12) & 0xff) + 1;
+    unsigned int skip = ((l >> 20) & 0xfff);
+
+    unsigned int memaddr = sp_register.sp_mem_addr_reg & 0xfff;
+    unsigned int dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
+
+    unsigned char *spmem = ((sp_register.sp_mem_addr_reg & 0x1000) != 0) ? (unsigned char*)SP_IMEM : (unsigned char*)SP_DMEM;
+    unsigned char *dram = (unsigned char*)rdram;
+
+    for(j=0; j<count; j++) {
+        for(i=0; i<length; i++) {
+            dram[dramaddr^S8] = spmem[memaddr^S8];
+            memaddr++;
+            dramaddr++;
+        }
+        dramaddr+=skip;
+    }
 }
 
-void dma_si_write()
+void dma_si_write(void)
 {
-   int i;
-   if (si_register.si_pif_addr_wr64b != 0x1FC007C0)
-     {
-	printf("unknown SI use\n");
-	stop=1;
-     }
-   for (i=0; i<(64/4); i++)
-     PIF_RAM[i] = sl(rdram[si_register.si_dram_addr/4+i]);
-   update_pif_write();
-   update_count();
-   add_interupt_event(SI_INT, /*0x100*/0x900);
+    int i;
+
+    if (si_register.si_pif_addr_wr64b != 0x1FC007C0)
+    {
+        DebugMessage(M64MSG_ERROR, "dma_si_write(): unknown SI use");
+        stop=1;
+    }
+
+    for (i=0; i<(64/4); i++)
+    {
+        PIF_RAM[i] = sl(rdram[si_register.si_dram_addr/4+i]);
+    }
+
+    update_pif_write();
+
+    // TODO: under what circumstances should bits 1 or 3 be set?
+    si_register.si_stat |= 1;
+
+    update_count();
+    add_interupt_event(SI_INT, /*0x100*/0x900);
 }
 
-void dma_si_read()
+void dma_si_read(void)
 {
-   int i;
-   if (si_register.si_pif_addr_rd64b != 0x1FC007C0)
-     {
-	printf("unknown SI use\n");
-	stop=1;
-     }
-   update_pif_read();
-   for (i=0; i<(64/4); i++)
-     rdram[si_register.si_dram_addr/4+i] = sl(PIF_RAM[i]);
-   update_count();
-   add_interupt_event(SI_INT, /*0x100*/0x900);
+    int i;
+
+    if (si_register.si_pif_addr_rd64b != 0x1FC007C0)
+    {
+        DebugMessage(M64MSG_ERROR, "dma_si_read(): unknown SI use");
+        stop=1;
+    }
+
+    update_pif_read();
+
+    for (i=0; i<(64/4); i++)
+    {
+        rdram[si_register.si_dram_addr/4+i] = sl(PIF_RAM[i]);
+    }
+
+    // TODO: under what circumstances should bits 1 or 3 be set?
+    si_register.si_stat |= 1;
+
+    update_count();
+    add_interupt_event(SI_INT, /*0x100*/0x900);
 }
+

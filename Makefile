@@ -17,11 +17,11 @@ include $(DEVKITXENON)/rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source source/main source/memory source/r4300 source/r4300/ppc \
-			source/r4300/ppc/disasm source/rsp_hle-ppc source/xenos_audio \
-			source/Rice_GX_Xenos
+SOURCES		:=	source source/osal source/api source/plugin source/main source/main/zip source/memory \
+			source/r4300 source/r4300/ppc/disasm  \
+			source/mupen64plus-rsp-hle source/xenos_audio source/xenon_input source/Rice_GX_Xenos
 DATA		:=	  
-INCLUDES	:=	files
+INCLUDES	:=	files source
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -30,10 +30,10 @@ INCLUDES	:=	files
 MCHK = -Wl,-wrap,malloc  -Wl,-wrap,memalign -Wl,-wrap,realloc -Wl,-wrap,calloc -Wl,-wrap,free -DMCHK
 
 OPTIFLAGS =  -O2 -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -flto -fuse-linker-plugin 
-#OPTIFLAGS =  -O2 -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1
+OPTIFLAGS =  -O2 -mcpu=cell -mtune=cell -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1
 
 ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32
-CFLAGS	= $(OPTIFLAGS) -g -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DDEBUG_ -DUSE_RECOMP_CACHE -DFASTMEM -DNO_ASM -DUSE_EXPANSION # -D_DEBUG  
+CFLAGS	= $(OPTIFLAGS) -g -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DM64P_BIG_ENDIAN -DUSE_RECOMP_CACHE -DFASTMEM -DNO_ASM -DUSE_EXPANSION # -D_DEBUG  -DDEBUG_
 CXXFLAGS	=	$(CFLAGS)
 
 #MACHDEP_LD =  -DXENON -m32 -maltivec -fno-pic -mhard-float -L$(DEVKITXENON)/xenon/lib/32
@@ -42,7 +42,7 @@ LDFLAGS	= $(MACHDEP) $(OPTIFLAGS) -Wl,-Map,$(notdir $@).map
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:=	-lxemit -lzlx -lpng  -lz -lfat -lext2fs -lntfs -lxtaf -lxenon -lm
+LIBS	:=	-lxemit -lzlx -lpng -lbz2 -lz -lfat -lext2fs -lntfs -lxtaf -lxenon -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

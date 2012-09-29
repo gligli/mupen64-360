@@ -29,20 +29,23 @@
    	LWP Control Buffer: 1Kb
 */
 
-#include "../main/winlnxdefs.h"
-#include "../main/main.h"
+#include "main/main.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#include <xetypes.h>
 #include <xenon_sound/sound.h>
 #include <xenon_soc/xenon_power.h>
 #include <ppc/atomic.h>
 #include <byteswap.h>
 #include <time/time.h>
 
+#include "winlnxdefs.h"
+#include "api/m64p_plugin.h"
+
 #include "AudioPlugin.h"
-#include "Audio_#1.1.h"
 
 AUDIO_INFO AudioInfo;
 
@@ -214,30 +217,15 @@ CloseDLL( void )
 {
 }
 
-EXPORT void CALL
-DllAbout( HWND hParent )
-{
-	printf ("Gamecube audio plugin\n\tby Mike Slegeir" );
-}
-
-EXPORT void CALL
-DllConfig ( HWND hParent )
+EXPORT void CALL RomOpen()
 {
 }
 
 EXPORT void CALL
-DllTest ( HWND hParent )
+RomClosed( void )
 {
-}
-
-EXPORT void CALL
-GetDllInfo( PLUGIN_INFO * PluginInfo )
-{
-	PluginInfo->Version = 0x0101;
-	PluginInfo->Type    = PLUGIN_TYPE_AUDIO;
-	sprintf(PluginInfo->Name,"Gamecube audio plugin\n\tby Mike Slegeir");
-	PluginInfo->NormalMemory  = TRUE;
-	PluginInfo->MemoryBswaped = TRUE;
+	thread_terminate=1;
+	while(xenon_is_thread_task_running(2));
 }
 
 EXPORT BOOL CALL
@@ -251,17 +239,6 @@ InitiateAudio( AUDIO_INFO Audio_Info )
 	xenon_run_thread_task(2,&thread_stack[sizeof(thread_stack)-0x1000],thread_loop);
 	atexit(RomClosed);
     return TRUE;
-}
-
-EXPORT void CALL RomOpen()
-{
-}
-
-EXPORT void CALL
-RomClosed( void )
-{
-	thread_terminate=1;
-	while(xenon_is_thread_task_running(2));
 }
 
 EXPORT void CALL

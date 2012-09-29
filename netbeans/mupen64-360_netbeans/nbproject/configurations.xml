@@ -6,79 +6,73 @@
       </df>
     </df>
     <df name="source" root="../../source">
+      <df name="api">
+        <in>callbacks.c</in>
+        <in>callbacks.h</in>
+        <in>config_core.c</in>
+        <in>config_core.h</in>
+        <in>m64p_config.h</in>
+        <in>m64p_plugin.h</in>
+        <in>m64p_types.h</in>
+      </df>
       <df name="main">
-        <in>Audio_#1.1.h</in>
-        <in>Controller_#1.1.h</in>
-        <in>Gfx_#1.3.h</in>
-        <in>Rsp_#1.1.h</in>
+        <df name="zip">
+          <in>crypt.h</in>
+          <in>ioapi.c</in>
+          <in>ioapi.h</in>
+          <in>unzip.c</in>
+          <in>unzip.h</in>
+          <in>zip.c</in>
+          <in>zip.h</in>
+        </df>
         <in>adler32.c</in>
         <in>bininc.S</in>
-        <in>config_mupen.c</in>
-        <in>config_mupen.h</in>
         <in>guifuncs.h</in>
-        <in>ioapi.c</in>
-        <in>ioapi.h</in>
         <in>main.cpp</in>
         <in>main.h</in>
         <in>mchk.c</in>
         <in>md5.c</in>
         <in>md5.h</in>
-        <in>mupenIniApi.c</in>
-        <in>mupenIniApi.h</in>
-        <in>plugin.c</in>
-        <in>plugin.h</in>
         <in>rom.c</in>
         <in>rom.h</in>
         <in>savestates.c</in>
         <in>savestates.h</in>
-        <in>unzip.c</in>
-        <in>unzip.h</in>
+        <in>util.c</in>
+        <in>util.h</in>
         <in>version.h</in>
-        <in>winlnxdefs.h</in>
       </df>
       <df name="memory">
-        <in>Saves.h</in>
-        <in>TLB-Cache-hash.c</in>
-        <in>TLB-Cache.c</in>
-        <in>TLB-Cache.h</in>
         <in>dma.c</in>
         <in>dma.h</in>
         <in>flashram.c</in>
         <in>flashram.h</in>
         <in>memory.c</in>
         <in>memory.h</in>
+        <in>n64_cic_nus_6105.c</in>
+        <in>n64_cic_nus_6105.h</in>
         <in>pif.c</in>
         <in>pif.h</in>
-        <in>pif2.h</in>
         <in>tlb.c</in>
         <in>tlb.h</in>
       </df>
-      <df name="mupen64_soft_gfx">
-        <in>GFXPlugin.h</in>
-        <in>Gfx_#1.3.h</in>
-        <in>bl.cpp</in>
-        <in>bl.h</in>
-        <in>cc.cpp</in>
-        <in>cc.h</in>
-        <in>color.h</in>
-        <in>global.h</in>
-        <in>main_gfx.cpp</in>
-        <in>matrix.h</in>
-        <in>rdp.cpp</in>
-        <in>rdp.h</in>
-        <in>rs.cpp</in>
-        <in>rs.h</in>
-        <in>rsp.cpp</in>
-        <in>rsp.h</in>
-        <in>tf.cpp</in>
-        <in>tf.h</in>
-        <in>tx.cpp</in>
-        <in>tx.h</in>
-        <in>vector.h</in>
-        <in>vi.cpp</in>
-        <in>vi.h</in>
-        <in>vi_xenos.cpp</in>
-        <in>vi_xenos.h</in>
+      <df name="mupen64plus-rsp-hle">
+        <in>hle.h</in>
+        <in>idct.c</in>
+        <in>jpeg.c</in>
+        <in>rsp_main.c</in>
+        <in>ucode1.cpp</in>
+        <in>ucode2.cpp</in>
+        <in>ucode3.cpp</in>
+        <in>ucode3mp3.cpp</in>
+      </df>
+      <df name="osal">
+        <in>files.h</in>
+        <in>files_unix.c</in>
+        <in>preproc.h</in>
+      </df>
+      <df name="plugin">
+        <in>plugin.c</in>
+        <in>plugin.h</in>
       </df>
       <df name="r4300">
         <df name="ppc">
@@ -109,22 +103,17 @@
           <in>interpret.h</in>
           <in>regcache.h</in>
         </df>
-        <in>ARAM-blocks.c</in>
-        <in>ARAM-blocks.h</in>
-        <in>Invalid_Code.c</in>
-        <in>Invalid_Code.h</in>
-        <in>Recomp-Cache-Heap.c</in>
-        <in>Recomp-Cache.h</in>
-        <in>bc.c</in>
-        <in>compare_core.c</in>
-        <in>cop0.c</in>
-        <in>cop1.c</in>
-        <in>cop1_d.c</in>
-        <in>cop1_l.c</in>
-        <in>cop1_s.c</in>
-        <in>cop1_w.c</in>
+        <in>empty_dynarec.c</in>
         <in>exception.c</in>
         <in>exception.h</in>
+        <in>fpu.h</in>
+        <in>interpreter.def</in>
+        <in>interpreter_cop0.def</in>
+        <in>interpreter_cop1.def</in>
+        <in>interpreter_r4300.def</in>
+        <in>interpreter_regimm.def</in>
+        <in>interpreter_special.def</in>
+        <in>interpreter_tlb.def</in>
         <in>interupt.c</in>
         <in>interupt.h</in>
         <in>macros.h</in>
@@ -136,9 +125,8 @@
         <in>recomp.c</in>
         <in>recomp.h</in>
         <in>recomph.h</in>
-        <in>regimm.c</in>
-        <in>special.c</in>
-        <in>tlb_r4300.c</in>
+        <in>reset.c</in>
+        <in>reset.h</in>
       </df>
       <df name="Rice_GX_Xenos">
         <in>COLOR.h</in>
@@ -217,91 +205,19 @@
         <in>typedefs.h</in>
         <in>ucode.h</in>
         <in>version.h</in>
-        <in>winlnxdefs.h</in>
         <in>xenos_backend.cpp</in>
         <in>xenos_backend.h</in>
       </df>
-      <df name="rsp_hle-ppc">
-        <in>Audio_#1.1.h</in>
-        <in>RSPPlugin.h</in>
-        <in>Rsp_#1.1.h</in>
-        <in>disasm.c</in>
-        <in>hle.h</in>
-        <in>jpeg.c</in>
-        <in>main_rsp.c</in>
-        <in>ucode1.cpp</in>
-        <in>ucode2.cpp</in>
-        <in>ucode3.cpp</in>
-        <in>ucode3mp3.cpp</in>
-        <in>wintypes.h</in>
+      <df name="xenon_input">
+        <in>input.c</in>
+        <in>input.h</in>
       </df>
       <df name="xenos_audio">
         <in>AudioPlugin.h</in>
-        <in>Audio_#1.1.h</in>
         <in>audio.c</in>
       </df>
-      <df name="xenos_gfx">
-        <in>2xSAI.cpp</in>
-        <in>2xSAI.h</in>
-        <in>3DMath.h</in>
-        <in>CRC.cpp</in>
-        <in>CRC.h</in>
-        <in>Combiner.cpp</in>
-        <in>Combiner.h</in>
-        <in>Debug.h</in>
-        <in>DepthBuffer.cpp</in>
-        <in>DepthBuffer.h</in>
-        <in>F3D.cpp</in>
-        <in>F3D.h</in>
-        <in>F3DDKR.cpp</in>
-        <in>F3DDKR.h</in>
-        <in>F3DEX.cpp</in>
-        <in>F3DEX.h</in>
-        <in>F3DEX2.cpp</in>
-        <in>F3DEX2.h</in>
-        <in>F3DPD.cpp</in>
-        <in>F3DPD.h</in>
-        <in>F3DWRUS.cpp</in>
-        <in>F3DWRUS.h</in>
-        <in>GBI.cpp</in>
-        <in>GBI.h</in>
-        <in>GFXPlugin.h</in>
-        <in>L3D.cpp</in>
-        <in>L3D.h</in>
-        <in>L3DEX.cpp</in>
-        <in>L3DEX.h</in>
-        <in>L3DEX2.cpp</in>
-        <in>L3DEX2.h</in>
-        <in>N64.cpp</in>
-        <in>N64.h</in>
-        <in>RDP.cpp</in>
-        <in>RDP.h</in>
-        <in>RSP.cpp</in>
-        <in>RSP.h</in>
-        <in>S2DEX.cpp</in>
-        <in>S2DEX.h</in>
-        <in>S2DEX2.cpp</in>
-        <in>S2DEX2.h</in>
-        <in>Textures.cpp</in>
-        <in>Textures.h</in>
-        <in>Types.h</in>
-        <in>VI.cpp</in>
-        <in>VI.h</in>
-        <in>Zilmar GFX 1.3.h</in>
-        <in>convert.h</in>
-        <in>fakegl.h</in>
-        <in>gDP.cpp</in>
-        <in>gDP.h</in>
-        <in>gSP.cpp</in>
-        <in>gSP.h</in>
-        <in>xenos_blender.cpp</in>
-        <in>xenos_blender.h</in>
-        <in>xenos_combiner.cpp</in>
-        <in>xenos_combiner.h</in>
-        <in>xenos_gfx.cpp</in>
-        <in>xenos_gfx.h</in>
-      </df>
       <in>shaders.S</in>
+      <in>winlnxdefs.h</in>
     </df>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -332,18 +248,22 @@
           <cTool>
             <incDir>
               <pElem>../../../libsrc/zlib-1.2.5</pElem>
+              <pElem>../../source</pElem>
             </incDir>
             <preprocessorList>
-              <Elem>DEBUGGER</Elem>
               <Elem>FASTMEM</Elem>
+              <Elem>M64P_BIG_ENDIAN</Elem>
               <Elem>_BIG_ENDIAN</Elem>
               <Elem>__BIG_ENDIAN__</Elem>
             </preprocessorList>
           </cTool>
           <ccTool>
+            <incDir>
+              <pElem>../../source</pElem>
+            </incDir>
             <preprocessorList>
-              <Elem>DEBUGGER</Elem>
               <Elem>FASTMEM</Elem>
+              <Elem>M64P_BIG_ENDIAN</Elem>
               <Elem>_BIG_ENDIAN</Elem>
               <Elem>__BIG_ENDIAN__</Elem>
             </preprocessorList>

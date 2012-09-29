@@ -34,28 +34,38 @@
 // Emulateur Nintendo 64, MUPEN64, Fichier Principal 
 // main.c
 
+#define M64P_CORE_PROTOTYPES 1
+
 #include "version.h"
 
 #include <stdlib.h>
+#include <fcntl.h>
 #include <unistd.h>
 
-#include "../Rice_GX_Xenos/winlnxdefs.h"
+#include "winlnxdefs.h"
 
 extern "C" {
 	#include "main.h"
 	#include "guifuncs.h"
 	#include "rom.h"
-	#include "../r4300/r4300.h"
-	#include "../r4300/recomph.h"
-	#include "../memory/memory.h"
-	#include "plugin.h"
+	#include "r4300/r4300.h"
+	#include "r4300/recomph.h"
+	#include "memory/memory.h"
+	#include "plugin/plugin.h"
 	#include "savestates.h"
-	#include "../memory/Saves.h"
+
+	#include "api/config_core.h"
+	#include "api/callbacks.h"
 }
+
+#include "api/m64p_config.h"
+
 
 #include <malloc.h>
 #include <signal.h>
 #include <math.h>
+#include <stdarg.h>
+
 #include <debug.h>
 #include <diskio/ata.h>
 #include <ppc/cache.h>
@@ -70,22 +80,22 @@ extern "C" {
 #include <time/time.h>
 #include <xenos/xe.h>
 
-#include "config_mupen.h"
-
 #undef MAX_PATH
 #undef X_OK
 #include <zlx/Browser.h>
 #include <zlx/Draw.h>
 #include <zlx/Hw.h>
 
-#include "../Rice_GX_Xenos/math.h"
-#include "../Rice_GX_Xenos/COLOR.h"
-#include "../Rice_GX_Xenos/Config.h"
+#include "zip/unzip.h"
 
-#undef hi
-#undef lo
-#define hi (reg[32])
-#define lo (reg[33])
+#include "Rice_GX_Xenos/math.h"
+#include "Rice_GX_Xenos/COLOR.h"
+#include "Rice_GX_Xenos/Config.h"
+#include "Rice_GX_Xenos/Config.h"
+#include "xenon_input/input.h"
+
+/* version number for Core config section */
+#define CONFIG_PARAM_VERSION 1.01
 
 extern unsigned char inc_about[];
 XenosSurface * tex_about;
@@ -97,36 +107,14 @@ lpBrowserActionEntry cpu_action;
 lpBrowserActionEntry lim_action;
 lpBrowserActionEntry pad_action;
 
-int regular_quit=0;
+m64p_handle g_CoreConfig = NULL;
+int g_MemHasBeenBSwapped = 0;
+
 int use_framelimit = 1;
+int use_expansion = 1;
 int pad_mode = 0;
 
-#define PADMODE_SDC 0
-#define PADMODE_SCD 1
-#define PADMODE_DSC 2
-#define PADMODE_DCS 3
-#define PADMODE_CDS 4
-#define PADMODE_CSD 5
-
-const char * pad_mode_name[]=
-{
-	"Stick / D-pad / C-buttons",
-	"Stick / C-buttons / D-pad",
-	"D-pad / Stick / C-buttons",
-	"D-pad / C-buttons / Stick",
-	"C-buttons / D-pad / Stick",
-	"C-buttons / Stick / D-pad",
-};
-
 extern SettingInfo TextureEnhancementSettings[];
-
-int autoinc_slot = 0;
-int *autoinc_save_slot = &autoinc_slot;
-
-static char cwd[1024];
-int p_noask=TRUE;
-
-char g_WorkingDir[PATH_MAX];
 
 char txtbuffer[1024];
 
@@ -170,10 +158,10 @@ void ActionAbout(void * other) {
 }
 
 void ActionLaunchFile(char * filename) {
-	if( run_rom(filename) ){
+	if( run_rom(filename) )
+	{
 		sprintf(txtbuffer,"Could not load file:\n\n%s\n\nIt is probably not a N64 rom.",filename);
 		Browser.Alert(txtbuffer);
-	}else{
 	}
 }
 
@@ -217,17 +205,22 @@ void ActionToggleEnh(void * other) {
 }
 
 void SetCpuName(){
-	if(dynacore==CORE_DYNAREC)
-        cpu_action->name = "CPU core: Dynarec";
-	else
-        cpu_action->name = "CPU core: Interpreter";
+	switch(r4300emu)
+	{
+		case CORE_DYNAREC:
+	        cpu_action->name = "CPU core: Dynarec";
+			break;
+		case CORE_INTERPRETER:
+	        cpu_action->name = "CPU core: Interpreter";
+			break;
+		case CORE_PURE_INTERPRETER:
+	        cpu_action->name = "CPU core: Interpreter (compatible)";
+			break;
+	}
 }
 
 void ActionToggleCpu(void * other) {
-	if(dynacore==CORE_DYNAREC)
-		dynacore=CORE_PURE_INTERPRETER;
-	else
-		dynacore=CORE_DYNAREC;
+	r4300emu=(r4300emu+1)%3;
 	
 	SetCpuName();
 }
@@ -352,80 +345,9 @@ void do_GUI() {
     Browser.Run(MUPEN_DIR);
 }
 
-
-char *get_currentpath()
-{
-   return cwd;
-}
-
-char *get_savespath()
-{
-   static char path[1024];
-#if 0
-   strcpy(path, get_currentpath());
-   strcat(path, "save/");
-#else
-   path[0]='\0';
-#endif
-   return path;
-}
-
 void display_loading_progress(int p)
 {
-/*   printf("loading rom : %d%%\r", p);
-   fflush(stdout);
-   if (p==100) printf("\n");*/
    Browser.SetProgressValue(p/100.0f);
-}
-
-void display_MD5calculating_progress(int p)
-{
-}
-
-int ask_bad()
-{
-   char c;
-   printf("The rom you are trying to load is probably a bad dump\n");
-   printf("Be warned that this will probably give unexpected results.\n");
-   printf("Do you still want to run it (y/n) ?");
-   
-   if(p_noask) return 1;
-   else
-     {
-	c = getchar();
-	getchar();
-	if (c=='y' || c=='Y') return 1;
-	else return 0;
-     }
-}
-
-int ask_hack()
-{
-   char c;
-   printf("The rom you are trying to load is not a good verified dump\n");
-   printf("It can be a hacked dump, trained dump or anything else that \n");
-   printf("may work but be warned that it can give unexpected results.\n");
-   printf("Do you still want to run it (y/n) ?");
-   
-   if(p_noask) return 1;
-   else
-     {
-	c = getchar();
-	getchar();
-	if (c=='y' || c=='Y') return 1;
-	else return 0;
-     }
-}
-
-void warn_savestate_from_another_rom()
-{
-   printf("Error: You're trying to load a save state from either another rom\n");
-   printf("       or another dump.\n");
-}
-
-void warn_savestate_not_exist()
-{
-   printf("Error: The save state you're trying to load doesn't exist\n");
 }
 
 void new_frame()
@@ -436,71 +358,237 @@ void new_vi()
 {
 }
 
+const char *get_savestatepath(void)
+{
+    return MUPEN_DIR"sstates/";
+}
+
+const char *get_savesrampath(void)
+{
+    return MUPEN_DIR"saves/";
+}
+
+void main_message(m64p_msg_level level, unsigned int corner, const char *format, ...)
+{
+    va_list ap;
+    char buffer[2049];
+    va_start(ap, format);
+    vsnprintf(buffer, 2047, format, ap);
+    buffer[2048]='\0';
+    va_end(ap);
+
+    DebugMessage(level, "%s", buffer);
+}
+
+int main_set_core_defaults(void)
+{
+    float fConfigParamsVersion;
+    int bSaveConfig = 0, bUpgrade = 0;
+
+    if (ConfigGetParameter(g_CoreConfig, "Version", M64TYPE_FLOAT, &fConfigParamsVersion, sizeof(float)) != M64ERR_SUCCESS)
+    {
+        DebugMessage(M64MSG_WARNING, "No version number in 'Core' config section. Setting defaults.");
+        ConfigDeleteSection("Core");
+        ConfigOpenSection("Core", &g_CoreConfig);
+        bSaveConfig = 1;
+    }
+    else if (((int) fConfigParamsVersion) != ((int) CONFIG_PARAM_VERSION))
+    {
+        DebugMessage(M64MSG_WARNING, "Incompatible version %.2f in 'Core' config section: current is %.2f. Setting defaults.", fConfigParamsVersion, (float) CONFIG_PARAM_VERSION);
+        ConfigDeleteSection("Core");
+        ConfigOpenSection("Core", &g_CoreConfig);
+        bSaveConfig = 1;
+    }
+    else if ((CONFIG_PARAM_VERSION - fConfigParamsVersion) >= 0.0001f)
+    {
+        float fVersion = (float) CONFIG_PARAM_VERSION;
+        ConfigSetParameter(g_CoreConfig, "Version", M64TYPE_FLOAT, &fVersion);
+        DebugMessage(M64MSG_INFO, "Updating parameter set version in 'Core' config section to %.2f", fVersion);
+        bUpgrade = 1;
+        bSaveConfig = 1;
+    }
+
+    /* parameters controlling the operation of the core */
+    ConfigSetDefaultFloat(g_CoreConfig, "Version", (float) CONFIG_PARAM_VERSION,  "Mupen64Plus Core config parameter set version number.  Please don't change this version number.");
+    ConfigSetDefaultBool(g_CoreConfig, "OnScreenDisplay", 1, "Draw on-screen display if True, otherwise don't draw OSD");
+#if defined(DYNAREC)
+    ConfigSetDefaultInt(g_CoreConfig, "R4300Emulator", 2, "Use Pure Interpreter if 0, Cached Interpreter if 1, or Dynamic Recompiler if 2 or more");
+#else
+    ConfigSetDefaultInt(g_CoreConfig, "R4300Emulator", 1, "Use Pure Interpreter if 0, Cached Interpreter if 1, or Dynamic Recompiler if 2 or more");
+#endif
+    ConfigSetDefaultBool(g_CoreConfig, "NoCompiledJump", 0, "Disable compiled jump commands in dynamic recompiler (should be set to False) ");
+    ConfigSetDefaultBool(g_CoreConfig, "DisableExtraMem", 0, "Disable 4MB expansion RAM pack. May be necessary for some games");
+    ConfigSetDefaultBool(g_CoreConfig, "AutoStateSlotIncrement", 0, "Increment the save state slot after each save operation");
+    ConfigSetDefaultBool(g_CoreConfig, "EnableDebugger", 0, "Activate the R4300 debugger when ROM execution begins, if core was built with Debugger support");
+    ConfigSetDefaultInt(g_CoreConfig, "CurrentStateSlot", 0, "Save state slot (0-9) to use when saving/loading the emulator state");
+    ConfigSetDefaultString(g_CoreConfig, "ScreenshotPath", "", "Path to directory where screenshots are saved. If this is blank, the default value of ${UserConfigPath}/screenshot will be used");
+    ConfigSetDefaultString(g_CoreConfig, "SaveStatePath", "", "Path to directory where emulator save states (snapshots) are saved. If this is blank, the default value of ${UserConfigPath}/save will be used");
+    ConfigSetDefaultString(g_CoreConfig, "SaveSRAMPath", "", "Path to directory where SRAM/EEPROM data (in-game saves) are stored. If this is blank, the default value of ${UserConfigPath}/save will be used");
+    ConfigSetDefaultString(g_CoreConfig, "SharedDataPath", "", "Path to a directory to search when looking for shared data files");
+
+    /* handle upgrades */
+    if (bUpgrade)
+    {
+        if (fConfigParamsVersion < 1.01f)
+        {  // added separate SaveSRAMPath parameter in v1.01
+            const char *pccSaveStatePath = ConfigGetParamString(g_CoreConfig, "SaveStatePath");
+            if (pccSaveStatePath != NULL)
+                ConfigSetParameter(g_CoreConfig, "SaveSRAMPath", M64TYPE_STRING, pccSaveStatePath);
+        }
+    }
+
+    if (bSaveConfig)
+        ConfigSaveSection("Core");
+
+    return 0;
+}
+
+u8 * alloc_read_file (char *filename, u32 & osize)
+{
+	u32 size=0;
+	u8 * buf;
+	
+	unzFile zip;
+	unz_file_info pfile_info;
+	unsigned long zbuf;
+	char szFileName[255], extraField[255], szComment[255];
+	zip = unzOpen(filename);
+	if (zip != NULL)
+	{
+		unzGoToFirstFile(zip);
+		do
+		{
+			unzGetCurrentFileInfo(zip, &pfile_info, szFileName, 255,
+					extraField, 255, szComment, 255);
+			unzOpenCurrentFile(zip);
+			if (pfile_info.uncompressed_size >= 4)
+			{
+				unzReadCurrentFile(zip, &zbuf, 4);
+				if (zbuf != 0x40123780 && zbuf != 0x12408037 &&
+					zbuf != 0x37804012 && zbuf != 0x80371240)
+				{
+					unzCloseCurrentFile(zip);
+				}
+				else
+				{
+					size = pfile_info.uncompressed_size;
+					unzCloseCurrentFile(zip);
+					break;
+				}
+			}
+		}
+		while (unzGoToNextFile(zip) != UNZ_END_OF_LIST_OF_FILE);
+
+		if(!size)
+		{
+			unzClose(zip);
+		}
+	}	
+	
+	if(!size)
+	{
+		int f = open(filename, O_RDONLY);
+		if (f < 0)
+		{
+			return NULL;
+		}
+
+		struct stat s;
+		fstat(f, &s);
+
+		size = s.st_size;
+		buf=(u8*)malloc(size);
+		
+		printf("Plain ROM file, size=%d\n",size);
+
+		int r = read(f, buf, size);
+		if (r < 0)
+		{
+			close(f);
+			free(buf);
+			return NULL;
+		}
+	}
+	else
+	{
+		u32 i,tmp=0;
+		
+		printf("Zipped ROM file, size=%d\n",size);
+
+		buf=(u8*)malloc(size);
+		unzOpenCurrentFile(zip);
+		for (i = 0; i < size; i += unzReadCurrentFile(zip, buf + i, 65536))
+		{
+			if (tmp != (int) ((i / (float) size)*20))
+			{
+				tmp = (int) (i / (float) (size)*20);
+				display_loading_progress(tmp*5);
+			}
+		}
+		unzCloseCurrentFile(zip);
+		unzClose(zip);
+		display_loading_progress(100);
+	}
+
+	osize=size;
+	
+	return buf;
+}
 
 int run_rom(char * romfile)
 {
-    if (rom_read(romfile)){
-		if(rom_buf) free(rom_buf);
-		if(ROM_HEADER) free(ROM_HEADER);
+    u32 rom_size;
+    unsigned char * rom_data=alloc_read_file(romfile,rom_size);
+	
+	if (!rom_data)
+	{
 		return 1;
 	}
+	
+	m64p_error err=open_rom(rom_data,rom_size);
+	
+	if(err!=M64ERR_SUCCESS)
+	{
+		return 2;
+	}
 
-	regular_quit=0;
-	
-	fileBrowser_file saveFile_dir;
-	memset(&saveFile_dir,0,sizeof(fileBrowser_file));
-	strcpy(saveFile_dir.name,MUPEN_DIR"saves/");
-	
 	cls_GUI();
 	
-    printf("Goodname:%s\n", ROM_SETTINGS.goodname);
-	
-	init_memory();
+    if (g_MemHasBeenBSwapped == 0)
+    {
+        init_memory(0);
+        g_MemHasBeenBSwapped = 1;
+    }
+    else
+    {
+        init_memory(0);
+    }
 
 	plugin_load_plugins(NULL,NULL,NULL,NULL);
 
-	RomOpen(); //gfx
-	romOpen_audio();
-	romOpen_input();
+	gfx.romOpen();
+	audio.romOpen();
 
-#ifdef USE_TLB_CACHE
-	TLBCache_init();
-#else
-	tlb_mem2_init();
-#endif
-
-	cpu_init();
+	r4300_reset_hard();
+	r4300_reset_soft();
    
-	if (loadEeprom(&saveFile_dir)==1) printf("eeprom loaded!\n");
-	if (loadSram(&saveFile_dir)==1) printf("sram loaded!\n");
-	if (loadMempak(&saveFile_dir)==1) printf("mempak loaded!\n");
-	if (loadFlashram(&saveFile_dir)==1) printf("flash loaded!\n");
-				
-	go();
+	r4300_execute();
    
-	if(regular_quit){
-		if (saveEeprom(&saveFile_dir)==1) printf("eeprom saved!\n");
-		if (saveSram(&saveFile_dir)==1) printf("sram saved!\n");
-		if (saveMempak(&saveFile_dir)==1) printf("mempak saved!\n");
-		if (saveFlashram(&saveFile_dir)==1) printf("flash saved!\n");
-	}
-				
-	cpu_deinit();
- 
-	romClosed_RSP();
-	romClosed_input();
-	romClosed_audio();
-	RomClosed(); //gfx
-	
-	free(rom_buf);
-	free(ROM_HEADER);
-	rom_buf=NULL;
-	ROM_HEADER=NULL;
+	rsp.romClosed();
+	audio.romClosed();
+	gfx.romClosed();
 	
 	free_memory();
+	
+	close_rom();
 
+	free(rom_data);
+	rom_data=NULL;
+	
 	return 0;
 }
+
+
 
 int main ()
 {
@@ -515,188 +603,19 @@ int main ()
 	ZLX::Hw::SystemInit(ZLX::INIT_USB|ZLX::INIT_ATA|ZLX::INIT_ATAPI|ZLX::INIT_FILESYSTEM);
 	ZLX::Hw::SystemPoll();
 
-	strcpy(cwd, MUPEN_DIR);
-	while(cwd[strlen(cwd)-1] != '/') cwd[strlen(cwd)-1] = '\0';
-	strcpy(g_WorkingDir, cwd);
-
-	//dynacore=CORE_INTERPRETER; // interpreter
-	//dynacore=CORE_PURE_INTERPRETER; // pure interpreter
-	dynacore=CORE_DYNAREC; //  dynamic recompiler
-	//use_framelimit=0;
+	//r4300emu=CORE_DYNAREC; //  dynamic recompiler
 	
 	console_close();
+	
+	ConfigInit(MUPEN_DIR,MUPEN_DIR);
+	romdatabase_open();
+	
+	main_set_core_defaults();
 
 	do_GUI();
 
+	ConfigShutdown();
+	romdatabase_close();
+
 	return 0;
-}
-
-static CONTROL_INFO control_info;
-
-void initiateControllers(CONTROL_INFO ControlInfo)
-{
-	int i;
-	control_info = ControlInfo;
-	for(i=0;i<4;++i) control_info.Controls[i].Present = TRUE;
-	control_info.Controls[0].Plugin = PLUGIN_MEMPAK;
-}
-
-#define	STICK_DEAD_ZONE (32768*0.15)
-#define	STICK_FACTOR (0.6)
-
-#define TRIGGER_THRESHOLD 100
-#define STICK_THRESHOLD 20000
-
-s32 handleStickDeadZone(s32 value)
-{
-	if(abs(value)<STICK_DEAD_ZONE)
-		return 0;
-
-	int sign=-1;
-	if (value>=0) sign=1;
-	
-	int dz=STICK_DEAD_ZONE*sign;
-	
-	return (value-dz)*STICK_FACTOR;
-}
-
-
-void getKeys(int Control, BUTTONS *Keys)
-{
-    static struct controller_data_s cdata[4],*c;
-    BUTTONS b;
-
-	usb_do_poll();
-
-	get_controller_data(&cdata[Control], Control);
-	c=&cdata[Control];
-
-    if (c->back){
-		stop=1;
-		regular_quit=1;
-	}
-	
-    b.START_BUTTON=c->start;
-        
-    b.A_BUTTON=c->a;
-    b.B_BUTTON=c->b;
-    b.Z_TRIG=c->x || c->y || (c->rt>TRIGGER_THRESHOLD) || (c->lt>TRIGGER_THRESHOLD);
-        
-    b.L_TRIG=c->lb;
-    b.R_TRIG=c->rb;
-     
-	
-	switch(pad_mode)
-	{
-		case PADMODE_SDC:
-			b.X_AXIS=handleStickDeadZone(c->s1_x)/256;
-			b.Y_AXIS=handleStickDeadZone(c->s1_y)/256;
-
-			b.U_DPAD=c->up;
-			b.D_DPAD=c->down;
-			b.L_DPAD=c->left;
-			b.R_DPAD=c->right;
-
-			b.U_CBUTTON=c->s2_y>STICK_THRESHOLD;
-			b.D_CBUTTON=c->s2_y<-STICK_THRESHOLD;
-			b.L_CBUTTON=c->s2_x<-STICK_THRESHOLD;
-			b.R_CBUTTON=c->s2_x>STICK_THRESHOLD;
-			break;
-		case PADMODE_SCD:
-			b.X_AXIS=handleStickDeadZone(c->s1_x)/256;
-			b.Y_AXIS=handleStickDeadZone(c->s1_y)/256;
-
-			b.U_CBUTTON=c->up;
-			b.D_CBUTTON=c->down;
-			b.L_CBUTTON=c->left;
-			b.R_CBUTTON=c->right;
-
-			b.U_DPAD=c->s2_y>STICK_THRESHOLD;
-			b.D_DPAD=c->s2_y<-STICK_THRESHOLD;
-			b.L_DPAD=c->s2_x<-STICK_THRESHOLD;
-			b.R_DPAD=c->s2_x>STICK_THRESHOLD;
-			break;
-		case PADMODE_DSC:
-			b.U_DPAD=c->s1_y>STICK_THRESHOLD;
-			b.D_DPAD=c->s1_y<-STICK_THRESHOLD;
-			b.L_DPAD=c->s1_x<-STICK_THRESHOLD;
-			b.R_DPAD=c->s1_x>STICK_THRESHOLD;
-
-			b.X_AXIS=(c->left?-128:0) + (c->right?128:0);
-			b.Y_AXIS=(c->up?-128:0) + (c->down?128:0);
-
-			b.U_CBUTTON=c->s2_y>STICK_THRESHOLD;
-			b.D_CBUTTON=c->s2_y<-STICK_THRESHOLD;
-			b.L_CBUTTON=c->s2_x<-STICK_THRESHOLD;
-			b.R_CBUTTON=c->s2_x>STICK_THRESHOLD;
-			break;
-		case PADMODE_DCS:
-			b.U_DPAD=c->s1_y>STICK_THRESHOLD;
-			b.D_DPAD=c->s1_y<-STICK_THRESHOLD;
-			b.L_DPAD=c->s1_x<-STICK_THRESHOLD;
-			b.R_DPAD=c->s1_x>STICK_THRESHOLD;
-
-			b.U_CBUTTON=c->up;
-			b.D_CBUTTON=c->down;
-			b.L_CBUTTON=c->left;
-			b.R_CBUTTON=c->right;
-
-			b.X_AXIS=handleStickDeadZone(c->s2_x)/256;
-			b.Y_AXIS=handleStickDeadZone(c->s2_y)/256;
-			break;
-		case PADMODE_CDS:
-			b.U_CBUTTON=c->s1_y>STICK_THRESHOLD;
-			b.D_CBUTTON=c->s1_y<-STICK_THRESHOLD;
-			b.L_CBUTTON=c->s1_x<-STICK_THRESHOLD;
-			b.R_CBUTTON=c->s1_x>STICK_THRESHOLD;
-
-			b.U_DPAD=c->up;
-			b.D_DPAD=c->down;
-			b.L_DPAD=c->left;
-			b.R_DPAD=c->right;
-
-			b.X_AXIS=handleStickDeadZone(c->s2_x)/256;
-			b.Y_AXIS=handleStickDeadZone(c->s2_y)/256;
-			break;
-		case PADMODE_CSD:
-			b.U_CBUTTON=c->s1_y>STICK_THRESHOLD;
-			b.D_CBUTTON=c->s1_y<-STICK_THRESHOLD;
-			b.L_CBUTTON=c->s1_x<-STICK_THRESHOLD;
-			b.R_CBUTTON=c->s1_x>STICK_THRESHOLD;
-
-			b.X_AXIS=(c->left?-128:0) + (c->right?128:0);
-			b.Y_AXIS=(c->up?-128:0) + (c->down?128:0);
-
-			b.U_DPAD=c->s2_y>STICK_THRESHOLD;
-			b.D_DPAD=c->s2_y<-STICK_THRESHOLD;
-			b.L_DPAD=c->s2_x<-STICK_THRESHOLD;
-			b.R_DPAD=c->s2_x>STICK_THRESHOLD;
-			break;
-	}
-
-    Keys->Value = b.Value;
-}
-
-int saveFile_readFile(fileBrowser_file* file, void* buffer, unsigned int length){
-        FILE* f = fopen( file->name, "rb" );
-        if(!f) return FILE_BROWSER_ERROR;
-        
-        fseek(f, file->offset, SEEK_SET);
-        int bytes_read = fread(buffer, 1, length, f);
-        if(bytes_read > 0) file->offset += bytes_read;
-        
-        fclose(f);
-        return bytes_read;
-}
-
-int saveFile_writeFile(fileBrowser_file* file, void* buffer, unsigned int length){
-        FILE* f = fopen( file->name, "wb" );
-        if(!f) return FILE_BROWSER_ERROR;
-        
-        fseek(f, file->offset, SEEK_SET);
-        int bytes_read = fwrite(buffer, 1, length, f);
-        if(bytes_read > 0) file->offset += bytes_read;
-        
-        fclose(f);
-        return bytes_read;
 }

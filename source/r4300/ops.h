@@ -1,279 +1,322 @@
-/**
- * Mupen64 - ops.h
- * Copyright (C) 2002 Hacktarux
- *
- * Mupen64 homepage: http://mupen64.emulation64.com
- * email address: hacktarux@yahoo.fr
- * 
- * If you want to contribute to the project please contact
- * me first (maybe someone is already making what you are
- * planning to do).
- *
- *
- * This program is free software; you can redistribute it and/
- * or modify it under the terms of the GNU General Public Li-
- * cence as published by the Free Software Foundation; either
- * version 2 of the Licence, or any later version.
- *
- * This program is distributed in the hope that it will be use-
- * ful, but WITHOUT ANY WARRANTY; without even the implied war-
- * ranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public Licence for more details.
- *
- * You should have received a copy of the GNU General Public
- * Licence along with this program; if not, write to the Free
- * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139,
- * USA.
- *
-**/
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *   Mupen64plus - ops.h                                                   *
+ *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Copyright (C) 2002 Hacktarux                                          *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
+ *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-void NI();
-void LW();
-void LUI();
-void ADDIU();
-void BNE();
-void SLL();
-void SW();
-void ORI();
-void ADDI();
-void OR();
-void JAL();
-void SLTI();
-void BEQL();
-void ANDI();
-void XORI();
-void JR();
-void SRL();
-void BNEL();
-void BEQ();
-void BLEZL();
-void SUBU();
-void MULTU();
-void MFLO();
-void ADDU();
-void SB();
-void AND();
-void LBU();
-void BGEZL();
-void SLT();
-void ADD();
-void CACHE();
-void SLTU();
-void SRLV();
-void SLLV();
-void XOR();
-void BGEZAL();
-void CFC1();
-void MTC0();
-void MFC0();
-void CTC1();
-void BLEZ();
-void TLBWI();
-void LD();
-void DMULTU();
-void DSLL32();
-void DSRA32();
-void DDIVU();
-void SRA();
-void SLTIU();
-void SH();
-void LHU();
-void MTLO();
-void MTHI();
-void ERET();
-void SD();
-void J();
-void DIV();
-void MFHI();
-void BGEZ();
-void MULT();
-void LWC1();
-void MTC1();
-void CVT_S_W();
-void DIV_S();
-void MUL_S();
-void ADD_S();
-void CVT_D_S();
-void ADD_D();
-void TRUNC_W_D();
-void MFC1();
-void NOP();
-void RESERVED();
+typedef struct _cpu_instruction_table
+{
+	/* All jump/branch instructions (except JR and JALR) have three versions:
+	 * - JUMPNAME() which for jumps inside the current block.
+	 * - JUMPNAME_OUT() which jumps outside the current block.
+	 * - JUMPNAME_IDLE() which does busy wait optimization.
+	 *
+	 * Busy wait optimization is used when a jump jumps to itself,
+	 * and the instruction on the delay slot is a NOP.
+	 * The program is waiting for the next interrupt, so we can just
+	 * increase Count until the point where the next interrupt happens. */
 
-void TLBP();
-void TLBR();
-void SWL();
-void SWR();
-void LWL();
-void LWR();
-void SRAV();
-void BLTZ();
+	// Load and store instructions
+	void (*LB)(void);
+	void (*LBU)(void);
+	void (*LH)(void);
+	void (*LHU)(void);
+	void (*LW)(void);
+	void (*LWL)(void);
+	void (*LWR)(void);
+	void (*SB)(void);
+	void (*SH)(void);
+	void (*SW)(void);
+	void (*SWL)(void);
+	void (*SWR)(void);
 
-void BGTZ();
-void LB();
+	void (*LD)(void);
+	void (*LDL)(void);
+	void (*LDR)(void);
+	void (*LL)(void);
+	void (*LWU)(void);
+	void (*SC)(void);
+	void (*SD)(void);
+	void (*SDL)(void);
+	void (*SDR)(void);
+	void (*SYNC)(void);
 
-void SWC1();
-void CVT_D_W();
-void MUL_D();
-void DIV_D();
-void CVT_S_D();
-void MOV_S();
-void C_LE_S();
-void BC1T();
-void TRUNC_W_S();
-void C_LT_S();
-void BC1FL();
-void NEG_S();
-void LDC1();
-void SUB_D();
-void C_LE_D();
-void BC1TL();
-void BGEZAL_IDLE();
-void J_IDLE();
-void BLEZ_IDLE();
-void BEQ_IDLE();
+	// Arithmetic instructions (ALU immediate)
+	void (*ADDI)(void);
+	void (*ADDIU)(void);
+	void (*SLTI)(void);
+	void (*SLTIU)(void);
+	void (*ANDI)(void);
+	void (*ORI)(void);
+	void (*XORI)(void);
+	void (*LUI)(void);
 
-void LH();
-void NOR();
-void NEG_D();
-void MOV_D();
-void C_LT_D();
-void BC1F();
+	void (*DADDI)(void);
+	void (*DADDIU)(void);
 
-void SUB();
+	// Arithmetic instructions (3-operand)
+	void (*ADD)(void);
+	void (*ADDU)(void);
+	void (*SUB)(void);
+	void (*SUBU)(void);
+	void (*SLT)(void);
+	void (*SLTU)(void);
+	void (*AND)(void);
+	void (*OR)(void);
+	void (*XOR)(void);
+	void (*NOR)(void);
 
-void CVT_W_S();
-void DIVU();
+	void (*DADD)(void);
+	void (*DADDU)(void);
+	void (*DSUB)(void);
+	void (*DSUBU)(void);
 
-void JALR();
-void SDC1();
-void C_EQ_S();
-void SUB_S();
-void BLTZL();
+	// Multiply and divide instructions
+	void (*MULT)(void);
+	void (*MULTU)(void);
+	void (*DIV)(void);
+	void (*DIVU)(void);
+	void (*MFHI)(void);
+	void (*MTHI)(void);
+	void (*MFLO)(void);
+	void (*MTLO)(void);
 
-void CVT_W_D();
-void SQRT_S();
-void C_EQ_D();
-void FIN_BLOCK();
-void DDIV();
-void DADDIU();
-void ABS_S();
-void BGTZL();
-void DSRAV();
-void DSLLV();
-void CVT_S_L();
-void DMTC1();
-void DSRLV();
-void DSRA();
-void DMULT();
-void DSLL();
-void SC();
+	void (*DMULT)(void);
+	void (*DMULTU)(void);
+	void (*DDIV)(void);
+	void (*DDIVU)(void);
 
-void SYSCALL();
-void DADD();
-void DADDU();
-void DSUB();
-void DSUBU();
-void TEQ();
-void DSRL();
-void DSRL32();
-void BLTZ_IDLE();
-void BGEZ_IDLE();
-void BLTZL_IDLE();
-void BGEZL_IDLE();
-void BLTZAL();
-void BLTZAL_IDLE();
-void BLTZALL();
-void BLTZALL_IDLE();
-void BGEZALL();
-void BGEZALL_IDLE();
-void TLBWR();
-void BC1F_IDLE();
-void BC1T_IDLE();
-void BC1FL_IDLE();
-void BC1TL_IDLE();
-void ROUND_L_S();
-void TRUNC_L_S();
-void CEIL_L_S();
-void FLOOR_L_S();
-void ROUND_W_S();
-void CEIL_W_S();
-void FLOOR_W_S();
-void CVT_L_S();
-void C_F_S();
-void C_UN_S();
-void C_UEQ_S();
-void C_OLT_S();
-void C_ULT_S();
-void C_OLE_S();
-void C_ULE_S();
-void C_SF_S();
-void C_NGLE_S();
-void C_SEQ_S();
-void C_NGL_S();
-void C_NGE_S();
-void C_NGT_S();
-void SQRT_D();
-void ABS_D();
-void ROUND_L_D();
-void TRUNC_L_D();
-void CEIL_L_D();
-void FLOOR_L_D();
-void ROUND_W_D();
-void CEIL_W_D();
-void FLOOR_W_D();
-void CVT_L_D();
-void C_F_D();
-void C_UN_D();
-void C_UEQ_D();
-void C_OLT_D();
-void C_ULT_D();
-void C_OLE_D();
-void C_ULE_D();
-void C_SF_D();
-void C_NGLE_D();
-void C_SEQ_D();
-void C_NGL_D();
-void C_NGE_D();
-void C_NGT_D();
-void CVT_D_L();
-void DMFC1();
-void JAL_IDLE();
-void BNE_IDLE();
-void BGTZ_IDLE();
-void BEQL_IDLE();
-void BNEL_IDLE();
-void BLEZL_IDLE();
-void BGTZL_IDLE();
-void DADDI();
-void LDL();
-void LDR();
-void LWU();
-void SDL();
-void SDR();
-void SYNC();
-void BLTZ_OUT();
-void BGEZ_OUT();
-void BLTZL_OUT();
-void BGEZL_OUT();
-void BLTZAL_OUT();
-void BGEZAL_OUT();
-void BLTZALL_OUT();
-void BGEZALL_OUT();
-void BC1F_OUT();
-void BC1T_OUT();
-void BC1FL_OUT();
-void BC1TL_OUT();
-void J_OUT();
-void JAL_OUT();
-void BEQ_OUT();
-void BNE_OUT();
-void BLEZ_OUT();
-void BGTZ_OUT();
-void BEQL_OUT();
-void BNEL_OUT();
-void BLEZL_OUT();
-void BGTZL_OUT();
-void NOTCOMPILED();
-void LL();
-void NOTCOMPILED2();
+	// Jump and branch instructions
+	void (*J)(void);
+	void (*J_OUT)(void);
+	void (*J_IDLE)(void);
+	void (*JAL)(void);
+	void (*JAL_OUT)(void);
+	void (*JAL_IDLE)(void);
+	void (*JR)(void);
+	void (*JALR)(void);
+	void (*BEQ)(void);
+	void (*BEQ_OUT)(void);
+	void (*BEQ_IDLE)(void);
+	void (*BNE)(void);
+	void (*BNE_OUT)(void);
+	void (*BNE_IDLE)(void);
+	void (*BLEZ)(void);
+	void (*BLEZ_OUT)(void);
+	void (*BLEZ_IDLE)(void);
+	void (*BGTZ)(void);
+	void (*BGTZ_OUT)(void);
+	void (*BGTZ_IDLE)(void);
+	void (*BLTZ)(void);
+	void (*BLTZ_OUT)(void);
+	void (*BLTZ_IDLE)(void);
+	void (*BGEZ)(void);
+	void (*BGEZ_OUT)(void);
+	void (*BGEZ_IDLE)(void);
+	void (*BLTZAL)(void);
+	void (*BLTZAL_OUT)(void);
+	void (*BLTZAL_IDLE)(void);
+	void (*BGEZAL)(void);
+	void (*BGEZAL_OUT)(void);
+	void (*BGEZAL_IDLE)(void);
+
+	void (*BEQL)(void);
+	void (*BEQL_OUT)(void);
+	void (*BEQL_IDLE)(void);
+	void (*BNEL)(void);
+	void (*BNEL_OUT)(void);
+	void (*BNEL_IDLE)(void);
+	void (*BLEZL)(void);
+	void (*BLEZL_OUT)(void);
+	void (*BLEZL_IDLE)(void);
+	void (*BGTZL)(void);
+	void (*BGTZL_OUT)(void);
+	void (*BGTZL_IDLE)(void);
+	void (*BLTZL)(void);
+	void (*BLTZL_OUT)(void);
+	void (*BLTZL_IDLE)(void);
+	void (*BGEZL)(void);
+	void (*BGEZL_OUT)(void);
+	void (*BGEZL_IDLE)(void);
+	void (*BLTZALL)(void);
+	void (*BLTZALL_OUT)(void);
+	void (*BLTZALL_IDLE)(void);
+	void (*BGEZALL)(void);
+	void (*BGEZALL_OUT)(void);
+	void (*BGEZALL_IDLE)(void);
+	void (*BC1TL)(void);
+	void (*BC1TL_OUT)(void);
+	void (*BC1TL_IDLE)(void);
+	void (*BC1FL)(void);
+	void (*BC1FL_OUT)(void);
+	void (*BC1FL_IDLE)(void);
+
+	// Shift instructions
+	void (*SLL)(void);
+	void (*SRL)(void);
+	void (*SRA)(void);
+	void (*SLLV)(void);
+	void (*SRLV)(void);
+	void (*SRAV)(void);
+
+	void (*DSLL)(void);
+	void (*DSRL)(void);
+	void (*DSRA)(void);
+	void (*DSLLV)(void);
+	void (*DSRLV)(void);
+	void (*DSRAV)(void);
+	void (*DSLL32)(void);
+	void (*DSRL32)(void);
+	void (*DSRA32)(void);
+
+	// COP0 instructions
+	void (*MTC0)(void);
+	void (*MFC0)(void);
+
+	void (*TLBR)(void);
+	void (*TLBWI)(void);
+	void (*TLBWR)(void);
+	void (*TLBP)(void);
+	void (*CACHE)(void);
+	void (*ERET)(void);
+
+	// COP1 instructions
+	void (*LWC1)(void);
+	void (*SWC1)(void);
+	void (*MTC1)(void);
+	void (*MFC1)(void);
+	void (*CTC1)(void);
+	void (*CFC1)(void);
+	void (*BC1T)(void);
+	void (*BC1T_OUT)(void);
+	void (*BC1T_IDLE)(void);
+	void (*BC1F)(void);
+	void (*BC1F_OUT)(void);
+	void (*BC1F_IDLE)(void);
+
+	void (*DMFC1)(void);
+	void (*DMTC1)(void);
+	void (*LDC1)(void);
+	void (*SDC1)(void);
+
+	void (*CVT_S_D)(void);
+	void (*CVT_S_W)(void);
+	void (*CVT_S_L)(void);
+	void (*CVT_D_S)(void);
+	void (*CVT_D_W)(void);
+	void (*CVT_D_L)(void);
+	void (*CVT_W_S)(void);
+	void (*CVT_W_D)(void);
+	void (*CVT_L_S)(void);
+	void (*CVT_L_D)(void);
+
+	void (*ROUND_W_S)(void);
+	void (*ROUND_W_D)(void);
+	void (*ROUND_L_S)(void);
+	void (*ROUND_L_D)(void);
+
+	void (*TRUNC_W_S)(void);
+	void (*TRUNC_W_D)(void);
+	void (*TRUNC_L_S)(void);
+	void (*TRUNC_L_D)(void);
+
+	void (*CEIL_W_S)(void);
+	void (*CEIL_W_D)(void);
+	void (*CEIL_L_S)(void);	
+	void (*CEIL_L_D)(void);	
+
+	void (*FLOOR_W_S)(void);
+	void (*FLOOR_W_D)(void);
+	void (*FLOOR_L_S)(void);
+	void (*FLOOR_L_D)(void);
+
+	void (*ADD_S)(void);
+	void (*ADD_D)(void);
+
+	void (*SUB_S)(void);
+	void (*SUB_D)(void);
+
+	void (*MUL_S)(void);
+	void (*MUL_D)(void);
+
+	void (*DIV_S)(void);
+	void (*DIV_D)(void);
+	
+	void (*ABS_S)(void);
+	void (*ABS_D)(void);
+
+	void (*MOV_S)(void);
+	void (*MOV_D)(void);
+
+	void (*NEG_S)(void);
+	void (*NEG_D)(void);
+
+	void (*SQRT_S)(void);
+	void (*SQRT_D)(void);
+
+	void (*C_F_S)(void);
+	void (*C_F_D)(void);
+	void (*C_UN_S)(void);
+	void (*C_UN_D)(void);
+	void (*C_EQ_S)(void);
+	void (*C_EQ_D)(void);
+	void (*C_UEQ_S)(void);
+	void (*C_UEQ_D)(void);
+	void (*C_OLT_S)(void);
+	void (*C_OLT_D)(void);
+	void (*C_ULT_S)(void);
+	void (*C_ULT_D)(void);
+	void (*C_OLE_S)(void);
+	void (*C_OLE_D)(void);
+	void (*C_ULE_S)(void);
+	void (*C_ULE_D)(void);
+	void (*C_SF_S)(void);
+	void (*C_SF_D)(void);
+	void (*C_NGLE_S)(void);
+	void (*C_NGLE_D)(void);
+	void (*C_SEQ_S)(void);
+	void (*C_SEQ_D)(void);
+	void (*C_NGL_S)(void);
+	void (*C_NGL_D)(void);
+	void (*C_LT_S)(void);
+	void (*C_LT_D)(void);
+	void (*C_NGE_S)(void);
+	void (*C_NGE_D)(void);
+	void (*C_LE_S)(void);
+	void (*C_LE_D)(void);
+	void (*C_NGT_S)(void);	
+	void (*C_NGT_D)(void);	
+
+	// Special instructions
+	void (*SYSCALL)(void);
+
+	// Exception instructions
+	void (*TEQ)(void);
+
+	// Emulator helper functions
+	void (*NOP)(void);          // No operation (used to nullify R0 writes)
+	void (*RESERVED)(void);     // Reserved instruction handler
+	void (*NI)(void);	        // Not implemented instruction handler
+
+	void (*FIN_BLOCK)(void);    // Handler for the end of a block
+	void (*NOTCOMPILED)(void);  // Handler for not yet compiled code
+	void (*NOTCOMPILED2)(void); // TODOXXX
+} cpu_instruction_table;
+
+extern const cpu_instruction_table cached_interpreter_table;
+extern cpu_instruction_table current_instruction_table;

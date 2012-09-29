@@ -309,7 +309,7 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 			check_memory(address);
 			break;
 		case MEM_SB:
-			byte = value;
+			cpu_byte = value;
 			write_byte_in_memory();
 			check_memory(address);
 			break;

@@ -185,20 +185,6 @@ void GetPluginDir( char * Directory )
 #endif //__GX__
 }
 
-//-------------------------------------------------------------------------------------
-EXPORT void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
-{
-#ifdef _DEBUG
-    sprintf(PluginInfo->Name, "%s %s Debug",project_name, PLUGIN_VERSION);
-#else
-    sprintf(PluginInfo->Name, "%s %s",project_name, PLUGIN_VERSION);
-#endif
-    PluginInfo->Version        = 0x0103;
-    PluginInfo->Type           = PLUGIN_TYPE_GFX;
-    PluginInfo->NormalMemory   = FALSE;
-    PluginInfo->MemoryBswaped  = TRUE;
-}
-
 //---------------------------------------------------------------------------------------
 
 EXPORT void CALL DllAbout ( HWND hParent )
@@ -321,7 +307,7 @@ void StartVideo(void)
         CGraphicsContext::InitWindowInfo();
         
         windowSetting.bDisplayFullscreen = FALSE;
-        bool res = CGraphicsContext::Get()->Initialize(g_GraphicsInfo.hWnd, g_GraphicsInfo.hStatusBar, 640, 480, TRUE);
+        bool res = CGraphicsContext::Get()->Initialize(0, 0, 640, 480, TRUE);
         CDeviceBuilder::GetBuilder()->CreateRender();
         CRender::GetRender()->Initialize();
         
@@ -480,7 +466,7 @@ EXPORT void CALL RomOpen(void)
     }
     status.bDisableFPS=false;
 
-#if defined(__GX__) || defined(XENON)
+#if defined(__GX__)
 # ifdef USE_EXPANSION
    g_dwRamSize = 0x800000;
 # else
@@ -1113,13 +1099,6 @@ input:    FrameBufferInfo pinfo[6]
 output:   Values are return in the FrameBufferInfo structure
           Plugin can return up to 6 frame buffer info
  ************************************************************************/
-typedef struct
-{
-    uint32  addr;
-    uint32  size;
-    uint32  width;
-    uint32  height;
-} FrameBufferInfo;
 
 EXPORT void CALL FBGetFrameBufferInfo(void *p)
 {

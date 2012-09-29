@@ -51,8 +51,6 @@
 #include "../gui/DEBUG.h"
 #endif //__GX__
 
-#define EXPORT              __declspec(dllexport)
-
 #include <stdio.h>
 #include "winlnxdefs.h"
 #include "math.h"
@@ -74,7 +72,10 @@
 #endif
 
 #include "typedefs.h"
+
+#include "api/m64p_plugin.h"
 #include "Graphics_1.3.h"
+
 #include "Video.h"
 #include "Config.h"
 #include "Debugger.h"
