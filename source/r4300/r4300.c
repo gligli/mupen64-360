@@ -1567,8 +1567,6 @@ void init_blocks()
 #endif
 }
 
-static int cpu_inited;
-
 void go()
 {
 	stop = 0;
@@ -1576,12 +1574,9 @@ void go()
 	if (!r4300emu)
 	{
 		//printf ("interpreter\n");
-		if (cpu_inited)
-		{
-			init_blocks();
-			last_addr = PC->addr;
-			cpu_inited = 0;
-		}
+		init_blocks();
+		last_addr = PC->addr;
+		
 		while (!stop)
 		{
 			//if ((debug_count+Count) >= 0x78a8091) break; // obj 0x16aeb8a
@@ -1642,12 +1637,8 @@ void go()
 		interpcore = 0;
 		r4300emu = 1;
 		//printf("dynamic recompiler\n");
-		if (cpu_inited)
-		{
-			RecompCache_Init();
-			init_blocks();
-			cpu_inited = 0;
-		}
+		RecompCache_Init();
+		init_blocks();
 #ifdef PPC_DYNAREC
 		//jump_to(0xa4000040);
 		dynarec(interp_addr);
@@ -1909,13 +1900,12 @@ void cpu_init(void)
 	if (r4300emu == 2)
 		PC = malloc(sizeof (precomp_instr));
 	// Hack for the interpreter
-	cpu_inited = 1;
 }
 
 void cpu_deinit(void)
 {
 	// No need to check these if we were in the pure interp
-	if (r4300emu != 2 && !cpu_inited)
+	if (r4300emu != 2)
 	{
 		for (i = 0; i < 0x100000; i++)
 		{

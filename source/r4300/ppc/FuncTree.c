@@ -53,24 +53,36 @@ void insert_func(PowerPC_func_node** root, PowerPC_func* func){
 	(*node)->left = (*node)->right = NULL;
 }
 
+void remove_node(PowerPC_func_node** node){
+	PowerPC_func_node* old = *node;
+	if(!(*node)->left)
+	{
+		*node = (*node)->right;
+		MetaCache_Free(old);
+	}
+	else if(!(*node)->right)
+	{
+		*node = (*node)->left;
+		MetaCache_Free(old);
+	}
+	else
+	{
+		// The node has two children, find the node's predecessor and swap
+		PowerPC_func_node** pre;
+		for(pre = &(*node)->left; (*pre)->right; pre = &(*pre)->right);
+		
+		PowerPC_func* tmp = (*pre)->function;
+		(*pre)->function=(*node)->function;
+		(*node)->function=tmp;
+		
+		remove_node(pre);
+	}
+}
+
 void remove_func(PowerPC_func_node** root, PowerPC_func* func){
 	PowerPC_func_node** node = _find(root, func->start_addr);
 	if(!*node) return; // Avoid a memory error if the function doesn't exist
 
-	PowerPC_func_node* old = *node;
-	if(!(*node)->left)
-		*node = (*node)->right;
-	else if(!(*node)->right)
-		*node = (*node)->left;
-	else {
-		// The node has two children, find the node's predecessor and swap
-		PowerPC_func_node** pre;
-		for(pre = &(*node)->left; (*pre)->right; pre = &(*pre)->right);
-		(*node)->function = (*pre)->function;
-		old = *pre;
-		*pre = (*pre)->left;
-	}
-
-	MetaCache_Free(old);
+	remove_node(node);
 }
 

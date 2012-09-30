@@ -6,8 +6,8 @@
 #include <debug.h>
 #include <ppc/atomic.h>
 
-#define PRE_GUARD 4096
-#define POST_GUARD 4096
+#define PRE_GUARD 256
+#define POST_GUARD 256
 
 #define MAGIC 0xdeadbeef
 
@@ -92,6 +92,7 @@ void __wrap_free(void * p)
     if(magic!=MAGIC)
     {
         printf("[mchk free] bad magic !!!!\n");
+		stack_trace(4);
         buffer_dump(&pp[-PRE_GUARD],PRE_GUARD);
         unlock(&lck);
         return;
@@ -141,6 +142,7 @@ void * __wrap_realloc(void * p,size_t size)
         if(magic!=MAGIC)
         {
             printf("[mchk realloc] bad magic !!!!\n");
+			stack_trace(4);
             buffer_dump(&pp[-PRE_GUARD],PRE_GUARD);
             unlock(&lck);
             return NULL;

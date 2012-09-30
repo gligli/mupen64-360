@@ -266,7 +266,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 		RecompCache_Realloc(func, code_length * sizeof(PowerPC_instr));
 	}
 	memcpy(func->code, code_buffer, code_length * sizeof(PowerPC_instr));
-	memcpy(func->code_addr, code_addr_buffer, addr_last - addr_first);
+	memcpy(func->code_addr, code_addr_buffer, addr_last - addr_first + 4);
 
 	// Readjusting pointers to the func buffers
 	code_addr = func->code_addr;
@@ -275,6 +275,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	for(i=0; i<src-src_first; ++i)
 		if(code_addr[i])
 			code_addr[i] = func->code + (code_addr[i] - code_buffer);
+	
 	for(i=0; i<current_jump; ++i)
 		jump_table[i].dst_instr = func->code +
 		                          (jump_table[i].dst_instr - code_buffer);

@@ -43,6 +43,7 @@ void ICInvalidateRange(void* startaddr, unsigned int len)  {
 	memicbi(startaddr,len);
 }
 
+static void * recompmeta_buf = NULL;
 typedef struct _meta_node {
 	unsigned int  addr;
 	PowerPC_func* func;
@@ -118,6 +119,26 @@ static CacheMetaNode* heapPop(void){
 	return cacheHeap[heapSize];
 }
 
+// Remove any references to outgoing links from this func
+void remove_outgoing_links(PowerPC_func_node** node,PowerPC_func* func){
+	if(!*node) return;
+	if((*node)->left) remove_outgoing_links(&(*node)->left,func);
+	if((*node)->right) remove_outgoing_links(&(*node)->right,func);
+
+	// Remove any links this function has which point in the code
+	PowerPC_func_link_node** link, ** next;
+	for(link = &(*node)->function->links_in; *link != NULL; link = next){
+		next = &(*link)->next;
+		if((*link)->func == func){
+			PowerPC_func_link_node* tmp = (*link)->next;
+			MetaCache_Free(*link);
+			*link = tmp;
+			next = link;
+		}
+	}
+	MetaCache_Free(*node); // Free the PowerPC_func_node*
+}
+
 static void unlink_func(PowerPC_func* func){
 //	start_section(UNLINK_SECTION);
 	
@@ -137,26 +158,7 @@ static void unlink_func(PowerPC_func* func){
 	}
 	func->links_in = NULL;
 	
-	// Remove any references to outgoing links from this func
-	void remove_outgoing_links(PowerPC_func_node** node){
-		if(!*node) return;
-		if((*node)->left) remove_outgoing_links(&(*node)->left);
-		if((*node)->right) remove_outgoing_links(&(*node)->right);
-
-		// Remove any links this function has which point in the code
-		PowerPC_func_link_node** link, ** next;
-		for(link = &(*node)->function->links_in; *link != NULL; link = next){
-			next = &(*link)->next;
-			if((*link)->func == func){
-				PowerPC_func_link_node* tmp = (*link)->next;
-				MetaCache_Free(*link);
-				*link = tmp;
-				next = link;
-			}
-		}
-		MetaCache_Free(*node); // Free the PowerPC_func_node*
-	}
-	remove_outgoing_links(&func->links_out);
+	remove_outgoing_links(&func->links_out,func);
 	func->links_out = NULL;
 	
 //	end_section(UNLINK_SECTION);
@@ -236,7 +238,7 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 		release(size);
 		code = __lwp_heap_allocate(cache, size);
 	}
-	int num_instrs = (func->end_addr - func->start_addr) >> 2;
+	int num_instrs = (func->end_addr - func->start_addr + 4) >> 2;
 	void* code_addr = MetaCache_Alloc(num_instrs * sizeof(void*));
 
 	cacheSize += size;
@@ -319,22 +321,37 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 //	end_section(LINK_SECTION);
 }
 
+//#define MALLOC_RECOMPMETA
+
 __attribute__((aligned(65536),section(".bss.beginning.upper"))) unsigned char recomp_cache_buffer[RECOMP_CACHE_SIZE];
 
 void RecompCache_Init(void){
-	if(!cache){
-		cache = malloc(sizeof(heap_cntrl));
-		__lwp_heap_init(cache, recomp_cache_buffer,
-		                RECOMP_CACHE_SIZE, 32);
+	if(cache)
+	{
+		free(cache);
 	}
-	if(!meta_cache){
-		meta_cache = malloc(sizeof(heap_cntrl));
-		__lwp_heap_init(meta_cache, malloc(RECOMPMETA_SIZE),
-		                RECOMPMETA_SIZE, 32);
+	
+	cache = malloc(sizeof(heap_cntrl));
+	__lwp_heap_init(cache, recomp_cache_buffer,	RECOMP_CACHE_SIZE, 32);
+
+#ifndef MALLOC_RECOMPMETA	
+	if(meta_cache)
+	{
+		free(meta_cache);
 	}
+
+	if(!recompmeta_buf)
+	{
+		recompmeta_buf = malloc(RECOMPMETA_SIZE);
+	}
+	
+	meta_cache = malloc(sizeof(heap_cntrl));
+	__lwp_heap_init(meta_cache, recompmeta_buf, RECOMPMETA_SIZE, 32);
+#endif	
 }
 
 void* MetaCache_Alloc(unsigned int size){
+#ifndef MALLOC_RECOMPMETA	
 	void* ptr = __lwp_heap_allocate(meta_cache, size);
 	// While there's no room to allocate, call release
 	while(!ptr){
@@ -343,8 +360,15 @@ void* MetaCache_Alloc(unsigned int size){
 	}
 	
 	return ptr;
+#else
+	return malloc(size);
+#endif	
 }
 
 void MetaCache_Free(void* ptr){
+#ifndef MALLOC_RECOMPMETA	
 	__lwp_heap_free(meta_cache, ptr);
+#else
+	return free(ptr);
+#endif	
 }

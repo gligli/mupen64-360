@@ -62,6 +62,7 @@ typedef struct func {
 PowerPC_func* find_func(PowerPC_func_node** root, unsigned int addr);
 void insert_func(PowerPC_func_node** root, PowerPC_func* func);
 void remove_func(PowerPC_func_node** root, PowerPC_func* func);
+void remove_node(PowerPC_func_node** node);
 
 typedef struct {
 	MIPS_instr*     mips_code;     // The code to recompile

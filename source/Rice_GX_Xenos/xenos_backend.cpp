@@ -379,7 +379,7 @@ void CxeRender::ApplyTextureFilter()
         int iMagFilter = (m_dwMagFilter == FILTER_LINEAR ? 1 : 0);
         if( m_texUnitEnabled[i] )
         {
-			if (m_curBoundTex[i]) 
+			if (m_curBoundTex[i] && m_curBoundTex[i]->tex) 
 			{
 				m_curBoundTex[i]->tex->use_filtering=iMinFilter | iMagFilter;
 			}
