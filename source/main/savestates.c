@@ -377,12 +377,12 @@ static int savestates_load_m64p(char *filepath)
     llbit = GETDATA(curr, unsigned int);
     COPYARRAY(reg, curr, long long int, 32);
     COPYARRAY(reg_cop0, curr, unsigned int, 32);
-    set_fpr_pointers(Status);  // Status is reg_cop0[12]
+//gli TODO    set_fpr_pointers(Status);  // Status is reg_cop0[12]
     lo = GETDATA(curr, long long int);
     hi = GETDATA(curr, long long int);
     COPYARRAY(reg_cop1_fgr_64, curr, long long int, 32);
     if ((Status & 0x04000000) == 0)  // 32-bit FPR mode requires data shuffling because 64-bit layout is always stored in savestate file
-        shuffle_fpr_data(0x04000000, 0);
+;//gli TODO        shuffle_fpr_data(0x04000000, 0);
     FCR0 = GETDATA(curr, int);
     FCR31 = GETDATA(curr, int);
 
@@ -418,7 +418,7 @@ static int savestates_load_m64p(char *filepath)
         for (i = 0; i < 0x100000; i++)
             invalid_code[i] = 1;
     }
-    generic_jump_to(GETDATA(curr, unsigned int)); // PC
+    jump_to(GETDATA(curr, unsigned int)); // PC
 
     next_interupt = GETDATA(curr, unsigned int);
     next_vi = GETDATA(curr, unsigned int);
@@ -505,9 +505,9 @@ static int savestates_load_pj64(char *filepath, void *handle,
     // CP0
     COPYARRAY(reg_cop0, curr, unsigned int, 32);
 
-    set_fpr_pointers(Status);  // Status is reg_cop0[12]
+//gli TODO    set_fpr_pointers(Status);  // Status is reg_cop0[12]
     if ((Status & 0x04000000) == 0) // TODO not sure how pj64 handles this
-        shuffle_fpr_data(0x04000000, 0);
+;//gli TODO        shuffle_fpr_data(0x04000000, 0);
 
     // Initialze the interupts
     vi_timer += reg_cop0[9]; // Add current Count
@@ -708,7 +708,7 @@ static int savestates_load_pj64(char *filepath, void *handle,
         for (i = 0; i < 0x100000; i++)
             invalid_code[i] = 1;
     }
-    generic_jump_to(last_addr);
+    jump_to(last_addr);
 
     // assert(savestateData+savestateSize == curr)
 
@@ -1037,10 +1037,10 @@ static int savestates_save_m64p(char *filepath)
     PUTDATA(curr, long long int, hi);
 
     if ((Status & 0x04000000) == 0) // FR bit == 0 means 32-bit (MIPS I) FGR mode
-        shuffle_fpr_data(0, 0x04000000);  // shuffle data into 64-bit register format for storage
+;//gli TODO        shuffle_fpr_data(0, 0x04000000);  // shuffle data into 64-bit register format for storage
     PUTARRAY(reg_cop1_fgr_64, curr, long long int, 32);
     if ((Status & 0x04000000) == 0)
-        shuffle_fpr_data(0x04000000, 0);  // put it back in 32-bit mode
+;//gli TODO        shuffle_fpr_data(0x04000000, 0);  // put it back in 32-bit mode
 
     PUTDATA(curr, int, FCR0);
     PUTDATA(curr, int, FCR31);
@@ -1131,10 +1131,10 @@ static int savestates_save_pj64(char *filepath, void *handle,
     PUTDATA(curr, unsigned int, PC->addr);
     PUTARRAY(reg, curr, long long int, 32);
     if ((Status & 0x04000000) == 0) // TODO not sure how pj64 handles this
-        shuffle_fpr_data(0x04000000, 0);
+;//gli TODO        shuffle_fpr_data(0x04000000, 0);
     PUTARRAY(reg_cop1_fgr_64, curr, long long int, 32);
     if ((Status & 0x04000000) == 0) // TODO not sure how pj64 handles this
-        shuffle_fpr_data(0x04000000, 0);
+;//gli TODO        shuffle_fpr_data(0x04000000, 0);
     PUTARRAY(reg_cop0, curr, unsigned int, 32);
     PUTDATA(curr, int, FCR0);
     for (i = 0; i < 30; i++)
@@ -1345,8 +1345,8 @@ int savestates_save(void)
     /* Can only save PJ64 savestates on VI / COMPARE interrupt.
        Otherwise try again in a little while. */
     if ((type == savestates_type_pj64_zip ||
-         type == savestates_type_pj64_unc) &&
-        get_next_event_type() > COMPARE_INT)
+         type == savestates_type_pj64_unc) /*gli TODO  && 
+         get_next_event_type() > COMPARE_INT*/)
         return 0;
 
     if (fname != NULL && type == savestates_type_unknown)

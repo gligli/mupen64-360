@@ -22,7 +22,6 @@
 
 #include <stdlib.h>
 #include <debug.h>
-#include "../Invalid_Code.h"
 #include "../ARAM-blocks.h"
 #include "../../memory/memory.h"
 #include "../interupt.h"
@@ -136,7 +135,7 @@ void dynarec(unsigned int address){
 				init_block(&rdram[0]+(((paddr-(address-dst_block->start_address)) & 0x1FFFFFFF)>>2),
 						   dst_block);
 			}
-		} else if(invalid_code_get(address>>12)){
+		} else if(invalid_code[address>>12]){
 			invalidate_block(dst_block);
 		}
 
@@ -243,7 +242,7 @@ void invalidate_func(unsigned int addr){
 }
 
 void check_memory(unsigned int addr){
-	if(!invalid_code_get(addr>>12)/* && \
+	if(!invalid_code[addr>>12]/* && \
 	   blocks[address>>12]->code_addr[(address&0xfff)>>2]*/) \
 		invalidate_func(addr);
 }

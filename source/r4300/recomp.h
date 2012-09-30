@@ -82,17 +82,20 @@ typedef struct _precomp_block
    unsigned int adler32;
 } precomp_block;
 
+#ifndef PPC_DYNAREC
 void recompile_block(int *source, precomp_block *block, unsigned int func);
 void init_block(precomp_block *block);
-void free_block(precomp_block *block);
-void recompile_opcode(void);
-void prefetch_opcode(unsigned int op, unsigned int nextop);
+extern precomp_instr *dst; /* precomp_instr structure for instruction being recompiled */
 void dyna_jump(void);
 void dyna_start(void (*code)(void));
 void dyna_stop(void);
+#endif
+
+void free_block(precomp_block *block);
+void recompile_opcode(void);
+void prefetch_opcode(unsigned long instr);
 void *realloc_exec(void *ptr, size_t oldsize, size_t newsize);
 
-extern precomp_instr *dst; /* precomp_instr structure for instruction being recompiled */
 
 #include "x86/regcache.h"
 

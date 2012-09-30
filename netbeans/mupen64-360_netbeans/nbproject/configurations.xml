@@ -103,17 +103,20 @@
           <in>interpret.h</in>
           <in>regcache.h</in>
         </df>
-        <in>empty_dynarec.c</in>
+        <in>ARAM-blocks.c</in>
+        <in>ARAM-blocks.h</in>
+        <in>Recomp-Cache-Heap.c</in>
+        <in>Recomp-Cache.h</in>
+        <in>bc.c</in>
+        <in>cop0.c</in>
+        <in>cop1.c</in>
+        <in>cop1_d.c</in>
+        <in>cop1_l.c</in>
+        <in>cop1_s.c</in>
+        <in>cop1_w.c</in>
         <in>exception.c</in>
         <in>exception.h</in>
         <in>fpu.h</in>
-        <in>interpreter.def</in>
-        <in>interpreter_cop0.def</in>
-        <in>interpreter_cop1.def</in>
-        <in>interpreter_r4300.def</in>
-        <in>interpreter_regimm.def</in>
-        <in>interpreter_special.def</in>
-        <in>interpreter_tlb.def</in>
         <in>interupt.c</in>
         <in>interupt.h</in>
         <in>macros.h</in>
@@ -125,8 +128,9 @@
         <in>recomp.c</in>
         <in>recomp.h</in>
         <in>recomph.h</in>
-        <in>reset.c</in>
-        <in>reset.h</in>
+        <in>regimm.c</in>
+        <in>special.c</in>
+        <in>tlb_r4300.c</in>
       </df>
       <df name="Rice_GX_Xenos">
         <in>COLOR.h</in>

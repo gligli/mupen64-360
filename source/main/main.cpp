@@ -211,16 +211,19 @@ void SetCpuName(){
 	        cpu_action->name = "CPU core: Dynarec";
 			break;
 		case CORE_INTERPRETER:
-	        cpu_action->name = "CPU core: Interpreter";
+	        cpu_action->name = "CPU core: Interpreter (cached)";
 			break;
 		case CORE_PURE_INTERPRETER:
-	        cpu_action->name = "CPU core: Interpreter (compatible)";
+	        cpu_action->name = "CPU core: Interpreter";
 			break;
 	}
 }
 
 void ActionToggleCpu(void * other) {
-	r4300emu=(r4300emu+1)%3;
+	if (r4300emu==CORE_PURE_INTERPRETER)
+		r4300emu=CORE_DYNAREC;
+	else
+		r4300emu=CORE_PURE_INTERPRETER;
 	
 	SetCpuName();
 }
@@ -556,7 +559,7 @@ int run_rom(char * romfile)
 	
     if (g_MemHasBeenBSwapped == 0)
     {
-        init_memory(0);
+        init_memory(1);
         g_MemHasBeenBSwapped = 1;
     }
     else
@@ -569,10 +572,9 @@ int run_rom(char * romfile)
 	gfx.romOpen();
 	audio.romOpen();
 
-	r4300_reset_hard();
-	r4300_reset_soft();
+	cpu_init();
    
-	r4300_execute();
+	go();
    
 	rsp.romClosed();
 	audio.romClosed();
@@ -603,7 +605,7 @@ int main ()
 	ZLX::Hw::SystemInit(ZLX::INIT_USB|ZLX::INIT_ATA|ZLX::INIT_ATAPI|ZLX::INIT_FILESYSTEM);
 	ZLX::Hw::SystemPoll();
 
-	//r4300emu=CORE_DYNAREC; //  dynamic recompiler
+	r4300emu=CORE_PURE_INTERPRETER;
 	
 	console_close();
 	

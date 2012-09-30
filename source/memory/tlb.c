@@ -133,3 +133,33 @@ unsigned int virtual_to_physical_address(unsigned int addresse, int w)
     //return 0x80000000;
     return 0x00000000;
 }
+
+
+#define MEMMASK 0x7FFFFF
+#define TOPOFMEM 0x80800000
+
+int probe_nop(unsigned long address)
+{
+   unsigned long a;
+   if (address < 0x80000000 || address > 0xc0000000)
+     {
+	if (tlb_LUT_r[address>>12])
+	  a = (tlb_LUT_r[address>>12]&0xFFFFF000)|(address&0xFFF);
+	else
+	  return 0;
+     }
+   else
+     a = address;
+   
+   if (a >= 0xa4000000 && a < 0xa4001000)
+     {
+	if (!SP_DMEM[(a&0xFFF)/4]) return 1;
+	else return 0;
+     }
+   else if (a >= 0x80000000 && a < TOPOFMEM)
+     {
+	if (!rdram[(a&MEMMASK)/4]) return 1;
+	else return 0;
+     }
+   else return 0;
+}

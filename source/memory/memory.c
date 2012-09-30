@@ -1589,10 +1589,8 @@ void read_nomemd(void)
 
 void write_nomem(void)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER && !invalid_code[address>>12])
-        if (blocks[address>>12]->block[(address&0xFFF)/4].ops !=
-            current_instruction_table.NOTCOMPILED)
-            invalid_code[address>>12] = 1;
+    if (r4300emu != CORE_PURE_INTERPRETER)
+		invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
     if (address == 0x00000000) return;
     write_word_in_memory();
@@ -1600,10 +1598,8 @@ void write_nomem(void)
 
 void write_nomemb(void)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER && !invalid_code[address>>12])
-        if (blocks[address>>12]->block[(address&0xFFF)/4].ops != 
-            current_instruction_table.NOTCOMPILED)
-            invalid_code[address>>12] = 1;
+    if (r4300emu != CORE_PURE_INTERPRETER)
+        invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
     if (address == 0x00000000) return;
     write_byte_in_memory();
@@ -1611,10 +1607,8 @@ void write_nomemb(void)
 
 void write_nomemh(void)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER && !invalid_code[address>>12])
-        if (blocks[address>>12]->block[(address&0xFFF)/4].ops != 
-            current_instruction_table.NOTCOMPILED)
-            invalid_code[address>>12] = 1;
+    if (r4300emu != CORE_PURE_INTERPRETER)
+		invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
     if (address == 0x00000000) return;
     write_hword_in_memory();
@@ -1622,10 +1616,8 @@ void write_nomemh(void)
 
 void write_nomemd(void)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER && !invalid_code[address>>12])
-        if (blocks[address>>12]->block[(address&0xFFF)/4].ops != 
-            current_instruction_table.NOTCOMPILED)
-            invalid_code[address>>12] = 1;
+    if (r4300emu != CORE_PURE_INTERPRETER)
+        invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
     if (address == 0x00000000) return;
     write_dword_in_memory();

@@ -1,5 +1,5 @@
 /**
- * Mupen64 - interupt.h
+ * Mupen64 - cop1_w.c
  * Copyright (C) 2002 Hacktarux
  *
  * Mupen64 homepage: http://mupen64.emulation64.com
@@ -27,42 +27,22 @@
  *
 **/
 
-extern unsigned int next_interupt;
-extern unsigned long reg_cop0[32];
-#define Count reg_cop0[9]
+#include "r4300.h"
+#include "ops.h"
+#include "macros.h"
 
-void compare_interupt();
-void gen_dp();
-void init_interupt();
+void CVT_S_W()
+{  
+   if (check_cop1_unusable()) return;
+   set_rounding();
+   *reg_cop1_simple[cffd] = *((long*)reg_cop1_simple[cffs]);
+   PC++;
+}
 
-extern int vi_field;
-extern unsigned long next_vi;
-
-void gen_interupt();
-void check_interupt();
-
-void translate_event_queue(unsigned long base);
-void remove_event(int type);
-void add_interupt_event_count(int type, unsigned long count);
-void add_interupt_event(int type, unsigned long delay);
-unsigned long get_event(int type);
-
-int save_eventqueue_infos(char *buf);
-void load_eventqueue_infos(char *buf);
-
-#define VI_INT      0x001
-#define COMPARE_INT 0x002
-#define CHECK_INT   0x004
-#define SI_INT      0x008
-#define PI_INT      0x010
-#define SPECIAL_INT 0x020
-#define AI_INT      0x040
-#define SP_INT      0x080
-#define DP_INT      0x100
-
-typedef struct _interupt_queue
+void CVT_D_W()
 {
-   int type;
-   unsigned long count;
-   struct _interupt_queue *next;
-} interupt_queue;
+   if (check_cop1_unusable()) return;
+   set_rounding();
+   *reg_cop1_double[cffd] = *((long*)reg_cop1_simple[cffs]);
+   PC++;
+}

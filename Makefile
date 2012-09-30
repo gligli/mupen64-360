@@ -18,7 +18,7 @@ include $(DEVKITXENON)/rules
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source source/osal source/api source/plugin source/main source/main/zip source/memory \
-			source/r4300 source/r4300/ppc/disasm  \
+			source/r4300 source/r4300/ppc source/r4300/ppc/disasm  \
 			source/mupen64plus-rsp-hle source/xenos_audio source/xenon_input source/Rice_GX_Xenos
 DATA		:=	  
 INCLUDES	:=	files source

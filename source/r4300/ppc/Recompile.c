@@ -32,12 +32,12 @@
 #include <stdio.h>
 #include <assert.h>
 #include "../../memory/memory.h"
-#include "../Invalid_Code.h"
 #include "../interupt.h"
 #include "Recompile.h"
 #include "../Recomp-Cache.h"
 #include "Wrappers.h"
 #include "../ARAM-blocks.h"
+#include "../r4300.h"
 #include <debug.h>
 
 int do_disasm=0;
@@ -300,7 +300,7 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 		unsigned long paddr;
 
 		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
-		invalid_code_set(paddr>>12, 0);
+		invalid_code[paddr>>12]=0;
 		temp_block = blocks_get(paddr>>12);
 		if(!temp_block){
   		   temp_block = malloc(sizeof(PowerPC_block));
@@ -313,7 +313,7 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 		}
 
 		paddr += ppc_block->end_address - ppc_block->start_address - 4;
-		invalid_code_set(paddr>>12, 0);
+		invalid_code[paddr>>12]=0;
 		temp_block = blocks_get(paddr>>12);
 		if(!temp_block){
   		   temp_block = malloc(sizeof(PowerPC_block));
@@ -330,8 +330,8 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 		unsigned int end   = ppc_block->end_address;
 		temp_block = blocks_get((start+0x20000000)>>12);
 		if(start >= 0x80000000 && end < 0xa0000000 &&
-		   invalid_code_get((start+0x20000000)>>12)){
-			invalid_code_set((start+0x20000000)>>12, 0);
+		   invalid_code[(start+0x20000000)>>12]){
+			invalid_code[(start+0x20000000)>>12]=0;
 			if(!temp_block){
   			temp_block = malloc(sizeof(PowerPC_block));
 				blocks_set((start+0x20000000)>>12, temp_block);
@@ -343,8 +343,8 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 			}
 		}
 		if(start >= 0xa0000000 && end < 0xc0000000 &&
-		   invalid_code_get((start-0x20000000)>>12)){
-			invalid_code_set((start-0x20000000)>>12, 0);
+		   invalid_code[(start-0x20000000)>>12]){
+			invalid_code[(start-0x20000000)>>12]=0;
 			temp_block = blocks_get((start-0x20000000)>>12);
 			if(!temp_block){
   			temp_block = malloc(sizeof(PowerPC_block));
@@ -358,7 +358,7 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 			}
 		}
 	}
-	invalid_code_set(ppc_block->start_address>>12, 0);
+	invalid_code[ppc_block->start_address>>12]=0;
 }
 
 void deinit_block(PowerPC_block* ppc_block){
@@ -369,7 +369,7 @@ void deinit_block(PowerPC_block* ppc_block){
 		free(ppc_block->code_addr);
 		ppc_block->code_addr = NULL;
 	}*/
-	invalid_code_set(ppc_block->start_address>>12, 1);
+	invalid_code[ppc_block->start_address>>12]=1;
 
 	// We need to mark all equivalent addresses as invalid
 	if(ppc_block->end_address < 0x80000000 || ppc_block->start_address >= 0xc0000000){
@@ -379,14 +379,14 @@ void deinit_block(PowerPC_block* ppc_block){
 		temp_block = blocks_get(paddr>>12);
 		if(temp_block){
 		     //blocks[paddr>>12]->code_addr = NULL;
-		     invalid_code_set(paddr>>12, 1);
+		     invalid_code[paddr>>12]=1;
 		}
 
 		paddr += ppc_block->end_address - ppc_block->start_address - 4;
 		temp_block = blocks_get(paddr>>12);
 		if(temp_block){
 		     //blocks[paddr>>12]->code_addr = NULL;
-		     invalid_code_set(paddr>>12, 1);
+		     invalid_code[paddr>>12]=1;
 		}
 
 	} else {
@@ -395,12 +395,12 @@ void deinit_block(PowerPC_block* ppc_block){
 		temp_block = blocks_get((start+0x20000000)>>12);
 		if(start >= 0x80000000 && end < 0xa0000000 && temp_block){
 			//blocks[(start+0x20000000)>>12]->code_addr = NULL;
-			invalid_code_set((start+0x20000000)>>12, 1);
+			invalid_code[(start+0x20000000)>>12]=1;
 		}
 		temp_block = blocks_get((start-0x20000000)>>12);
 		if(start >= 0xa0000000 && end < 0xc0000000 && temp_block){
 			//blocks[(start-0x20000000)>>12]->code_addr = NULL;
-			invalid_code_set((start-0x20000000)>>12, 1);
+			invalid_code[(start-0x20000000)>>12]=1;
 		}
 	}
 }
@@ -552,14 +552,29 @@ static int pass0(PowerPC_block* ppc_block){
 
 extern int stop;
 inline unsigned long update_invalid_addr(unsigned long addr);
-void jump_to(unsigned int address){
-	stop = 1;
-}
-extern unsigned long jump_to_address;
-void dyna_jump(){ jump_to(jump_to_address); }
-void dyna_stop(){ }
-void jump_to_func(){ jump_to(jump_to_address); }
 
+void jump_to(unsigned int address)
+{
+	stop = 1;
+};
+
+extern unsigned long jump_to_address;
+/*
+void dyna_jump(void)
+{
+	jump_to(jump_to_address);
+}
+
+void dyna_stop(void)
+{
+
+}
+
+void jump_to_func(void)
+{
+	jump_to(jump_to_address);
+}
+*/
 static void genJumpPad(void){
 	// noCheckInterrupt = 1
 	EMIT_LIS(3, (unsigned int)(&noCheckInterrupt)>>16);

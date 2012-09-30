@@ -209,22 +209,8 @@ void dma_pi_write(void)
             ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
                 rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
 
-            if (!invalid_code[rdram_address1>>12])
-            {
-                if (blocks[rdram_address1>>12]->block[(rdram_address1&0xFFF)/4].ops !=
-                    current_instruction_table.NOTCOMPILED)
-                {
-                    invalid_code[rdram_address1>>12] = 1;
-                }
-            }
-            if (!invalid_code[rdram_address2>>12])
-            {
-                if (blocks[rdram_address2>>12]->block[(rdram_address2&0xFFF)/4].ops !=
-                    current_instruction_table.NOTCOMPILED)
-                {
-                    invalid_code[rdram_address2>>12] = 1;
-                }
-            }
+			invalid_code[rdram_address1>>12] = 1;
+			invalid_code[rdram_address2>>12] = 1;
         }
     }
     else
