@@ -47,7 +47,7 @@ static unsigned char sram[0x8000];
 
 static char *get_sram_path(void)
 {
-    return formatstr("%s%s.sra", get_savesrampath(), ROM_SETTINGS.goodname);
+    return formatstr("%s%s%s.sra", get_savesrampath(), ROM_SETTINGS.goodname,countrycodesavestring(ROM_HEADER.Country_code>>8));
 }
 
 static void sram_format(void)

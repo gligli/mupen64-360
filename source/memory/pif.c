@@ -43,7 +43,7 @@ static unsigned char mempack[4][0x8000];
 
 static char *get_eeprom_path(void)
 {
-    return formatstr("%s%s.eep", get_savesrampath(), ROM_SETTINGS.goodname);
+    return formatstr("%s%s%s.eep", get_savesrampath(), ROM_SETTINGS.goodname,countrycodesavestring(ROM_HEADER.Country_code>>8));
 }
 
 static void eeprom_format(void)
@@ -90,7 +90,7 @@ static void eeprom_write_file(void)
 
 static char *get_mempack_path(void)
 {
-    return formatstr("%s%s.mpk", get_savesrampath(), ROM_SETTINGS.goodname);
+    return formatstr("%s%s%s.mpk", get_savesrampath(), ROM_SETTINGS.goodname,countrycodesavestring(ROM_HEADER.Country_code>>8));
 }
 
 static void mempack_format(void)

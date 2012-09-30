@@ -158,7 +158,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     strcpy(ROM_SETTINGS.MD5, buffer);
 
     /* add some useful properties to ROM_PARAMS */
-    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.Country_code);
+    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.Country_code>>8);
     ROM_PARAMS.vilimit = rom_system_type_to_vi_limit(ROM_PARAMS.systemtype);
     ROM_PARAMS.aidacrate = rom_system_type_to_ai_dac_rate(ROM_PARAMS.systemtype);
 
@@ -202,7 +202,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     else
         DebugMessage(M64MSG_INFO, "Manufacturer: %x", sl(ROM_HEADER.Manufacturer_ID));
     DebugMessage(M64MSG_VERBOSE, "Cartridge_ID: %x", ROM_HEADER.Cartridge_ID);
-    countrycodestring(ROM_HEADER.Country_code, buffer);
+    countrycodestring(ROM_HEADER.Country_code>>8, buffer);
     DebugMessage(M64MSG_INFO, "Country: %s", buffer);
     DebugMessage(M64MSG_VERBOSE, "PC = %x", sl((unsigned int)ROM_HEADER.PC));
     DebugMessage(M64MSG_VERBOSE, "Save type: %d", ROM_SETTINGS.savetype);

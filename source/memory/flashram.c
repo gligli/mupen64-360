@@ -49,7 +49,7 @@ static unsigned char flashram[0x20000];
 
 static char *get_flashram_path(void)
 {
-    return formatstr("%s%s.fla", get_savesrampath(), ROM_SETTINGS.goodname);
+    return formatstr("%s%s%s.fla", get_savesrampath(), ROM_SETTINGS.goodname,countrycodesavestring(ROM_HEADER.Country_code>>8));
 }
 
 static void flashram_format(void)

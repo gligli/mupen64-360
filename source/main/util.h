@@ -149,6 +149,7 @@ list_node_t *list_find_node(list_t list, void *data);
      GUI utilities
  **********************/
 void countrycodestring(char countrycode, char *string);
+char * countrycodesavestring(char countrycode);
 void imagestring(unsigned char imagetype, char *string);
 
 /**********************
