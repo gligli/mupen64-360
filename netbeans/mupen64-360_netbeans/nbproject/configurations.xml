@@ -220,6 +220,8 @@
         <in>AudioPlugin.h</in>
         <in>audio.c</in>
       </df>
+      <in>libogc_lwp_heap.c</in>
+      <in>libogc_lwp_heap.h</in>
       <in>shaders.S</in>
       <in>winlnxdefs.h</in>
     </df>

@@ -32,20 +32,23 @@
 
 void DebugMessage(int level, const char *message, ...)
 {
-  char msgbuf[1024];
-  va_list args;
+	if (level>=M64MSG_VERBOSE)
+		return;
 
-  va_start(args, message);
-  vsprintf(msgbuf, message, args);
+	char msgbuf[1024];
+	va_list args;
 
-  printf("[dbg %d] %s\n",level,msgbuf);
+	va_start(args, message);
+	vsprintf(msgbuf, message, args);
 
-  va_end(args);
+	printf("[dbg %d] %s\n",level,msgbuf);
+
+	va_end(args);
 }
 
 void StateChanged(m64p_core_param param_type, int new_value)
 {
-  printf("[state changed] type %d value %d\n",param_type,new_value);
+	printf("[state changed] type %d value %d\n",param_type,new_value);
 }
 
 

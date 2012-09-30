@@ -127,7 +127,7 @@ static int firstFrameBufferSetting;
 
 void * memory_vm_segfault_handler(int pir_,void * srr0,void * dar,int write)
 {
-    if((uint32_t)srr0>=(uint32_t)recomp_cache_buffer && (uint32_t)srr0<(uint32_t)recomp_cache_buffer+RECOMP_CACHE_ALLOC_SIZE)
+    if((uint32_t)srr0>=(uint32_t)recomp_cache_buffer && (uint32_t)srr0<(uint32_t)recomp_cache_buffer+RECOMP_CACHE_SIZE)
     {
 //        printf("Rewrite %d %p %p %d\n",pir_,srr0,dar,write);
         return rewriteDynaMemVM(srr0);

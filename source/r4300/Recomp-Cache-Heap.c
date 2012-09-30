@@ -1,13 +1,35 @@
+/**
+ * Wii64 - Recomp-Cache-Heap.c
+ * Copyright (C) 2009, 2010 Mike Slegeir
+ * 
+ * Cache for recompiled code using a heap to maintain LRU order
+ *
+ * Wii64 homepage: http://www.emulatemii.com
+ * email address: tehpola@gmail.com
+ *
+ *
+ * This program is free software; you can redistribute it and/
+ * or modify it under the terms of the GNU General Public Li-
+ * cence as published by the Free Software Foundation; either
+ * version 2 of the Licence, or any later version.
+ *
+ * This program is distributed in the hope that it will be use-
+ * ful, but WITHOUT ANY WARRANTY; without even the implied war-
+ * ranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public Licence for more details.
+ *
+**/
 
 
+#include "libogc_lwp_heap.h"
 #include <stdlib.h>
 #include "r4300.h"
 #include "ppc/Recompile.h"
 #include "ppc/Wrappers.h"
 #include "Recomp-Cache.h"
+#include "ARAM-blocks.h"
 
 #include <ppc/cache.h>
-#include <nocfe/lib_malloc.h>
 #include <debug.h>
 #include <assert.h>
 
@@ -27,7 +49,8 @@ typedef struct _meta_node {
 	unsigned int  size;
 } CacheMetaNode;
 
-static int cacheSize;
+static heap_cntrl* cache = NULL, * meta_cache = NULL;
+static int cacheSize = 0;
 
 #define HEAP_CHILD1(i) ((i<<1)+1)
 #define HEAP_CHILD2(i) ((i<<1)+2)
@@ -37,11 +60,6 @@ static int cacheSize;
 static unsigned int heapSize = 0;
 static unsigned int maxHeapSize = 0;
 static CacheMetaNode** cacheHeap = NULL;
-
-void * cache_buf=NULL;
-void * meta_cache_buf=NULL;
-mempool_t cache_mempool;
-mempool_t meta_cache_mempool;
 
 static void heapSwap(int i, int j){
 	CacheMetaNode* t = cacheHeap[i];
@@ -101,19 +119,19 @@ static CacheMetaNode* heapPop(void){
 }
 
 static void unlink_func(PowerPC_func* func){
-	//start_section(UNLINK_SECTION);
+//	start_section(UNLINK_SECTION);
 	
 	// Remove any incoming links to this func
 	PowerPC_func_link_node* link, * next_link;
 	for(link = func->links_in; link != NULL; link = next_link){
 		next_link = link->next;
-
+		
 		GEN_ORI(*(link->branch-10), 0, 0, 0);
 		GEN_ORI(*(link->branch-9), 0, 0, 0);
 		GEN_BLR(*link->branch, 1); // Set the linking branch to blrl
-//		DCFlushRange(link->branch-16, 17*sizeof(PowerPC_instr));
+		DCFlushRange(link->branch-10, 11*sizeof(PowerPC_instr));
 		ICInvalidateRange(link->branch-10, 11*sizeof(PowerPC_instr));
-
+		
 		remove_func(&link->func->links_out, func);
 		MetaCache_Free(link);
 	}
@@ -141,24 +159,23 @@ static void unlink_func(PowerPC_func* func){
 	remove_outgoing_links(&func->links_out);
 	func->links_out = NULL;
 	
-	//end_section(UNLINK_SECTION);
+//	end_section(UNLINK_SECTION);
 }
 
 static void free_func(PowerPC_func* func, unsigned int addr){
-
-        // Free the code associated with the func
-	kfree(&cache_mempool,func->code);
+	// Free the code associated with the func
+	__lwp_heap_free(cache, func->code);
 	MetaCache_Free(func->code_addr);
-
 	// Remove any holes into this func
-	PowerPC_func_hole_node* hole, * next;
-	for(hole = func->holes; hole != NULL; hole = next){
-		next = hole->next;
+	PowerPC_func_hole_node* hole, * next_hole;
+	for(hole = func->holes; hole != NULL; hole = next_hole){
+		next_hole = hole->next;
 		free(hole);
 	}
-	
+
 	// Remove any pointers to this code
-	PowerPC_block* block = blocks[addr>>12];
+	// Remove the func from the block
+	PowerPC_block* block = blocks_get(addr>>12);
 	remove_func(&block->funcs, func);
 	// Remove func links
 	unlink_func(func);
@@ -169,7 +186,7 @@ static void free_func(PowerPC_func* func, unsigned int addr){
 static inline void update_lru(PowerPC_func* func){
 	static unsigned int nextLRU = 0;
 	/*if(func->lru != nextLRU-1)*/ func->lru = nextLRU++;
-	
+
 	if(!nextLRU){
 		// Handle nextLRU overflows
 		// By heap-sorting and assigning new LRUs
@@ -184,7 +201,7 @@ static inline void update_lru(PowerPC_func* func){
 		}
 		free(cacheHeap);
 		cacheHeap = newHeap;
-		
+
 		nextLRU = heapSize = savedSize;
 	}
 }
@@ -192,7 +209,6 @@ static inline void update_lru(PowerPC_func* func){
 static void release(int minNeeded){
 	// Frees alloc'ed blocks so that at least minNeeded bytes are available
 	int toFree = minNeeded * 2; // Free 2x what is needed
-//	printf("RecompCache requires ~%dkB to be released\n", minNeeded/1024);
 	// Restore the heap properties to pop the LRU
 	heapify();
 	// Release nodes' memory until we've freed enough
@@ -213,23 +229,19 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 	newBlock->addr = address;
 	newBlock->size = size;
 	newBlock->func = func;
-	
-	int num_instrs = (func->end_addr - func->start_addr);
-	if(cacheSize + size + num_instrs * sizeof(void*) > RECOMP_CACHE_SIZE)
-		// Free up at least enough space for it to fit
-		release(cacheSize + size + num_instrs * sizeof(void*) - RECOMP_CACHE_SIZE);
-	
-	void* code = kmalloc(&cache_mempool,size,128);
+
+	// Allocate new memory for this code
+	void* code = __lwp_heap_allocate(cache, size);
 	while(!code){
 		release(size);
-		code = kmalloc(&cache_mempool,size,128);
+		code = __lwp_heap_allocate(cache, size);
 	}
+	int num_instrs = (func->end_addr - func->start_addr) >> 2;
+	void* code_addr = MetaCache_Alloc(num_instrs * sizeof(void*));
 
-	// We have the necessary space for this alloc, so just call malloc
 	cacheSize += size;
-	
 	newBlock->func->code = code;
-	newBlock->func->code_addr = MetaCache_Alloc(num_instrs * sizeof(void*));
+	newBlock->func->code_addr = code_addr;
 	// Add it to the heap
 	heapPush(newBlock);
 	// Make this function the LRU
@@ -237,12 +249,18 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 }
 
 void RecompCache_Realloc(PowerPC_func* func, unsigned int new_size){
-	// I'm not worrying about maintaining the cache size here for now
-	kfree(&cache_mempool,func->code);
-	func->code = kmalloc(&cache_mempool,new_size,128);
+	// There should be no need for the code to be preserved
+	__lwp_heap_free(cache, func->code);
+	func->code = __lwp_heap_allocate(cache, new_size);
+	while(!func->code){
+		release(new_size);
+		func->code = __lwp_heap_allocate(cache, new_size);
+	}
+	
+	// Update the size for the cache
 	int i;
 	for(i=heapSize-1; i>=0; --i){
-		if(func == cacheHeap[i]->func){
+		if(cacheHeap[i]->func == func){
 			cacheSize += new_size - cacheHeap[i]->size;
 			cacheHeap[i]->size = new_size;
 			break;
@@ -258,7 +276,7 @@ void RecompCache_Free(unsigned int addr){
 	CacheMetaNode* n = NULL;
 	// Find the corresponding node
 	for(i=heapSize-1; i>=0; --i){
-		if(addr == cacheHeap[i]->addr){
+		if(cacheHeap[i]->addr == addr){
 			n = cacheHeap[i];
 			// Remove from the heap
 			heapSwap(i, --heapSize);
@@ -267,23 +285,23 @@ void RecompCache_Free(unsigned int addr){
 			cacheSize -= n->size;
 			// Free the cache node
 			free(n);
-			break;
+			return;
 		}
 	}
 }
 
 void RecompCache_Update(PowerPC_func* func){
-    update_lru(func);
+	update_lru(func);
 }
 
 void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
                       PowerPC_func* dst_func, PowerPC_instr* dst_instr){
-	//start_section(LINK_SECTION);
+//	start_section(LINK_SECTION);
 	
 	// Setup book-keeping
 	// Create the incoming link info
-	PowerPC_func_link_node* fln = MetaCache_Alloc(sizeof(PowerPC_func_link_node));
-
+	PowerPC_func_link_node* fln =
+		MetaCache_Alloc(sizeof(PowerPC_func_link_node));
 	fln->branch = src_instr;
 	fln->func = src_func;
 	fln->next = dst_func->links_in;
@@ -292,37 +310,41 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 	insert_func(&src_func->links_out, dst_func);
 	
 	// Actually link the funcs
-
-    GEN_LIS(*(src_instr-10), DYNAREG_FUNC, (unsigned int)dst_func>>16);
+	GEN_LIS(*(src_instr-10), DYNAREG_FUNC, (unsigned int)dst_func>>16);
 	GEN_ORI(*(src_instr-9), DYNAREG_FUNC,DYNAREG_FUNC, (unsigned int)dst_func);
-	GEN_B(*(src_instr), (PowerPC_instr*)dst_instr-src_instr, 0, 0);
-//    DCFlushRange(src_instr-10, 11*sizeof(PowerPC_instr));
-    ICInvalidateRange(src_instr-10, 11*sizeof(PowerPC_instr));
+	GEN_B(*src_instr, (PowerPC_instr*)dst_instr-src_instr, 0, 0);
+	DCFlushRange(src_instr-10, 11*sizeof(PowerPC_instr));
+	ICInvalidateRange(src_instr-10, 11*sizeof(PowerPC_instr));
 	
-	//end_section(LINK_SECTION);
+//	end_section(LINK_SECTION);
 }
 
-__attribute__((aligned(65536),section(".bss.beginning.upper"))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
+__attribute__((aligned(65536),section(".bss.beginning.upper"))) unsigned char recomp_cache_buffer[RECOMP_CACHE_SIZE];
 
 void RecompCache_Init(void){
-	if(!cache_buf){
-		cache_buf=recomp_cache_buffer;
+	if(!cache){
+		cache = malloc(sizeof(heap_cntrl));
+		__lwp_heap_init(cache, recomp_cache_buffer,
+		                RECOMP_CACHE_SIZE, 32);
 	}
-    kmeminit(&cache_mempool,cache_buf,RECOMP_CACHE_ALLOC_SIZE);
-		
-/*	if(!meta_cache_buf){
-		meta_cache_buf=malloc(META_CACHE_ALLOC_SIZE);
+	if(!meta_cache){
+		meta_cache = malloc(sizeof(heap_cntrl));
+		__lwp_heap_init(meta_cache, malloc(RECOMPMETA_SIZE),
+		                RECOMPMETA_SIZE, 32);
 	}
-    kmeminit(&meta_cache_mempool,meta_cache_buf,META_CACHE_ALLOC_SIZE);*/
 }
 
 void* MetaCache_Alloc(unsigned int size){
-	//return kmalloc(&meta_cache_mempool,size,0);
-	return malloc(size);
+	void* ptr = __lwp_heap_allocate(meta_cache, size);
+	// While there's no room to allocate, call release
+	while(!ptr){
+		release(size);
+		ptr = __lwp_heap_allocate(meta_cache, size);
+	}
+	
+	return ptr;
 }
 
 void MetaCache_Free(void* ptr){
-	//kfree(&meta_cache_mempool,ptr);
-	free(ptr);
+	__lwp_heap_free(meta_cache, ptr);
 }
-

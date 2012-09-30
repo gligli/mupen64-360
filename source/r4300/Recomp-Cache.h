@@ -5,12 +5,10 @@
 #ifndef RECOMP_CACHE_H
 #define RECOMP_CACHE_H
 
-#define RECOMP_CACHE_SIZE (12*1024*1024)
-#define RECOMP_CACHE_ALLOC_SIZE (20*1024*1024)
+#define RECOMP_CACHE_SIZE (16*1024*1024)
+#define RECOMPMETA_SIZE (4*1024*1024)
 
-#define META_CACHE_ALLOC_SIZE (4*1024*1024)
-
-extern __attribute__((aligned(65536))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
+extern __attribute__((aligned(65536),section(".bss.beginning.upper"))) unsigned char recomp_cache_buffer[RECOMP_CACHE_SIZE];
 
 
 void DCFlushRange(void* startaddr, unsigned int len);
