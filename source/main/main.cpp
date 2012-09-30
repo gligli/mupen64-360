@@ -605,7 +605,7 @@ int main ()
 	ZLX::Hw::SystemInit(ZLX::INIT_USB|ZLX::INIT_ATA|ZLX::INIT_ATAPI|ZLX::INIT_FILESYSTEM);
 	ZLX::Hw::SystemPoll();
 
-	r4300emu=CORE_PURE_INTERPRETER;
+	r4300emu=CORE_DYNAREC;
 	
 	console_close();
 	

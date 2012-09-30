@@ -135,7 +135,10 @@ void * memory_vm_segfault_handler(int pir_,void * srr0,void * dar,int write)
     else
     {
         printf("VM GPF !!! %d %p %p %d\n",pir_,srr0,dar,write);
-        return (PowerPC_instr*)srr0+1;
+		
+		// use the standard segfault handler
+	    vm_set_user_mapping_segfault_handler(NULL);
+        return NULL;
     }
 }
 

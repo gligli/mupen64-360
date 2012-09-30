@@ -91,7 +91,6 @@ unsigned int get_src_pc(void){ return addr_first + ((src-1-src_first)<<2); }
 
 void set_next_dst(PowerPC_instr i)
 {
-    if(do_disasm) disassemble((uint32_t)dst,i);
     *(dst++) = i;
     ++code_length;
 }
@@ -128,6 +127,71 @@ void set_jump_special(int which, int new_jump){
 	jump->new_jump = new_jump;
 }
 
+PowerPC_func* handle_overlap(PowerPC_func_node** node, PowerPC_func* func, PowerPC_block* ppc_block, unsigned int * addr, int * need_pad, int * needInsert)
+{
+	if(!(*node)) return func;
+	// Check for any potentially overlapping functions to the left or right
+	if((*node)->function->end_addr >= func->start_addr)
+		func = handle_overlap(&(*node)->left, func, ppc_block, addr, need_pad, needInsert);
+	if((*node)->function->start_addr < func->end_addr)
+		func = handle_overlap(&(*node)->right, func, ppc_block, addr, need_pad, needInsert);
+	// Check for overlap with this function
+	if((*node)->function->start_addr > func->start_addr &&
+	   (*node)->function->end_addr == func->end_addr){
+		// (*node)->function is a hole in func
+		PowerPC_func_hole_node* hole = malloc(sizeof(PowerPC_func_hole_node));
+		hole->addr = (*node)->function->start_addr;
+		hole->next = func->holes;
+		func->holes = hole;
+		// Add all holes from the hole
+		// Get to the end of this func->holes
+		PowerPC_func_hole_node* fhn;
+		for(fhn=func->holes; fhn->next; fhn=fhn->next);
+		// Add fn->function's holes to the end func->holes
+		fhn->next = (*node)->function->holes;
+		// Make sure those holes aren't freed
+		(*node)->function->holes = NULL;
+		// Add it to the freed_funcs list
+		struct func_list* freed = malloc(sizeof(struct func_list));
+		freed->func = (*node)->function, freed->next = freed_funcs;
+		freed_funcs = freed;
+		// Free the hole
+		RecompCache_Free((*node)->function->start_addr);
+
+	} else if(func->start_addr > (*node)->function->start_addr &&
+			  func->end_addr == (*node)->function->end_addr){
+		// func is a hole in fn->function
+		PowerPC_func_hole_node* hole = malloc(sizeof(PowerPC_func_hole_node));
+		hole->addr = func->start_addr&0xffff;
+		hole->next = (*node)->function->holes;
+		(*node)->function->holes = hole;
+		// Free this func since its just a hole now
+		free(func);
+		// Move all our pointers to the outer function
+		func = (*node)->function;
+		addr_first = func->start_addr;
+		src_first = ppc_block->mips_code + ((addr_first&0xfff)>>2);
+		*addr = addr_first;
+		*need_pad = pass0(ppc_block);
+		RecompCache_Update(func);
+		// Make sure we don't insert the old func again
+		*needInsert = 0;
+		// There cannot be another overlapping function
+		//break;
+
+	} else if(func->start_addr < (*node)->function->end_addr &&
+			  func->end_addr   > (*node)->function->start_addr){
+		// Add it to the freed_funcs list
+		struct func_list* freed = malloc(sizeof(struct func_list));
+		freed->func = (*node)->function, freed->next = freed_funcs;
+		freed_funcs = freed;
+		// We have some other non-containment overlap
+		RecompCache_Free((*node)->function->start_addr);
+	}
+	return func;
+}
+
+
 // Converts a sequence of MIPS instructions to a PowerPC block
 PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	src_first = ppc_block->mips_code + ((addr&0xfff)>>2);
@@ -151,69 +215,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	int needInsert = 1;
 
 	// Check for and remove any overlapping functions
-	PowerPC_func* handle_overlap(PowerPC_func_node** node, PowerPC_func* func){
-		if(!(*node)) return func;
-		// Check for any potentially overlapping functions to the left or right
-		if((*node)->function->end_addr >= func->start_addr)
-			func = handle_overlap(&(*node)->left, func);
-		if((*node)->function->start_addr < func->end_addr)
-			func = handle_overlap(&(*node)->right, func);
-		// Check for overlap with this function
-		if((*node)->function->start_addr > func->start_addr &&
-		   (*node)->function->end_addr == func->end_addr){
-			// (*node)->function is a hole in func
-			PowerPC_func_hole_node* hole = malloc(sizeof(PowerPC_func_hole_node));
-			hole->addr = (*node)->function->start_addr;
-			hole->next = func->holes;
-			func->holes = hole;
-			// Add all holes from the hole
-			// Get to the end of this func->holes
-			PowerPC_func_hole_node* fhn;
-			for(fhn=func->holes; fhn->next; fhn=fhn->next);
-			// Add fn->function's holes to the end func->holes
-			fhn->next = (*node)->function->holes;
-			// Make sure those holes aren't freed
-			(*node)->function->holes = NULL;
-			// Add it to the freed_funcs list
-			struct func_list* freed = malloc(sizeof(struct func_list));
-			freed->func = (*node)->function, freed->next = freed_funcs;
-			freed_funcs = freed;
-			// Free the hole
-			RecompCache_Free((*node)->function->start_addr);
-
-		} else if(func->start_addr > (*node)->function->start_addr &&
-				  func->end_addr == (*node)->function->end_addr){
-			// func is a hole in fn->function
-			PowerPC_func_hole_node* hole = malloc(sizeof(PowerPC_func_hole_node));
-			hole->addr = func->start_addr&0xffff;
-			hole->next = (*node)->function->holes;
-			(*node)->function->holes = hole;
-			// Free this func since its just a hole now
-			free(func);
-			// Move all our pointers to the outer function
-			func = (*node)->function;
-			addr_first = func->start_addr;
-			src_first = ppc_block->mips_code + ((addr_first&0xfff)>>2);
-			addr = addr_first;
-			need_pad = pass0(ppc_block);
-			RecompCache_Update(func);
-			// Make sure we don't insert the old func again
-			needInsert = 0;
-			// There cannot be another overlapping function
-			//break;
-
-		} else if(func->start_addr < (*node)->function->end_addr &&
-				  func->end_addr   > (*node)->function->start_addr){
-			// Add it to the freed_funcs list
-			struct func_list* freed = malloc(sizeof(struct func_list));
-			freed->func = (*node)->function, freed->next = freed_funcs;
-			freed_funcs = freed;
-			// We have some other non-containment overlap
-			RecompCache_Free((*node)->function->start_addr);
-		}
-		return func;
-	}
-	func = handle_overlap(&ppc_block->funcs, func);
+	func = handle_overlap(&ppc_block->funcs, func, ppc_block, &addr, &need_pad, &needInsert);
 	if(needInsert) insert_func(&ppc_block->funcs, func);
 	current_func = func;
 
@@ -284,6 +286,12 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	// Make sure it wil show up in the ICache
 //	DCFlushRange(func->code, code_length*sizeof(PowerPC_instr));
 	ICInvalidateRange(func->code, code_length*sizeof(PowerPC_instr));
+
+	for(i=0;i<code_length;++i)
+	{
+		bool force_disasm=false;
+		if(do_disasm || force_disasm) disassemble((uint32_t)&func->code[i],func->code[i]);
+	}
 
 	return func;
 }
@@ -562,7 +570,7 @@ void jump_to(unsigned int address)
 };
 
 extern unsigned long jump_to_address;
-/*
+
 void dyna_jump(void)
 {
 	jump_to(jump_to_address);
@@ -577,7 +585,7 @@ void jump_to_func(void)
 {
 	jump_to(jump_to_address);
 }
-*/
+
 static void genJumpPad(void){
 	// noCheckInterrupt = 1
 	EMIT_LIS(3, (unsigned int)(&noCheckInterrupt)>>16);

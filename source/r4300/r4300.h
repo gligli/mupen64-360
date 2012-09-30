@@ -89,12 +89,9 @@ int check_cop1_unusable();
 #define jump_to(a) { jump_to_address = a; jump_to_func(); }
 #else
 void jump_to(unsigned int);
-#endif
-
-#ifdef __PPC__
-#define dyna_start(x)
-#define dyna_jump()
-#define dyna_stop()
+void dyna_jump(void);
+void dyna_stop(void);
+void jump_to_func(void);
 #endif
 
 // r4300 emulators

@@ -50,13 +50,13 @@ static PowerPC_func* last_func;
  *  $sp	    | old sp
  */
 
-inline unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
+unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 	unsigned int naddr;
 	PowerPC_instr* return_addr;
 
 	__asm__ volatile(
 		// Create the stack frame for code
-		"stwu	1, -16(1) \n"
+		"stwu	1, -64(1) \n"
 		"mfcr	14        \n"
 		"stw	14, 8(1)  \n"
 		// Setup saved registers for code
@@ -99,7 +99,7 @@ inline unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 		: "=r" (naddr), "=r" (link_branch), "=r" (return_addr),
 		  "=r" (last_func)
 		: "r" (code)
-		: "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "22");
+		: "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "22", "ctr", "lr", "cr0", "cr2");
 
 	link_branch = link_branch == return_addr ? NULL : link_branch - 1;
 	

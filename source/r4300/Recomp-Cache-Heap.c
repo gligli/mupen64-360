@@ -13,48 +13,12 @@
 
 void DCFlushRange(void* startaddr, unsigned int len){
 	if(len == 0) return;
-#if 1
     memdcbf(startaddr,len);
-#else
-        __asm__ volatile (
-		"clrlwi.	5, %0, 27\n" 
-		"beq	1f\n" 
-		"addi	%1, %1, 0x20\n" 
-		"1:\n" 
-		"addi	%1, %1, 0x1f\n" 
-		"srwi	%1, %1, 5\n" 
-		"mtctr	%1\n" 
-		"2:\n" 
-		"dcbf	0, %0\n" 
-		"addi	%0, %0, 0x20\n" 
-		"bdnz	2b\n" 
-		"sync\n"
-		: : "b" (startaddr), "b" (len) : "5", "memory" );
-#endif
 }
 
 void ICInvalidateRange(void* startaddr, unsigned int len)  {
 	if(len == 0) return;
-#if 1
-//	printf("icbi %p %d\n",startaddr,len);
 	memicbi(startaddr,len);
-#else
-	__asm__ volatile (
-		"clrlwi.	5, %0, 27\n" 
-		"beq	1f\n" 
-		"addi	%1, %1, 0x20\n" 
-		"1:\n" 
-		"addi	%1, %1, 0x1f\n" 
-		"srwi	%1, %1, 5\n" 
-		"mtctr	%1\n" 
-		"2:\n" 
-		"icbi	0, %0\n" 
-		"addi	%0, %0, 0x20\n" 
-		"bdnz	2b\n" 
-		"sync\n" 
-		"isync\n"
-		: : "b" (startaddr), "b" (len) : "5", "memory" );
-#endif
 }
 
 typedef struct _meta_node {
@@ -338,7 +302,7 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 	//end_section(LINK_SECTION);
 }
 
-__attribute__((aligned(65536))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
+__attribute__((aligned(65536),section(".bss.beginning.upper"))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
 
 void RecompCache_Init(void){
 	if(!cache_buf){

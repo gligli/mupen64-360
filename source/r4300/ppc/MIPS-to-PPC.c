@@ -43,9 +43,7 @@ static void genCallInterp(MIPS_instr);
 #define JUMPTO_REG  0
 #define JUMPTO_OFF  1
 #define JUMPTO_ADDR 2
-#define JUMPTO_REG_SIZE  2
-#define JUMPTO_OFF_SIZE  17
-#define JUMPTO_ADDR_SIZE 17
+#define JUMPTO_OFF_SIZE  11
 static void genJumpTo(unsigned int loc, unsigned int type);
 static void genUpdateCount(int checkCount);
 static void genCheckFP(void);
@@ -3555,10 +3553,6 @@ static void genJumpTo(unsigned int loc, unsigned int type){
 	}
 
 	EMIT_BLR((type != JUMPTO_REG));
-
-    EMIT_ORI(0, 0, 0);
-    EMIT_ORI(0, 0, 0);
-    EMIT_ORI(0, 0, 0);
 }
 
 // Updates Count, and sets cr2 to (next_interupt ? Count)
@@ -3694,8 +3688,7 @@ void genCallDynaMem(memType type, int base, short immed){
 extern unsigned char invalid_code[0x100000];
 
 #define CHECK_INVALID_CODE()                                                   \
-    flushRegisters();														   \
-    invalidateRegisters();                                                     \
+	invalidateRegisters();													   \
     EMIT_ADDI(3, base, immed);                                                 \
     /* test invalid code */                                                    \
     EMIT_LIS(12, HA((unsigned int)&invalid_code));                             \
@@ -3713,12 +3706,21 @@ extern unsigned char invalid_code[0x100000];
 static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 	flushRegisters();
 	reset_code_addr();
+	
+	if(type==MEM_LWC1 || type==MEM_LDC1 || type==MEM_SWC1 || type==MEM_SDC1)
+	{
+		genCheckFP();
+	}
 
 	int rd = mapRegisterTemp(); // r3 = rd
 	int base = mapRegister( rs_reg ); // r4 = addr
+	int addr = -1;
 
-    set_next_dst(PPC_NOP); //TODO:  why do I need this here?
-
+	if(type==MEM_LWC1 || type==MEM_LDC1 || type==MEM_SWC1 || type==MEM_SDC1)
+	{
+		addr = mapRegisterTemp(); // r5 = fpr_addr
+	}
+	
     EMIT_RLWINM(rd,base,0,2,31);
     EMIT_ORIS(rd,rd,0x4000); // virtual mapping base address
     
@@ -3730,30 +3732,35 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             int r = mapRegisterNew( rt_reg );
             EMIT_LBZ(r, immed, rd);
             EMIT_EXTSB(r,r);
+			flushRegisters();
             break;
         }
         case MEM_LBU:
         {
             int r = mapRegisterNew( rt_reg );
             EMIT_LBZ(r, immed, rd);
+			flushRegisters();
             break;
         }
         case MEM_LH:
         {
             int r = mapRegisterNew( rt_reg );
             EMIT_LHA(r, immed, rd);
+			flushRegisters();
             break;
         }
         case MEM_LHU:
         {
             int r = mapRegisterNew( rt_reg );
             EMIT_LHZ(r, immed, rd)
+			flushRegisters();
             break;
         }
         case MEM_LW:
         {
             int r = mapRegisterNew( rt_reg );
             EMIT_LWZ(r, immed, rd);
+			flushRegisters();
         	break;
         }
         case MEM_LWU:
@@ -3764,6 +3771,7 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             EMIT_LWZ(r.lo, immed, rd);
             // Zero out the upper word
             EMIT_LI(r.hi, 0);
+			flushRegisters();
             break;
         }
         case MEM_LD:
@@ -3773,27 +3781,28 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             // Perform the actual load
             EMIT_LWZ(r.hi, immed, rd);
             EMIT_LWZ(r.lo, immed+4, rd);
+			flushRegisters();
             break;
         }
         case MEM_LWC1:
         {
-            int addr = mapRegisterTemp();
             int r = mapRegisterTemp();
+			EMIT_LWZ(r, immed, rd);
             EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
-            EMIT_LWZ(r, immed, rd);
             EMIT_STW(r, 0, addr);
+			flushRegisters();
             break;
         }
         case MEM_LDC1:
         {
-            int addr = mapRegisterTemp();
-            int r = mapRegisterTemp();
-            int r2 = mapRegisterTemp();
-            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
+			int r = mapRegisterTemp();
+			int r2 = mapRegisterTemp();
             EMIT_LWZ(r, immed, rd);
             EMIT_LWZ(r2, immed+4, rd);
+            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
             EMIT_STW(r, 0, addr);
             EMIT_STW(r2, 4, addr);
+			flushRegisters();
             break;
         }
         case MEM_SB:
@@ -3827,17 +3836,16 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
         }
         case MEM_SWC1:
         {
-            int addr = mapRegisterTemp();
             int r = mapRegisterTemp();
             EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
             EMIT_LWZ(r, 0, addr);
             EMIT_STW(r, immed, rd);
+			flushRegisters();
             CHECK_INVALID_CODE();
             break;
         }
         case MEM_SDC1:
         {
-            int addr = mapRegisterTemp();
             int r = mapRegisterTemp();
             int r2 = mapRegisterTemp();
             EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
@@ -3845,6 +3853,7 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             EMIT_LWZ(r2, 4, addr);
             EMIT_STW(r, immed, rd);
             EMIT_STW(r2, immed+4, rd);
+			flushRegisters();
             CHECK_INVALID_CODE();
             break;
         }
@@ -3852,9 +3861,6 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             assert(0);
     }
     
-    flushRegisters();
-    invalidateRegisters();
-
 	// Skip over else
 	int not_fastmem_id = add_jump_special(1);
 	EMIT_B(not_fastmem_id, 0, 0);
@@ -3872,10 +3878,10 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             EMIT_OR(3,r,r);
     }
 
+	invalidateRegisters();
+	
 	genCallDynaMem(type, base, immed);
 
-    flushRegisters();
-    
 	int callSize = get_curr_dst() - preCall;
 	set_jump_special(not_fastmem_id, callSize+1);
 
