@@ -29,6 +29,7 @@
 #include "../Recomp-Cache.h"
 #include "Recompile.h"
 #include "Wrappers.h"
+#include "r4300/exception.h"
 
 extern int stop;
 extern unsigned long instructionCount;
@@ -146,8 +147,8 @@ void dynarec(unsigned int address){
 			DEBUG_print(txtbuffer, DBG_USBGECKO);
 			if((paddr >= 0xb0000000 && paddr < 0xc0000000) ||
 			   (paddr >= 0x90000000 && paddr < 0xa0000000))
-				dst_block->mips_code = 
-					rom + ((paddr-(address-dst_block->start_address))&0x0FFFFFFF); //gli ROMCache_pointer((paddr-(address-dst_block->start_address))&0x0FFFFFFF);
+				dst_block->mips_code = (MIPS_instr*)
+					(rom + ((paddr-(address-dst_block->start_address))&0x0FFFFFFF)); //gli ROMCache_pointer((paddr-(address-dst_block->start_address))&0x0FFFFFFF);
 			start_section(COMPILER_SECTION);
 			func = recompile_block(dst_block, address);
 			end_section(COMPILER_SECTION);
@@ -165,7 +166,7 @@ void dynarec(unsigned int address){
 		
 		// Create a link if possible
 		if(link_branch && !func_was_freed(last_func))
-			RecompCache_Link(last_func, link_branch, func, code);
+			RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);
 		clear_freed_funcs();
 		
 		address = dyna_run(func, code);

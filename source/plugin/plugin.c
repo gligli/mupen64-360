@@ -126,11 +126,11 @@ void plugin_load_plugins(const char *gfx_name,
     gfx_info.CheckInterrupts = EmptyFunc;
 	
 	gfx.changeWindow = ChangeWindow;
-	gfx.initiateGFX = InitiateGFX;
+	gfx.initiateGFX = (ptr_InitiateGFX) InitiateGFX;
 	gfx.processDList = ProcessDList;
 	gfx.processRDPList = ProcessRDPList;
 	gfx.romClosed = RomClosed;
-	gfx.romOpen = RomOpen;
+	gfx.romOpen = (ptr_RomOpen) RomOpen;
 	gfx.showCFB = ShowCFB;
 	gfx.updateScreen = UpdateScreen;
 	gfx.viStatusChanged = ViStatusChanged;
@@ -153,10 +153,10 @@ void plugin_load_plugins(const char *gfx_name,
 	
 	audio.aiDacrateChanged = aiDacrateChanged;
 	audio.aiLenChanged = aiLenChanged;
-	audio.initiateAudio = initiateAudio;
+	audio.initiateAudio = (ptr_InitiateAudio) initiateAudio;
 	audio.processAList = processAList;
 	audio.romClosed = romClosed_audio;
-	audio.romOpen = romOpen_audio;
+	audio.romOpen = (ptr_RomOpen) romOpen_audio;
 
 	audio.initiateAudio(audio_info);
 

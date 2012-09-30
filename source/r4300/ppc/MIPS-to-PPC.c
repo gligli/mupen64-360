@@ -2467,7 +2467,7 @@ static int ROUND_L_FP(MIPS_instr mips, int dbl){
 
 	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
+	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// round
@@ -2517,7 +2517,7 @@ static int TRUNC_L_FP(MIPS_instr mips, int dbl){
 
 	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
+	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// convert
@@ -2557,7 +2557,7 @@ static int CEIL_L_FP(MIPS_instr mips, int dbl){
 
 	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
+	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// ceil
@@ -2606,7 +2606,7 @@ static int FLOOR_L_FP(MIPS_instr mips, int dbl){
 
 	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
+	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// round
@@ -2845,7 +2845,7 @@ static int CVT_L_FP(MIPS_instr mips, int dbl){
 
 	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
+	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
 
 	// FIXME: I'm fairly certain this will always trunc
@@ -3410,7 +3410,7 @@ static int CVT_FP_L(MIPS_instr mips, int dbl){
 
 	flushRegisters();
 	int fs = MIPS_GET_FS(mips);
-	int fd = mapFPRNew( MIPS_GET_FD(mips), dbl ); // f1
+	/*int fd =*/ mapFPRNew( MIPS_GET_FD(mips), dbl ); // f1
 	int hi = mapRegisterTemp(); // r3
 	int lo = mapRegisterTemp(); // r4
 

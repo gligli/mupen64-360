@@ -62,7 +62,8 @@ static void RSV()
 
 }
 
-static void RFIN_BLOCK()
+/*
+ * static void RFIN_BLOCK()
 {
    dst->ops = FIN_BLOCK;
 //if(r4300emu)
@@ -77,11 +78,12 @@ static void RNOTCOMPILED()
 	//if(r4300emu) gennotcompiled();
 
 }
+*/
 
 static void recompile_standard_i_type()
 {
-   dst->f.i.rs = reg + ((src >> 21) & 0x1F);
-   dst->f.i.rt = reg + ((src >> 16) & 0x1F);
+   dst->f.i.rs = (long long int *)reg + ((src >> 21) & 0x1F);
+   dst->f.i.rt = (long long int *)reg + ((src >> 16) & 0x1F);
    dst->f.i.immediate = src & 0xFFFF;
 }
 
@@ -92,9 +94,9 @@ static void recompile_standard_j_type()
 
 static void recompile_standard_r_type()
 {
-   dst->f.r.rs = reg + ((src >> 21) & 0x1F);
-   dst->f.r.rt = reg + ((src >> 16) & 0x1F);
-   dst->f.r.rd = reg + ((src >> 11) & 0x1F);
+   dst->f.r.rs = (long long int *)reg + ((src >> 21) & 0x1F);
+   dst->f.r.rt = (long long int *)reg + ((src >> 16) & 0x1F);
+   dst->f.r.rd = (long long int *)reg + ((src >> 11) & 0x1F);
    dst->f.r.sa = (src >>  6) & 0x1F;
 }
 
@@ -128,7 +130,7 @@ static void RSLL()
 {
    dst->ops = SLL;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else 
 //if(r4300emu)
 	//if(r4300emu) gensll();
@@ -139,7 +141,7 @@ static void RSRL()
 {
    dst->ops = SRL;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else 
 //if(r4300emu)
 	//if(r4300emu) gensrl();
@@ -150,7 +152,7 @@ static void RSRA()
 {
    dst->ops = SRA;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else 
 //if(r4300emu)
 	//if(r4300emu) gensra();
@@ -161,7 +163,7 @@ static void RSLLV()
 {
    dst->ops = SLLV;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else
 //if(r4300emu)
 	//if(r4300emu) gensllv();
@@ -172,7 +174,7 @@ static void RSRLV()
 {
    dst->ops = SRLV;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else
 //if(r4300emu)
 	//if(r4300emu) gensrlv();
@@ -183,7 +185,7 @@ static void RSRAV()
 {
    dst->ops = SRAV;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
     
 //if(r4300emu)
 	//if(r4300emu) gensrav();
@@ -236,7 +238,7 @@ static void RMFHI()
 {
    dst->ops = MFHI;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else
 //if(r4300emu)
 	//if(r4300emu) genmfhi();
@@ -256,7 +258,7 @@ static void RMFLO()
 {
    dst->ops = MFLO;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else
 //if(r4300emu)
 	//if(r4300emu) genmflo();
@@ -275,7 +277,7 @@ static void RDSLLV()
 {
    dst->ops = DSLLV;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsllv();
 }
@@ -284,7 +286,7 @@ static void RDSRLV()
 {
    dst->ops = DSRLV;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsrlv();
 }
@@ -293,7 +295,7 @@ static void RDSRAV()
 {
    dst->ops = DSRAV;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsrav();
 }
@@ -366,7 +368,7 @@ static void RADD()
 {
    dst->ops = ADD;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genadd();
 }
@@ -375,7 +377,7 @@ static void RADDU()
 {
    dst->ops = ADDU;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genaddu();
 }
@@ -384,7 +386,7 @@ static void RSUB()
 {
    dst->ops = SUB;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
 //if(r4300emu)
 	//if(r4300emu) gensub();
 }
@@ -393,7 +395,7 @@ static void RSUBU()
 {
    dst->ops = SUBU;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
   // else //if(r4300emu)
 	//if(r4300emu) gensubu();
 }
@@ -402,7 +404,7 @@ static void RAND()
 {
    dst->ops = AND;
    recompile_standard_r_type();
-   if(dst->f.r.rd == reg) RNOP();
+   if(dst->f.r.rd == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genand();
 }
@@ -411,7 +413,7 @@ static void ROR()
 {
    dst->ops = OR;
    recompile_standard_r_type();
-   if(dst->f.r.rd == reg) RNOP();
+   if(dst->f.r.rd == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genor();
 }
@@ -420,7 +422,7 @@ static void RXOR()
 {
    dst->ops = XOR;
    recompile_standard_r_type();
-   if(dst->f.r.rd == reg) RNOP();
+   if(dst->f.r.rd == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genxor();
 }
@@ -429,7 +431,7 @@ static void RNOR()
 {
    dst->ops = NOR;
    recompile_standard_r_type();
-   if(dst->f.r.rd == reg) RNOP();
+   if(dst->f.r.rd == (long long int *)reg) RNOP();
 //if(r4300emu)
 	//if(r4300emu) gennor();
 }
@@ -438,7 +440,7 @@ static void RSLT()
 {
    dst->ops = SLT;
    recompile_standard_r_type();
-   if(dst->f.r.rd == reg) RNOP();
+   if(dst->f.r.rd == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genslt();
 }
@@ -447,7 +449,7 @@ static void RSLTU()
 {
    dst->ops = SLTU;
    recompile_standard_r_type();
-   if(dst->f.r.rd == reg) RNOP();
+   if(dst->f.r.rd == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gensltu();
 }
@@ -456,7 +458,7 @@ static void RDADD()
 {
    dst->ops = DADD;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendadd();
 }
@@ -465,7 +467,7 @@ static void RDADDU()
 {
    dst->ops = DADDU;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendaddu();
 }
@@ -474,7 +476,7 @@ static void RDSUB()
 {
    dst->ops = DSUB;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsub();
 }
@@ -483,7 +485,7 @@ static void RDSUBU()
 {
    dst->ops = DSUBU;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsubu();
 }
@@ -535,7 +537,7 @@ static void RDSLL()
 {
    dst->ops = DSLL;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsll();
 }
@@ -544,7 +546,7 @@ static void RDSRL()
 {
    dst->ops = DSRL;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsrl();
 }
@@ -553,7 +555,7 @@ static void RDSRA()
 {
    dst->ops = DSRA;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsra();
 }
@@ -562,7 +564,7 @@ static void RDSLL32()
 {
    dst->ops = DSLL32;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsll32();
 }
@@ -571,7 +573,7 @@ static void RDSRL32()
 {
    dst->ops = DSRL32;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsrl32();
 }
@@ -580,7 +582,7 @@ static void RDSRA32()
 {
    dst->ops = DSRA32;
    recompile_standard_r_type();
-   if (dst->f.r.rd == reg) RNOP();
+   if (dst->f.r.rd == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendsra32();
 }
@@ -928,7 +930,7 @@ static void RMFC0()
    recompile_standard_r_type();
    dst->f.r.rd = (long long*)(reg_cop0 + ((src >> 11) & 0x1F));
    dst->f.r.nrd = (src >> 11) & 0x1F;
-   if (dst->f.r.rt == reg) RNOP();
+   if (dst->f.r.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genmfc0();
 }
@@ -1738,7 +1740,7 @@ static void RMFC1()
    dst->ops = MFC1;
    recompile_standard_r_type();
    dst->f.r.nrd = (src >> 11) & 0x1F;
-   if (dst->f.r.rt == reg) RNOP();
+   if (dst->f.r.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genmfc1();
 }
@@ -1748,7 +1750,7 @@ static void RDMFC1()
    dst->ops = DMFC1;
    recompile_standard_r_type();
    dst->f.r.nrd = (src >> 11) & 0x1F;
-   if (dst->f.r.rt == reg) RNOP();
+   if (dst->f.r.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendmfc1();
 }
@@ -1758,7 +1760,7 @@ static void RCFC1()
    dst->ops = CFC1;
    recompile_standard_r_type();
    dst->f.r.nrd = (src >> 11) & 0x1F;
-   if (dst->f.r.rt == reg) RNOP();
+   if (dst->f.r.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gencfc1();
 }
@@ -2003,7 +2005,7 @@ static void RADDI()
 {
    dst->ops = ADDI;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genaddi();
 }
@@ -2012,7 +2014,7 @@ static void RADDIU()
 {
    dst->ops = ADDIU;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genaddiu();
 }
@@ -2021,7 +2023,7 @@ static void RSLTI()
 {
    dst->ops = SLTI;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genslti();
 }
@@ -2030,7 +2032,7 @@ static void RSLTIU()
 {
    dst->ops = SLTIU;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
   // else //if(r4300emu)
 	//if(r4300emu) gensltiu();
 }
@@ -2039,7 +2041,7 @@ static void RANDI()
 {
    dst->ops = ANDI;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genandi();
 }
@@ -2048,7 +2050,7 @@ static void RORI()
 {
    dst->ops = ORI;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genori();
 }
@@ -2057,7 +2059,7 @@ static void RXORI()
 {
    dst->ops = XORI;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genxori();
 }
@@ -2066,7 +2068,7 @@ static void RLUI()
 {
    dst->ops = LUI;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genlui();
 }
@@ -2193,7 +2195,7 @@ static void RDADDI()
 {
    dst->ops = DADDI;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendaddi();
 }
@@ -2202,7 +2204,7 @@ static void RDADDIU()
 {
    dst->ops = DADDIU;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gendaddiu();
 }
@@ -2211,7 +2213,7 @@ static void RLDL()
 {
    dst->ops = LDL;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genldl();
 }
@@ -2220,7 +2222,7 @@ static void RLDR()
 {
    dst->ops = LDR;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genldr();
 }
@@ -2229,7 +2231,7 @@ static void RLB()
 {
    dst->ops = LB;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genlb();
 }
@@ -2238,7 +2240,7 @@ static void RLH()
 {
    dst->ops = LH;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genlh();
 }
@@ -2247,7 +2249,7 @@ static void RLWL()
 {
    dst->ops = LWL;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genlwl();
 }
@@ -2256,7 +2258,7 @@ static void RLW()
 {
    dst->ops = LW;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genlw();
 }
@@ -2265,7 +2267,7 @@ static void RLBU()
 {
    dst->ops = LBU;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genlbu();
 }
@@ -2274,7 +2276,7 @@ static void RLHU()
 {
    dst->ops = LHU;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genlhu();
 }
@@ -2283,7 +2285,7 @@ static void RLWR()
 {
    dst->ops = LWR;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
   // else //if(r4300emu)
 	//if(r4300emu) genlwr();
 }
@@ -2292,7 +2294,7 @@ static void RLWU()
 {
    dst->ops = LWU;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genlwu();
 }
@@ -2364,7 +2366,7 @@ static void RLL()
 {
    dst->ops = LL;
    recompile_standard_i_type();
-   if(dst->f.i.rt == reg) RNOP();
+   if(dst->f.i.rt == (long long int*)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genll();
 }
@@ -2397,7 +2399,7 @@ static void RLD()
 {
    dst->ops = LD;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) genld();
 }
@@ -2406,7 +2408,7 @@ static void RSC()
 {
    dst->ops = SC;
    recompile_standard_i_type();
-   if (dst->f.i.rt == reg) RNOP();
+   if (dst->f.i.rt == (long long int *)reg) RNOP();
    //else //if(r4300emu)
 	//if(r4300emu) gensc();
 }

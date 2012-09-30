@@ -439,7 +439,7 @@ static int savestates_load_m64p(char *filepath)
 static int savestates_load_pj64(char *filepath, void *handle,
                                 int (*read_func)(void *, void *, size_t))
 {
-    char buffer[1024];
+    unsigned int buffer[1024/4];
     unsigned int vi_timer, SaveRDRAMSize;
     int i;
 
@@ -514,13 +514,13 @@ static int savestates_load_pj64(char *filepath, void *handle,
     next_interupt = (Compare < vi_timer) ? Compare : vi_timer;
     next_vi = vi_timer;
     vi_field = 0;
-    *((unsigned int*)&buffer[0]) = VI_INT;
-    *((unsigned int*)&buffer[4]) = vi_timer;
-    *((unsigned int*)&buffer[8]) = COMPARE_INT;
-    *((unsigned int*)&buffer[12]) = Compare;
-    *((unsigned int*)&buffer[16]) = 0xFFFFFFFF;
+    buffer[0] = VI_INT;
+    buffer[1] = vi_timer;
+    buffer[2] = COMPARE_INT;
+    buffer[3] = Compare;
+    buffer[4] = 0xFFFFFFFF;
 
-    load_eventqueue_infos(buffer);
+    load_eventqueue_infos((char*)buffer);
 
     // FPCR
     FCR0 = GETDATA(curr, int);

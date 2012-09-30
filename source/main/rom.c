@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <malloc.h>
+#include <ppc/vm.h>
 
 #define M64P_CORE_PROTOTYPES 1
 #include "api/m64p_types.h"
@@ -48,6 +50,7 @@ static romdatabase_entry* ini_search_by_md5(md5_byte_t* md5);
 static _romdatabase g_romdatabase;
 
 /* Global loaded rom memory space. */
+unsigned char* rom_buf = NULL;
 unsigned char* rom = NULL;
 /* Global loaded rom size. */
 int rom_size = 0;
@@ -122,7 +125,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     int i;
 
     /* check input requirements */
-    if (rom != NULL)
+    if (rom_buf != NULL)
     {
         DebugMessage(M64MSG_ERROR, "open_rom(): previous ROM image was not freed");
         return M64ERR_INTERNAL;
@@ -137,17 +140,17 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     g_MemHasBeenBSwapped = 0;
     /* allocate new buffer for ROM and copy into this buffer */
     rom_size = size;
-    rom = (unsigned char *) malloc(size);
-    if (rom == NULL)
+    rom_buf = (unsigned char *) memalign(VM_USER_PAGE_SIZE,size);
+    if (rom_buf == NULL)
         return M64ERR_NO_MEMORY;
-    memcpy(rom, romimage, size);
-    swap_rom(rom, &imagetype, rom_size);
+    memcpy(rom_buf, romimage, size);
+    swap_rom(rom_buf, &imagetype, rom_size);
 
-    memcpy(&ROM_HEADER, rom, sizeof(m64p_rom_header));
+    memcpy(&ROM_HEADER, rom_buf, sizeof(m64p_rom_header));
 
     /* Calculate MD5 hash  */
     md5_init(&state);
-    md5_append(&state, (const md5_byte_t*)rom, rom_size);
+    md5_append(&state, (const md5_byte_t*)rom_buf, rom_size);
     md5_finish(&state, digest);
     for ( i = 0; i < 16; ++i )
         sprintf(buffer+i*2, "%02X", digest[i]);
@@ -214,11 +217,11 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 
 m64p_error close_rom(void)
 {
-    if (rom == NULL)
+    if (rom_buf == NULL)
         return M64ERR_INVALID_STATE;
 
-    free(rom);
-    rom = NULL;
+    free(rom_buf);
+    rom_buf = NULL;
 
     /* Clear Byte-swapped flag, since ROM is now deleted. */
     g_MemHasBeenBSwapped = 0;

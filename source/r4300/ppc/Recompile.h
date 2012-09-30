@@ -96,12 +96,15 @@ void dbg_dst(int line,const char * func);
 
 int        add_jump(int old_jump, int is_j, int is_call);
 int        is_j_out(int branch, int is_aa);
+int        is_j_dst(void);
 // Use these for jumps that won't be known until later in compile time
 int        add_jump_special(int is_j);
 void       set_jump_special(int which, int new_jump);
 
 int  func_was_freed(PowerPC_func*);
 void clear_freed_funcs(void);
+
+void invalidate_block(PowerPC_block* ppc_block);
 
 /* These functions are used to initialize, recompile, and deinit a block
    init assumes that all pointers in the block fed it it are NULL or allocated

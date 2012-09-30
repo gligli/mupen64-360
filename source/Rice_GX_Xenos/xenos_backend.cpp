@@ -3,11 +3,7 @@
 #include "xenos_backend.h"
 
 #include <xenos/xe.h>
-
-extern "C" 
-{
-	#include <libxemit/xemit.h>
-}
+#include <libxemit/xemit.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -398,8 +394,11 @@ void CxeRender::SetShadeMode(RenderShadeMode mode)
 
 void CxeRender::OneCLRVtx(u32 i,u32 j, float depth)
 {
-	float xv[2]= {0.0f,windowSetting.uDisplayWidth};
-	float yv[2]= {0.0f,windowSetting.uDisplayHeight};
+	float dw=windowSetting.uDisplayWidth;
+	float dh=windowSetting.uDisplayHeight;
+	
+	float xv[2]= {0.0f,dw};
+	float yv[2]= {0.0f,dh};
 	
 	currentVertex->x=xv[i];
 	currentVertex->y=yv[j];
@@ -1696,9 +1695,9 @@ void CxeColorCombiner::GenerateCombinerSettingConstants(int index)
 
 struct muxToReg_s
 {
-	char * rt;
+	const char * rt;
 	int rn;
-	char * sw;
+	const char * sw;
 };
 
 #define CM1 6

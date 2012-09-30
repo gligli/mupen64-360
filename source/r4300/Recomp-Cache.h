@@ -13,11 +13,14 @@
 extern __attribute__((aligned(65536))) unsigned char recomp_cache_buffer[RECOMP_CACHE_ALLOC_SIZE];
 
 
+void DCFlushRange(void* startaddr, unsigned int len);
+void ICInvalidateRange(void* startaddr, unsigned int len);
+
 // Allocate and free memory to be used for recompiled code
 //   Any memory allocated this way can be freed at any time
 //   you must check invalid_code before you can access it
 void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* func);
-void RecmopCache_Realloc(PowerPC_func*, unsigned int new_size);
+void RecompCache_Realloc(PowerPC_func*, unsigned int new_size);
 void RecompCache_Free(unsigned int addr);
 // Update the LRU info of the indicated block
 //   (call when the block is accessed)

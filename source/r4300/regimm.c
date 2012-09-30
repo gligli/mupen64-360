@@ -221,7 +221,7 @@ void BLTZAL()
 {
    local_rs = irs;
    reg[31]=PC->addr+8;
-   if((&irs)!=(reg+31))
+   if((&irs)!=(long long int *)(reg+31))
      {
 	PC++;
 	delay_slot=1;
@@ -240,7 +240,7 @@ void BLTZAL_OUT()
 {
    local_rs = irs;
    reg[31]=PC->addr+8;
-   if((&irs)!=(reg+31))
+   if((&irs)!=(long long int *)(reg+31))
      {
 	jump_target = (long)PC->f.i.immediate;
 	PC++;
@@ -273,7 +273,7 @@ void BGEZAL()
 {
    local_rs = irs;
    reg[31]=PC->addr+8;
-   if((&irs)!=(reg+31))
+   if((&irs)!=(long long int *)(reg+31))
      {
 	PC++;
 	delay_slot=1;
@@ -292,7 +292,7 @@ void BGEZAL_OUT()
 {
    local_rs = irs;
    reg[31]=PC->addr+8;
-   if((&irs)!=(reg+31))
+   if((&irs)!=(long long int *)(reg+31))
      {
 	jump_target = (long)PC->f.i.immediate;
 	PC++;
@@ -325,7 +325,7 @@ void BLTZALL()
 {
    local_rs = irs;
    reg[31]=PC->addr+8;
-   if((&irs)!=(reg+31))
+   if((&irs)!=(long long int *)(reg+31))
      {
 	if (local_rs < 0)
 	  {
@@ -349,7 +349,7 @@ void BLTZALL_OUT()
 {
    local_rs = irs;
    reg[31]=PC->addr+8;
-   if((&irs)!=(reg+31))
+   if((&irs)!=(long long int *)(reg+31))
      {
 	if (local_rs < 0)
 	  {
@@ -387,7 +387,7 @@ void BGEZALL()
 {
    local_rs = irs;
    reg[31]=PC->addr+8;
-   if((&irs)!=(reg+31))
+   if((&irs)!=(long long int *)(reg+31))
      {
 	if (local_rs >= 0)
 	  {
@@ -411,7 +411,7 @@ void BGEZALL_OUT()
 {
    local_rs = irs;
    reg[31]=PC->addr+8;
-   if((&irs)!=(reg+31))
+   if((&irs)!=(long long int *)(reg+31))
      {
 	if (local_rs >= 0)
 	  {

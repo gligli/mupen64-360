@@ -31,14 +31,17 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <debug.h>
+
 #include "../../memory/memory.h"
 #include "../interupt.h"
 #include "Recompile.h"
 #include "../Recomp-Cache.h"
 #include "Wrappers.h"
 #include "../ARAM-blocks.h"
+
+#include "Register-Cache.h"
 #include "../r4300.h"
-#include <debug.h>
 
 int do_disasm=0;
 
@@ -286,7 +289,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 }
 
 void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
-	unsigned int length = (ppc_block->end_address - ppc_block->start_address)/sizeof(MIPS_instr);
+//	unsigned int length = (ppc_block->end_address - ppc_block->start_address)/sizeof(MIPS_instr);
   PowerPC_block* temp_block;
 
 	/*if(!ppc_block->code_addr){

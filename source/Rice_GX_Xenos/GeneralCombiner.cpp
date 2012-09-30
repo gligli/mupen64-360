@@ -1287,7 +1287,7 @@ int CGeneralCombiner::LM_GenCI_Type_A_B_C_A(N64CombinerType &m, int curStage, in
 
 int CGeneralCombiner::LM_ParseDecodedMux()
 {
-    GeneralCombinerInfo gci;
+//    GeneralCombinerInfo gci;
 
     DecodedMux &mux = *(*m_ppGeneralDecodedMux);
 
@@ -1298,7 +1298,7 @@ int CGeneralCombiner::LM_ParseDecodedMux()
         //  gci.blendingFunc = DISABLE_COLOR;
         //else 
         if( mux.m_n64Combiners[N64Cycle0Alpha].d == MUX_1  )
-            gci.blendingFunc = DISABLE_ALPHA;
+;//            gci.blendingFunc = DISABLE_ALPHA;
     }
     else if( mux.splitType[N64Cycle1Alpha]==CM_FMT_TYPE_D )
     {
@@ -1306,7 +1306,7 @@ int CGeneralCombiner::LM_ParseDecodedMux()
         //  gci.blendingFunc = DISABLE_COLOR;
         //else 
         if( mux.m_n64Combiners[N64Cycle1Alpha].d == MUX_1  )
-            gci.blendingFunc = DISABLE_ALPHA;
+;//            gci.blendingFunc = DISABLE_ALPHA;
     }
 
     return 0;

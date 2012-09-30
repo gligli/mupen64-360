@@ -665,17 +665,17 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
         }
     }
 
-    bool loadFromBackBuffer=false;
+//    bool loadFromBackBuffer=false;
     if( frameBufferOptions.bCheckBackBufs && g_pFrameBufferManager->CheckAddrInBackBuffers(pgti->Address, pgti->HeightToLoad*pgti->Pitch) >= 0 )
     {
         if( !frameBufferOptions.bWriteBackBufToRDRAM )
         {
             // Load the texture from recent back buffer
-            loadFromBackBuffer = true;
+//            loadFromBackBuffer = true;
             txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address);
             if( txtBufIdxToLoadFrom >= 0 )
             {
-                loadFromTextureBuffer = true;
+//                loadFromTextureBuffer = true;
                 // Check if it is the same size,
                 RenderTextureInfo &info = gRenderTextureInfos[txtBufIdxToLoadFrom];
                 //if( info.pRenderTexture && info.CI_Info.dwAddr == pgti->Address && info.CI_Info.dwFormat == pgti->Format 

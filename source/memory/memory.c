@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <debug.h>
 
+#include <ppc/vm.h>
+
 #include "api/m64p_types.h"
 
 #include "memory.h"
@@ -40,6 +42,8 @@
 #include "main/rom.h"
 #include "osal/preproc.h"
 #include "plugin/plugin.h"
+
+#include "r4300/Recomp-Cache.h"
 
 #ifdef DBG
 #include "debugger/dbg_types.h"
@@ -60,9 +64,9 @@ AI_register ai_register;
 DPC_register dpc_register;
 DPS_register dps_register;
 
-ALIGN(16, unsigned int rdram[0x800000/4]);
-
-unsigned char *rdramb = (unsigned char *)(rdram);
+ALIGN(VM_USER_PAGE_SIZE, unsigned int rdram_buf[0x800000/4]);
+unsigned int *rdram = NULL;
+unsigned char *rdramb = NULL;
 unsigned int SP_DMEM[0x1000/4*2];
 unsigned int *SP_IMEM = SP_DMEM+0x1000/4;
 unsigned char *SP_DMEMb = (unsigned char *)(SP_DMEM);
@@ -121,9 +125,56 @@ static FrameBufferInfo frameBufferInfos[6];
 static char framebufferRead[0x800];
 static int firstFrameBufferSetting;
 
+void * memory_vm_segfault_handler(int pir_,void * srr0,void * dar,int write)
+{
+    if((uint32_t)srr0>=(uint32_t)recomp_cache_buffer && (uint32_t)srr0<(uint32_t)recomp_cache_buffer+RECOMP_CACHE_ALLOC_SIZE)
+    {
+//        printf("Rewrite %d %p %p %d\n",pir_,srr0,dar,write);
+        return rewriteDynaMemVM(srr0);
+    }
+    else
+    {
+        printf("VM GPF !!! %d %p %p %d\n",pir_,srr0,dar,write);
+        return (PowerPC_instr*)srr0+1;
+    }
+}
+
+static unsigned char __attribute__((aligned(VM_USER_PAGE_SIZE))) dummy_buf[VM_USER_PAGE_SIZE];
+
+void memory_vm_init()
+{
+    vm_set_user_mapping_segfault_handler(memory_vm_segfault_handler);
+
+    uint32_t base=0x40000000;
+    
+    // the dynarec can try to read just below the rdram page
+    memset(dummy_buf,0,VM_USER_PAGE_SIZE);
+    vm_create_user_mapping(base-VM_USER_PAGE_SIZE,(uint32_t)dummy_buf&0x7fffffff,VM_USER_PAGE_SIZE,VM_WIMG_CACHED_READ_ONLY);
+
+    // map rdram
+    vm_create_user_mapping(base,(uint32_t)rdram_buf&0x7fffffff,sizeof(rdram_buf),VM_WIMG_CACHED);
+    vm_create_user_mapping(base+0x20000000,(uint32_t)rdram_buf&0x7fffffff,sizeof(rdram_buf),VM_WIMG_CACHED);
+    rdram=(unsigned int *)base;
+    rdramb=(unsigned char *)base;
+    
+    // map rom
+    vm_create_user_mapping(base+0x10000000,((uint32_t)rom_buf&0x7fffffff),rom_size,VM_WIMG_CACHED_READ_ONLY);
+    rom=(unsigned char *)base+0x10000000;
+}
+
+void memory_vm_destroy()
+{
+    vm_set_user_mapping_segfault_handler(NULL);
+
+    uint32_t base=0x40000000;
+    vm_destroy_user_mapping(base,1024*1024*1024);
+}
+
 int init_memory(int DoByteSwap)
 {
     int i;
+	
+	memory_vm_init();
 
     if (DoByteSwap != 0)
     {
@@ -973,6 +1024,7 @@ int init_memory(int DoByteSwap)
 
 void free_memory(void)
 {
+	memory_vm_destroy();
 }
 
 void make_w_mi_init_mode_reg(void)
