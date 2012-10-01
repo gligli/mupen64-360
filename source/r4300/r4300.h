@@ -49,16 +49,16 @@ extern PowerPC_block *actual;
 extern precomp_block *blocks[0x100000], *actual;
 #endif
 extern int stop, llbit;
-extern unsigned long long int reg[34];
+extern unsigned long long int reg[36];
 #define hi (reg[32])
 #define lo (reg[33])
-extern long long int local_rs, local_rt;
+#define local_rs (reg[34])
+#define local_rt (reg[35])
 extern unsigned long reg_cop0[32];
 extern long local_rs32, local_rt32;
 extern unsigned long jump_target;
 extern double *reg_cop1_double[32];
 extern float *reg_cop1_simple[32];
-extern long reg_cop1_fgr_32[32];
 extern long long int reg_cop1_fgr_64[32];
 extern long FCR0, FCR31;
 extern tlb tlb_e[32];
@@ -84,6 +84,8 @@ void compare_core();
 inline void jump_to_func();
 void update_count();
 int check_cop1_unusable();
+void shuffle_fpr_data(int oldStatus, int newStatus);
+void set_fpr_pointers(int newStatus);
 
 #ifndef PPC_DYNAREC
 #define jump_to(a) { jump_to_address = a; jump_to_func(); }
@@ -127,24 +129,6 @@ void refresh_stat();
 #define refresh_stat()
 
 #endif
-
-/*
-#define free(x) printf("free %p\n",x)
-
-static void * realloc_kk(void * p,size_t s){
-	printf("realloc %p %d\n",p,s);
-	return realloc(p,s);
-}
-
-#define realloc(x,y) realloc_kk(x,y)
-
-static void * malloc_kk(size_t s){
-	printf("malloc %d\n",s);
-	return malloc(s);
-}
-
-#define malloc(x) malloc_kk(x)
-*/
 
 #endif
 

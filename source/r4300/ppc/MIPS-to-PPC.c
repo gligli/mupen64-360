@@ -20,10 +20,8 @@
  *
 **/
 
-/* TODO: FP conversion to/from longs
-         Optimize idle branches (generate a call to gen_interrupt)
-         Optimize instruction scheduling & reduce branch instructions
-   FIXME: Branch comparisons need to operate on 64-bit values when necessary
+/* TODO: Optimize idle branches (generate a call to gen_interrupt)
+		 Optimize instruction scheduling & reduce branch instructions
  */
 
 #include <string.h>
@@ -1025,6 +1023,10 @@ static int JR(MIPS_instr mips){
 
 	flushRegisters();
 	reset_code_addr();
+	
+	EMIT_STW(mapRegister(MIPS_GET_RS(mips)),
+			REG_LOCALRS*8+4, DYNAREG_REG);
+	invalidateRegisters();
 
 	// Check the delay slot, and note how big it is
 	PowerPC_instr* preDelay = get_curr_dst();
@@ -1037,7 +1039,7 @@ static int JR(MIPS_instr mips){
 	genUpdateCount(0);
 
 #ifdef INTERPRET_JR
-	genJumpTo(MIPS_GET_RS(mips), JUMPTO_REG);
+	genJumpTo(REG_LOCALRS, JUMPTO_REG);
 #else // INTERPRET_JR
 	// TODO: jr
 #endif
@@ -1064,6 +1066,10 @@ static int JALR(MIPS_instr mips){
 	flushRegisters();
 	reset_code_addr();
 
+	EMIT_STW(mapRegister(MIPS_GET_RS(mips)),
+			REG_LOCALRS*8+4, DYNAREG_REG);
+	invalidateRegisters();
+
 	// Check the delay slot, and note how big it is
 	PowerPC_instr* preDelay = get_curr_dst();
 	check_delaySlot();
@@ -1084,7 +1090,7 @@ static int JALR(MIPS_instr mips){
 	flushRegisters();
 
 #ifdef INTERPRET_JALR
-	genJumpTo(MIPS_GET_RS(mips), JUMPTO_REG);
+	genJumpTo(REG_LOCALRS, JUMPTO_REG);
 #else // INTERPRET_JALR
 	// TODO: jalr
 #endif

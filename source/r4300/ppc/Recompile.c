@@ -594,7 +594,10 @@ static void genJumpPad(void){
 	EMIT_LI(0, 1);
 	EMIT_STW(0, 0, 3);
 
+	// TODO: I could link to the next block here
+	//       When I do, I need to ensure that noCheckInterrupt is cleared
 	// Set the next address to the first address in the next block if
+		
 	//   we've really reached the end of the block, not jumped to the pad
 	EMIT_LIS(3, (get_src_pc()+4)>>16);
 	EMIT_ORI(3, 3, get_src_pc()+4);
