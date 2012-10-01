@@ -201,7 +201,7 @@ void ERET()
 	}
 	else
 	{
-		Status &= 0xFFFFFFFD;
+		Status &= ~0x2;
 		jump_to(EPC);
 	}
 	llbit = 0;

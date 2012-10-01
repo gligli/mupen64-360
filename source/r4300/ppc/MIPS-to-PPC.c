@@ -1913,21 +1913,14 @@ static int ERET(MIPS_instr mips){
 	EMIT_LWZ(3, 12*4, DYNAREG_COP0);
 	// Load upper address of llbit
 	EMIT_LIS(4, extractUpper16(&llbit));
-	// Status & 0xFFFFFFFD
+	// Status & ~0x2
 	EMIT_RLWINM(3, 3, 0, 31, 29);
 	// llbit = 0
 	EMIT_STW(DYNAREG_ZERO, extractLower16(&llbit), 4);
 	// Store updated Status
 	EMIT_STW(3, 12*4, DYNAREG_COP0);
 	// check_interupt()
-#if 1
 	EMIT_B(add_jump((int)(&check_interupt), 1, 1), 0, 1);
-#else
-	EMIT_LIS(12, ((unsigned int)&check_interupt)>>16);
-	EMIT_ORI(12, 12, (unsigned int)&check_interupt);
-	EMIT_MTCTR(12);
-	EMIT_BCTRL(ppc);
-#endif
 	// Load the old LR
 	EMIT_LWZ(0, DYNAOFF_LR, 1);
 	// interp_addr = EPC

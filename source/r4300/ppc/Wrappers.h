@@ -40,9 +40,6 @@
 
 #define REG_LOCALRS    34
 
-extern float*  reg_cop1_simple[32]; // 32-bit fprs
-extern double* reg_cop1_double[32]; // 64-bit fprs
-
 extern int noCheckInterrupt;
 
 typedef enum { MEM_LW,   MEM_LH,   MEM_LB,   MEM_LD,
