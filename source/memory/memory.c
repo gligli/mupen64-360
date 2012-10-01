@@ -20,6 +20,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdlib.h>
+#include <limits.h>
+
 #include <debug.h>
 
 #include <ppc/vm.h>
@@ -1190,9 +1192,31 @@ void make_w_sp_status_reg(void)
         sp_register.w_sp_status_reg |= 0x1000000;
 }
 
-static void do_SP_Task(void)
+// It seems the SP task shouldn't be done right after the freeze bit is cleared
+// else Perfect Dark intro freezes, I don't have a N64 to test the proper timing
+// but that value seems fine for DK64/BC/PD...
+// GliGli
+
+#define FROZEN_TASK_DELAY 500
+
+static int SP_Task_pending_cycles=INT_MIN;
+
+void do_SP_Task(int delayedDP, int cycles)
 {
-    int save_pc = rsp_register.rsp_pc & ~0xFFF;
+    if(delayedDP)
+	{
+		if(SP_Task_pending_cycles==INT_MIN) // not pending
+			return;
+		
+		SP_Task_pending_cycles-=cycles;
+		
+		if(SP_Task_pending_cycles>0) // still pending
+			return;
+	}
+
+	SP_Task_pending_cycles=INT_MIN;
+
+	int save_pc = rsp_register.rsp_pc & ~0xFFF;
     if (SP_DMEM[0xFC0/4] == 1)
     {
         if (dpc_register.dpc_status & 0x2) // DP frozen (DK64, BC)
@@ -1306,7 +1330,7 @@ static void do_SP_Task(void)
 
         update_count();
         if (MI_register.mi_intr_reg & 0x1)
-            add_interupt_event(SP_INT, 1000);
+            add_interupt_event(SP_INT, 500/*1000*/);
         if (MI_register.mi_intr_reg & 0x20)
             add_interupt_event(DP_INT, 1000);
         MI_register.mi_intr_reg &= ~0x21;
@@ -1423,8 +1447,14 @@ static void do_SP_Task(void)
                 }
             }
         }
+		
+		return;
     }
-    else if (SP_DMEM[0xFC0/4] == 2)
+	
+	if(delayedDP) // only DPs in delayed mode
+		return;
+		
+    if (SP_DMEM[0xFC0/4] == 2)
     {
         //audio.processAList();
         rsp_register.rsp_pc &= 0xFFF;
@@ -1530,7 +1560,9 @@ void update_SP(void)
     if (!(sp_register.w_sp_status_reg & 0x1) &&
             !(sp_register.w_sp_status_reg & 0x4)) return;
     if (!(sp_register.sp_status_reg & 0x3)) // !halt && !broke
-        do_SP_Task();
+	{
+		do_SP_Task(0,0); // immediate run
+	}
 }
 
 void make_w_dpc_status(void)
@@ -1566,7 +1598,7 @@ void update_DPC(void)
 
         // see do_SP_task for more info
         if (!(sp_register.sp_status_reg & 0x3)) // !halt && !broke
-            do_SP_Task();
+            SP_Task_pending_cycles=FROZEN_TASK_DELAY;
     }
     if (dpc_register.w_dpc_status & 0x8) // set freeze
         dpc_register.dpc_status |= 0x2;

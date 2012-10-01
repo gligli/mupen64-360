@@ -207,6 +207,9 @@ int dyna_update_count(unsigned int pc, int isDelaySlot){
 #else
 int dyna_update_count(unsigned int pc){
 #endif
+
+	do_SP_Task(1,(pc - last_addr) / 2);
+
 	Count += (pc - last_addr)/2;
 	last_addr = pc;
 

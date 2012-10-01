@@ -1591,6 +1591,9 @@ void update_count()
 			DEBUG_print(txtbuffer, DBG_USBGECKO);
 		}
 #endif
+		
+		do_SP_Task(1,(interp_addr - last_addr) / 2);
+
 		Count = Count + (interp_addr - last_addr) / 2;
 		last_addr = interp_addr;
 	}
@@ -1600,6 +1603,9 @@ void update_count()
 		{
 			printf("PC->addr < last_addr\n");
 		}
+
+		do_SP_Task(1,(PC->addr - last_addr) / 2);
+
 		Count = Count + (PC->addr - last_addr) / 2;
 		last_addr = PC->addr;
 	}

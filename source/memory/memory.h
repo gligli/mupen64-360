@@ -401,5 +401,7 @@ void update_vi_width(unsigned int word);
  * Useful for getting fast access to a zone with executable code. */
 unsigned int *fast_mem_access(unsigned int address);
 
+void do_SP_Task(int delayedDP, int cycles);
+
 #endif
 
