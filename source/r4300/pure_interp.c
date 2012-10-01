@@ -187,7 +187,6 @@ static void BREAK()
 		printf("r%2d: %08x  r%2d: %08x  r%2d: %08x  r%2d: %08x\n",
 			i, (unsigned int) reg[i], i + 1, (unsigned int) reg[i + 1],
 			i + 2, (unsigned int) reg[i + 2], i + 3, (unsigned int) reg[i + 3]);
-	for (;;);
 #endif
 }
 
@@ -819,237 +818,19 @@ static void TLBR()
 	interp_addr += 4;
 }
 
+extern void TLBWrite(unsigned int idx);
+
 static void TLBWI()
 {
-	unsigned int i;
-
-	if (tlb_e[Index & 0x3F].v_even)
-	{
-		for (i = tlb_e[Index & 0x3F].start_even; i < tlb_e[Index & 0x3F].end_even; i += 0x1000)
-#ifdef USE_TLB_CACHE
-			TLBCache_set_r(i >> 12, 0);
-#else
-			tlb_LUT_r[i >> 12] = 0;
-#endif
-		if (tlb_e[Index & 0x3F].d_even)
-			for (i = tlb_e[Index & 0x3F].start_even; i < tlb_e[Index & 0x3F].end_even; i += 0x1000)
-#ifdef USE_TLB_CACHE
-				TLBCache_set_w(i >> 12, 0);
-#else
-				tlb_LUT_w[i >> 12] = 0;
-#endif
-	}
-	if (tlb_e[Index & 0x3F].v_odd)
-	{
-		for (i = tlb_e[Index & 0x3F].start_odd; i < tlb_e[Index & 0x3F].end_odd; i += 0x1000)
-#ifdef USE_TLB_CACHE
-			TLBCache_set_r(i >> 12, 0);
-#else
-			tlb_LUT_r[i >> 12] = 0;
-#endif
-		if (tlb_e[Index & 0x3F].d_odd)
-			for (i = tlb_e[Index & 0x3F].start_odd; i < tlb_e[Index & 0x3F].end_odd; i += 0x1000)
-#ifdef USE_TLB_CACHE
-				TLBCache_set_w(i >> 12, 0);
-#else
-				tlb_LUT_w[i >> 12] = 0;
-#endif
-	}
-	tlb_e[Index & 0x3F].g = (EntryLo0 & EntryLo1 & 1);
-	tlb_e[Index & 0x3F].pfn_even = (EntryLo0 & 0x3FFFFFC0) >> 6;
-	tlb_e[Index & 0x3F].pfn_odd = (EntryLo1 & 0x3FFFFFC0) >> 6;
-	tlb_e[Index & 0x3F].c_even = (EntryLo0 & 0x38) >> 3;
-	tlb_e[Index & 0x3F].c_odd = (EntryLo1 & 0x38) >> 3;
-	tlb_e[Index & 0x3F].d_even = (EntryLo0 & 0x4) >> 2;
-	tlb_e[Index & 0x3F].d_odd = (EntryLo1 & 0x4) >> 2;
-	tlb_e[Index & 0x3F].v_even = (EntryLo0 & 0x2) >> 1;
-	tlb_e[Index & 0x3F].v_odd = (EntryLo1 & 0x2) >> 1;
-	tlb_e[Index & 0x3F].asid = (EntryHi & 0xFF);
-	tlb_e[Index & 0x3F].vpn2 = (EntryHi & 0xFFFFE000) >> 13;
-	//tlb_e[Index&0x3F].r = (EntryHi & 0xC000000000000000LL) >> 62;
-	tlb_e[Index & 0x3F].mask = (PageMask & 0x1FFE000) >> 13;
-
-	tlb_e[Index & 0x3F].start_even = tlb_e[Index & 0x3F].vpn2 << 13;
-	tlb_e[Index & 0x3F].end_even = tlb_e[Index & 0x3F].start_even +
-			(tlb_e[Index & 0x3F].mask << 12) + 0xFFF;
-	tlb_e[Index & 0x3F].phys_even = tlb_e[Index & 0x3F].pfn_even << 12;
-
-	if (tlb_e[Index & 0x3F].v_even)
-	{
-		if (tlb_e[Index & 0x3F].start_even < tlb_e[Index & 0x3F].end_even &&
-				!(tlb_e[Index & 0x3F].start_even >= 0x80000000 &&
-				tlb_e[Index & 0x3F].end_even < 0xC0000000) &&
-				tlb_e[Index & 0x3F].phys_even < 0x20000000)
-		{
-			for (i = tlb_e[Index & 0x3F].start_even; i < tlb_e[Index & 0x3F].end_even; i += 0x1000)
-#ifdef USE_TLB_CACHE
-				TLBCache_set_r(i >> 12, 0x80000000 |
-							   (tlb_e[Index & 0x3F].phys_even + (i - tlb_e[Index & 0x3F].start_even + 0xFFF)));
-#else
-				tlb_LUT_r[i >> 12] = 0x80000000 |
-					(tlb_e[Index & 0x3F].phys_even + (i - tlb_e[Index & 0x3F].start_even + 0xFFF));
-#endif
-			if (tlb_e[Index & 0x3F].d_even)
-				for (i = tlb_e[Index & 0x3F].start_even; i < tlb_e[Index & 0x3F].end_even; i += 0x1000)
-#ifdef USE_TLB_CACHE
-					TLBCache_set_w(i >> 12, 0x80000000 |
-								   (tlb_e[Index & 0x3F].phys_even + (i - tlb_e[Index & 0x3F].start_even + 0xFFF)));
-#else
-					tlb_LUT_w[i >> 12] = 0x80000000 |
-						(tlb_e[Index & 0x3F].phys_even + (i - tlb_e[Index & 0x3F].start_even + 0xFFF));
-#endif
-		}
-	}
-
-	tlb_e[Index & 0x3F].start_odd = tlb_e[Index & 0x3F].end_even + 1;
-	tlb_e[Index & 0x3F].end_odd = tlb_e[Index & 0x3F].start_odd +
-			(tlb_e[Index & 0x3F].mask << 12) + 0xFFF;
-	tlb_e[Index & 0x3F].phys_odd = tlb_e[Index & 0x3F].pfn_odd << 12;
-
-	if (tlb_e[Index & 0x3F].v_odd)
-	{
-		if (tlb_e[Index & 0x3F].start_odd < tlb_e[Index & 0x3F].end_odd &&
-				!(tlb_e[Index & 0x3F].start_odd >= 0x80000000 &&
-				tlb_e[Index & 0x3F].end_odd < 0xC0000000) &&
-				tlb_e[Index & 0x3F].phys_odd < 0x20000000)
-		{
-			for (i = tlb_e[Index & 0x3F].start_odd; i < tlb_e[Index & 0x3F].end_odd; i += 0x1000)
-#ifdef USE_TLB_CACHE
-				TLBCache_set_r(i >> 12, 0x80000000 |
-							   (tlb_e[Index & 0x3F].phys_odd + (i - tlb_e[Index & 0x3F].start_odd + 0xFFF)));
-#else
-				tlb_LUT_r[i >> 12] = 0x80000000 |
-					(tlb_e[Index & 0x3F].phys_odd + (i - tlb_e[Index & 0x3F].start_odd + 0xFFF));
-#endif
-			if (tlb_e[Index & 0x3F].d_odd)
-				for (i = tlb_e[Index & 0x3F].start_odd; i < tlb_e[Index & 0x3F].end_odd; i += 0x1000)
-#ifdef USE_TLB_CACHE
-					TLBCache_set_w(i >> 12, 0x80000000 |
-								   (tlb_e[Index & 0x3F].phys_odd + (i - tlb_e[Index & 0x3F].start_odd + 0xFFF)));
-#else
-					tlb_LUT_w[i >> 12] = 0x80000000 |
-						(tlb_e[Index & 0x3F].phys_odd + (i - tlb_e[Index & 0x3F].start_odd + 0xFFF));
-#endif
-		}
-	}
+	TLBWrite(Index&0x3F);
 	interp_addr += 4;
 }
 
 static void TLBWR()
 {
-	unsigned int i;
 	update_count();
-	Random = (Count / 2 % (32 - Wired)) + Wired;
-
-	if (tlb_e[Random].v_even)
-	{
-		for (i = tlb_e[Random].start_even; i < tlb_e[Random].end_even; i += 0x1000)
-#ifdef USE_TLB_CACHE
-			TLBCache_set_r(i >> 12, 0);
-#else
-			tlb_LUT_r[i >> 12] = 0;
-#endif
-		if (tlb_e[Random].d_even)
-			for (i = tlb_e[Random].start_even; i < tlb_e[Random].end_even; i += 0x1000)
-#ifdef USE_TLB_CACHE
-				TLBCache_set_w(i >> 12, 0);
-#else
-				tlb_LUT_w[i >> 12] = 0;
-#endif
-	}
-	if (tlb_e[Random].v_odd)
-	{
-		for (i = tlb_e[Random].start_odd; i < tlb_e[Random].end_odd; i += 0x1000)
-#ifdef USE_TLB_CACHE
-			TLBCache_set_r(i >> 12, 0);
-#else
-			tlb_LUT_r[i >> 12] = 0;
-#endif
-		if (tlb_e[Random].d_odd)
-			for (i = tlb_e[Random].start_odd; i < tlb_e[Random].end_odd; i += 0x1000)
-#ifdef USE_TLB_CACHE
-				TLBCache_set_w(i >> 12, 0);
-#else
-				tlb_LUT_w[i >> 12] = 0;
-#endif
-	}
-
-	tlb_e[Random].g = (EntryLo0 & EntryLo1 & 1);
-	tlb_e[Random].pfn_even = (EntryLo0 & 0x3FFFFFC0) >> 6;
-	tlb_e[Random].pfn_odd = (EntryLo1 & 0x3FFFFFC0) >> 6;
-	tlb_e[Random].c_even = (EntryLo0 & 0x38) >> 3;
-	tlb_e[Random].c_odd = (EntryLo1 & 0x38) >> 3;
-	tlb_e[Random].d_even = (EntryLo0 & 0x4) >> 2;
-	tlb_e[Random].d_odd = (EntryLo1 & 0x4) >> 2;
-	tlb_e[Random].v_even = (EntryLo0 & 0x2) >> 1;
-	tlb_e[Random].v_odd = (EntryLo1 & 0x2) >> 1;
-	tlb_e[Random].asid = (EntryHi & 0xFF);
-	tlb_e[Random].vpn2 = (EntryHi & 0xFFFFE000) >> 13;
-	//tlb_e[Random].r = (EntryHi & 0xC000000000000000LL) >> 62;
-	tlb_e[Random].mask = (PageMask & 0x1FFE000) >> 13;
-
-	tlb_e[Random].start_even = tlb_e[Random].vpn2 << 13;
-	tlb_e[Random].end_even = tlb_e[Random].start_even +
-			(tlb_e[Random].mask << 12) + 0xFFF;
-	tlb_e[Random].phys_even = tlb_e[Random].pfn_even << 12;
-
-	if (tlb_e[Random].v_even)
-	{
-		if (tlb_e[Random].start_even < tlb_e[Random].end_even &&
-				!(tlb_e[Random].start_even >= 0x80000000 &&
-				tlb_e[Random].end_even < 0xC0000000) &&
-				tlb_e[Random].phys_even < 0x20000000)
-		{
-			for (i = tlb_e[Random].start_even; i < tlb_e[Random].end_even; i += 0x1000)
-#ifdef USE_TLB_CACHE
-				TLBCache_set_r(i >> 12, 0x80000000 |
-							(tlb_e[Random].phys_even + (i - tlb_e[Random].start_even + 0xFFF)));
-#else
-				tlb_LUT_r[i >> 12] = 0x80000000 |
-					(tlb_e[Random].phys_even + (i - tlb_e[Random].start_even + 0xFFF));
-#endif
-			if (tlb_e[Random].d_even)
-				for (i = tlb_e[Random].start_even; i < tlb_e[Random].end_even; i += 0x1000)
-#ifdef USE_TLB_CACHE
-					TLBCache_set_w(i >> 12, 0x80000000 |
-								(tlb_e[Random].phys_even + (i - tlb_e[Random].start_even + 0xFFF)));
-#else
-					tlb_LUT_w[i >> 12] = 0x80000000 |
-						(tlb_e[Random].phys_even + (i - tlb_e[Random].start_even + 0xFFF));
-#endif
-		}
-	}
-	tlb_e[Random].start_odd = tlb_e[Random].end_even + 1;
-	tlb_e[Random].end_odd = tlb_e[Random].start_odd +
-			(tlb_e[Random].mask << 12) + 0xFFF;
-	tlb_e[Random].phys_odd = tlb_e[Random].pfn_odd << 12;
-
-	if (tlb_e[Random].v_odd)
-	{
-		if (tlb_e[Random].start_odd < tlb_e[Random].end_odd &&
-				!(tlb_e[Random].start_odd >= 0x80000000 &&
-				tlb_e[Random].end_odd < 0xC0000000) &&
-				tlb_e[Random].phys_odd < 0x20000000)
-		{
-			for (i = tlb_e[Random].start_odd; i < tlb_e[Random].end_odd; i += 0x1000)
-#ifdef USE_TLB_CACHE
-				TLBCache_set_r(i >> 12, 0x80000000 |
-							(tlb_e[Random].phys_odd + (i - tlb_e[Random].start_odd + 0xFFF)));
-#else
-				tlb_LUT_r[i >> 12] = 0x80000000 |
-					(tlb_e[Random].phys_odd + (i - tlb_e[Random].start_odd + 0xFFF));
-#endif
-			if (tlb_e[Random].d_odd)
-				for (i = tlb_e[Random].start_odd; i < tlb_e[Random].end_odd; i += 0x1000)
-#ifdef USE_TLB_CACHE
-					TLBCache_set_w(i >> 2, 0x80000000 |
-								(tlb_e[Random].phys_odd + (i - tlb_e[Random].start_odd + 0xFFF)));
-#else
-					tlb_LUT_w[i >> 12] = 0x80000000 |
-						(tlb_e[Random].phys_odd + (i - tlb_e[Random].start_odd + 0xFFF));
-#endif
-		}
-	}
+	Random = (Count/2 % (32 - Wired)) + Wired;
+	TLBWrite(Random);
 	interp_addr += 4;
 }
 
@@ -1110,7 +891,7 @@ static void MFC0()
 	switch (PC->f.r.nrd)
 	{
 	case 1:
-		printf("lecture de Random\n");
+		printf("reading Random\n");
 		stop = 1;
 #ifdef DEBUGON
 		_break();
@@ -1130,7 +911,7 @@ static void MTC0()
 		Index = rrt & 0x8000003F;
 		if ((Index & 0x3F) > 31)
 		{
-			printf("il y a plus de 32 TLB\n");
+			printf("more than 32 TLB\n");
 			stop = 1;
 #ifdef DEBUGON
 			_break();
@@ -1192,7 +973,7 @@ static void MTC0()
 	case 13: // Cause
 		if (rrt != 0)
 		{
-			printf("�criture dans Cause\n");
+			printf("writing Cause\n");
 			stop = 1;
 #ifdef DEBUGON
 			_break();
@@ -2640,54 +2421,54 @@ static void DADDIU()
 
 static void LDL()
 {
-	unsigned long long int word = 0;
+	long long int word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 7)
 	{
 	case 0:
 		address = iimmediate + irs32;
-		rdword = (unsigned long long int*)&irt;
+		rdword = &irt;
 		read_dword_in_memory();
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFF) | (word << 8);
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFF) | (word << 16);
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFF) | (word << 24);
 		break;
 	case 4:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFF) | (word << 32);
 		break;
 	case 5:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFLL) | (word << 40);
 		break;
 	case 6:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFFLL) | (word << 48);
 		break;
 	case 7:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFFFFLL) | (word << 56);
 		break;
@@ -2696,55 +2477,55 @@ static void LDL()
 
 static void LDR()
 {
-	unsigned long long int word = 0;
+	long long int word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 7)
 	{
 	case 0:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFFFF00LL) | (word >> 56);
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFF0000LL) | (word >> 48);
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFF000000LL) | (word >> 40);
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFF00000000LL) | (word >> 32);
 		break;
 	case 4:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFF0000000000LL) | (word >> 24);
 		break;
 	case 5:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFF000000000000LL) | (word >> 16);
 		break;
 	case 6:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		irt = (irt & 0xFF00000000000000LL) | (word >> 8);
 		break;
 	case 7:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&irt;
+		rdword = &irt;
 		read_dword_in_memory();
 		break;
 	}
@@ -2754,7 +2535,7 @@ static void LB()
 {
 	interp_addr += 4;
 	address = iimmediate + irs32;
-	rdword = (unsigned long long int*)&irt;
+	rdword = &irt;
 	read_byte_in_memory();
 	sign_extendedb(irt);
 
@@ -2764,37 +2545,37 @@ static void LH()
 {
 	interp_addr += 4;
 	address = iimmediate + irs32;
-	rdword = (unsigned long long int*)&irt;
+	rdword = &irt;
 	read_hword_in_memory();
 	sign_extendedh(irt);
 }
 
 static void LWL()
 {
-	unsigned long long int word = 0;
+	long long int word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 3)
 	{
 	case 0:
 		address = iimmediate + irs32;
-		rdword = (unsigned long long int*)&irt;
+		rdword = &irt;
 		read_word_in_memory();
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		irt = (irt & 0xFF) | (word << 8);
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFF) | (word << 16);
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFFFF) | (word << 24);
 		break;
@@ -2805,7 +2586,7 @@ static void LWL()
 static void LW()
 {
 	address = iimmediate + irs32;
-	rdword = (unsigned long long int*)&irt;
+	rdword = &irt;
 	interp_addr += 4;
 	read_word_in_memory();
 	sign_extended(irt);
@@ -2815,7 +2596,7 @@ static void LBU()
 {
 	interp_addr += 4;
 	address = iimmediate + irs32;
-	rdword = (unsigned long long int*)&irt;
+	rdword = &irt;
 	read_byte_in_memory();
 }
 
@@ -2823,37 +2604,37 @@ static void LHU()
 {
 	interp_addr += 4;
 	address = iimmediate + irs32;
-	rdword = (unsigned long long int*)&irt;
+	rdword = &irt;
 	read_hword_in_memory();
 }
 
 static void LWR()
 {
-	unsigned long long int word = 0;
+	long long int word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 3)
 	{
 	case 0:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFFFF00LL) | ((word >> 24) & 0xFF);
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFF0000LL) | ((word >> 16) & 0xFFFF);
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFFFFFFFF000000LL) | ((word >> 8) & 0xFFFFFF);
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&irt;
+		rdword = &irt;
 		read_word_in_memory();
 		sign_extended(irt);
 	}
@@ -2862,7 +2643,7 @@ static void LWR()
 static void LWU()
 {
 	address = iimmediate + irs32;
-	rdword = (unsigned long long int*)&irt;
+	rdword = &irt;
 	interp_addr += 4;
 	read_word_in_memory();
 }
@@ -2887,7 +2668,7 @@ static void SH()
 
 static void SWL()
 {
-	unsigned long long int old_word = 0;
+	long long int old_word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 3)
 	{
@@ -2899,7 +2680,7 @@ static void SWL()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt >> 8) | (old_word & 0xFF000000);
 		write_word_in_memory();
@@ -2907,7 +2688,7 @@ static void SWL()
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt >> 16) | (old_word & 0xFFFF0000);
 		write_word_in_memory();
@@ -2933,7 +2714,7 @@ static void SW()
 
 static void SDL()
 {
-	unsigned long long int old_word = 0;
+	long long int old_word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 7)
 	{
@@ -2945,7 +2726,7 @@ static void SDL()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 8) | (old_word & 0xFF00000000000000LL);
 		write_dword_in_memory();
@@ -2953,7 +2734,7 @@ static void SDL()
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 16) | (old_word & 0xFFFF000000000000LL);
 		write_dword_in_memory();
@@ -2961,7 +2742,7 @@ static void SDL()
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 24) | (old_word & 0xFFFFFF0000000000LL);
 		write_dword_in_memory();
@@ -2969,7 +2750,7 @@ static void SDL()
 		break;
 	case 4:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 32) | (old_word & 0xFFFFFFFF00000000LL);
 		write_dword_in_memory();
@@ -2977,7 +2758,7 @@ static void SDL()
 		break;
 	case 5:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 40) | (old_word & 0xFFFFFFFFFF000000LL);
 		write_dword_in_memory();
@@ -2985,7 +2766,7 @@ static void SDL()
 		break;
 	case 6:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 48) | (old_word & 0xFFFFFFFFFFFF0000LL);
 		write_dword_in_memory();
@@ -2993,7 +2774,7 @@ static void SDL()
 		break;
 	case 7:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 56) | (old_word & 0xFFFFFFFFFFFFFF00LL);
 		write_dword_in_memory();
@@ -3004,13 +2785,13 @@ static void SDL()
 
 static void SDR()
 {
-	unsigned long long int old_word = 0;
+	long long int old_word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 7)
 	{
 	case 0:
 		address = iimmediate + irs32;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = (irt << 56) | (old_word & 0x00FFFFFFFFFFFFFFLL);
 		write_dword_in_memory();
@@ -3018,7 +2799,7 @@ static void SDR()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = (irt << 48) | (old_word & 0x0000FFFFFFFFFFFFLL);
 		write_dword_in_memory();
@@ -3026,7 +2807,7 @@ static void SDR()
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = (irt << 40) | (old_word & 0x000000FFFFFFFFFFLL);
 		write_dword_in_memory();
@@ -3034,7 +2815,7 @@ static void SDR()
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = (irt << 32) | (old_word & 0x00000000FFFFFFFFLL);
 		write_dword_in_memory();
@@ -3042,7 +2823,7 @@ static void SDR()
 		break;
 	case 4:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = (irt << 24) | (old_word & 0x0000000000FFFFFFLL);
 		write_dword_in_memory();
@@ -3050,7 +2831,7 @@ static void SDR()
 		break;
 	case 5:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = (irt << 16) | (old_word & 0x000000000000FFFFLL);
 		write_dword_in_memory();
@@ -3058,7 +2839,7 @@ static void SDR()
 		break;
 	case 6:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		dword = (irt << 8) | (old_word & 0x00000000000000FFLL);
 		write_dword_in_memory();
@@ -3075,13 +2856,13 @@ static void SDR()
 
 static void SWR()
 {
-	unsigned long long int old_word = 0;
+	long long int old_word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 3)
 	{
 	case 0:
 		address = iimmediate + irs32;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt << 24) | (old_word & 0x00FFFFFF);
 		write_word_in_memory();
@@ -3089,7 +2870,7 @@ static void SWR()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt << 16) | (old_word & 0x0000FFFF);
 		write_word_in_memory();
@@ -3097,7 +2878,7 @@ static void SWR()
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt << 8) | (old_word & 0x000000FF);
 		write_word_in_memory();
@@ -3120,7 +2901,7 @@ static void CACHE()
 static void LL()
 {
 	address = iimmediate + irs32;
-	rdword = (unsigned long long int*)&irt;
+	rdword = &irt;
 	interp_addr += 4;
 	read_word_in_memory();
 	sign_extended(irt);
@@ -3129,11 +2910,11 @@ static void LL()
 
 static void LWC1()
 {
-	unsigned long long int temp;
+	long long int temp;
 	if (check_cop1_unusable()) return;
 	interp_addr += 4;
 	address = lfoffset + reg[lfbase];
-	rdword = (unsigned long long int*)&temp;
+	rdword = &temp;
 	read_word_in_memory();
 	*((long*) reg_cop1_simple[lfft]) = *rdword;
 }
@@ -3143,7 +2924,7 @@ static void LDC1()
 	if (check_cop1_unusable()) return;
 	interp_addr += 4;
 	address = lfoffset + reg[lfbase];
-	rdword = (unsigned long long int*)(unsigned long long*) reg_cop1_double[lfft];
+	rdword = (long long int*) reg_cop1_double[lfft];
 	read_dword_in_memory();
 }
 
@@ -3151,7 +2932,7 @@ static void LD()
 {
 	interp_addr += 4;
 	address = iimmediate + irs32;
-	rdword = (unsigned long long int*)&irt;
+	rdword = &irt;
 	read_dword_in_memory();
 }
 

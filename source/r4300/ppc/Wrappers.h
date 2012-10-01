@@ -40,7 +40,6 @@
 
 #define REG_LOCALRS    34
 
-extern unsigned long long int reg[36]; // game's registers
 extern float*  reg_cop1_simple[32]; // 32-bit fprs
 extern double* reg_cop1_double[32]; // 64-bit fprs
 

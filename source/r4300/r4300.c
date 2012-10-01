@@ -47,11 +47,11 @@ extern int debugger_mode;
 extern void update_debugger();
 #endif
 
-unsigned long __attribute__((aligned(128))) i, r4300emu = 0, interpcore = 0;
+unsigned long __attribute__((aligned(128))) r4300emu = 0, interpcore = 0;
 int no_audio_delay = 0;
 int no_compiled_jump = 0;
 int __attribute__((aligned(128))) stop, llbit;
-unsigned long long int __attribute__((aligned(128))) reg[36];
+long long int __attribute__((aligned(128))) reg[36];
 unsigned long __attribute__((aligned(128))) reg_cop0[32];
 long __attribute__((aligned(128))) local_rs32, local_rt32;
 unsigned long __attribute__((aligned(128))) jump_target;
@@ -700,60 +700,60 @@ void DADDIU()
 
 void LDL()
 {
-	unsigned long long int word = 0;
+	long long int word = 0;
 	PC++;
 	switch ((lsaddr) & 7)
 	{
 	case 0:
 		address = lsaddr;
-		rdword = (unsigned long long int*)&lsrt;
+		rdword = &lsrt;
 		read_dword_in_memory();
 		break;
 	case 1:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFF) | (word << 8);
 		break;
 	case 2:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFF) | (word << 16);
 		break;
 	case 3:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFF) | (word << 24);
 		break;
 	case 4:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFF) | (word << 32);
 		break;
 	case 5:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFFLL) | (word << 40);
 		break;
 	case 6:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFFFFLL) | (word << 48);
 		break;
 	case 7:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFFFFFFLL) | (word << 56);
@@ -763,62 +763,62 @@ void LDL()
 
 void LDR()
 {
-	unsigned long long int word = 0;
+	long long int word = 0;
 	PC++;
 	switch ((lsaddr) & 7)
 	{
 	case 0:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFFFFFF00LL) | (word >> 56);
 		break;
 	case 1:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFFFF0000LL) | (word >> 48);
 		break;
 	case 2:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFF000000LL) | (word >> 40);
 		break;
 	case 3:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFF00000000LL) | (word >> 32);
 		break;
 	case 4:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFF0000000000LL) | (word >> 24);
 		break;
 	case 5:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFF000000000000LL) | (word >> 16);
 		break;
 	case 6:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_dword_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFF00000000000000LL) | (word >> 8);
 		break;
 	case 7:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&lsrt;
+		rdword = &lsrt;
 		read_dword_in_memory();
 		break;
 	}
@@ -828,7 +828,7 @@ void LB()
 {
 	PC++;
 	address = lsaddr;
-	rdword = (unsigned long long int*)&lsrt;
+	rdword = &lsrt;
 	read_byte_in_memory();
 	if (address)
 		sign_extendedb(lsrt);
@@ -838,7 +838,7 @@ void LH()
 {
 	PC++;
 	address = lsaddr;
-	rdword = (unsigned long long int*)&lsrt;
+	rdword = &lsrt;
 	read_hword_in_memory();
 	if (address)
 		sign_extendedh(lsrt);
@@ -846,32 +846,32 @@ void LH()
 
 void LWL()
 {
-	unsigned long long int word = 0;
+	long long int word = 0;
 	PC++;
 	switch ((lsaddr) & 3)
 	{
 	case 0:
 		address = lsaddr;
-		rdword = (unsigned long long int*)&lsrt;
+		rdword = &lsrt;
 		read_word_in_memory();
 		break;
 	case 1:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFF) | (word << 8);
 		break;
 	case 2:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFF) | (word << 16);
 		break;
 	case 3:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFF) | (word << 24);
@@ -885,7 +885,7 @@ void LW()
 {
 	PC++;
 	address = lsaddr;
-	rdword = (unsigned long long int*)&lsrt;
+	rdword = &lsrt;
 	read_word_in_memory();
 	if (address)
 		sign_extended(lsrt);
@@ -895,7 +895,7 @@ void LBU()
 {
 	PC++;
 	address = lsaddr;
-	rdword = (unsigned long long int*)&lsrt;
+	rdword = &lsrt;
 	read_byte_in_memory();
 }
 
@@ -903,40 +903,40 @@ void LHU()
 {
 	PC++;
 	address = lsaddr;
-	rdword = (unsigned long long int*)&lsrt;
+	rdword = &lsrt;
 	read_hword_in_memory();
 }
 
 void LWR()
 {
-	unsigned long long int word = 0;
+	long long int word = 0;
 	PC++;
 	switch ((lsaddr) & 3)
 	{
 	case 0:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFFFFFF00LL) | ((word >> 24) & 0xFF);
 		break;
 	case 1:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFFFF0000LL) | ((word >> 16) & 0xFFFF);
 		break;
 	case 2:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&word;
+		rdword = &word;
 		read_word_in_memory();
 		if (address)
 			lsrt = (lsrt & 0xFFFFFFFFFF000000LL) | ((word >> 8) & 0XFFFFFF);
 		break;
 	case 3:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&lsrt;
+		rdword = &lsrt;
 		read_word_in_memory();
 		if (address)
 			sign_extended(lsrt);
@@ -947,7 +947,7 @@ void LWU()
 {
 	PC++;
 	address = lsaddr;
-	rdword = (unsigned long long int*)&lsrt;
+	rdword = &lsrt;
 	read_word_in_memory();
 }
 
@@ -971,7 +971,7 @@ void SH()
 
 void SWL()
 {
-	unsigned long long int old_word = 0;
+	long long int old_word = 0;
 	PC++;
 	switch ((lsaddr) & 3)
 	{
@@ -983,7 +983,7 @@ void SWL()
 		break;
 	case 1:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		if (address)
 		{
@@ -994,7 +994,7 @@ void SWL()
 		break;
 	case 2:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		if (address)
 		{
@@ -1023,7 +1023,7 @@ void SW()
 
 void SDL()
 {
-	unsigned long long int old_word = 0;
+	long long int old_word = 0;
 	PC++;
 	switch ((lsaddr) & 7)
 	{
@@ -1035,7 +1035,7 @@ void SDL()
 		break;
 	case 1:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1046,7 +1046,7 @@ void SDL()
 		break;
 	case 2:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1057,7 +1057,7 @@ void SDL()
 		break;
 	case 3:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1068,7 +1068,7 @@ void SDL()
 		break;
 	case 4:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1079,7 +1079,7 @@ void SDL()
 		break;
 	case 5:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1090,7 +1090,7 @@ void SDL()
 		break;
 	case 6:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1101,7 +1101,7 @@ void SDL()
 		break;
 	case 7:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1115,13 +1115,13 @@ void SDL()
 
 void SDR()
 {
-	unsigned long long int old_word = 0;
+	long long int old_word = 0;
 	PC++;
 	switch ((lsaddr) & 7)
 	{
 	case 0:
 		address = lsaddr;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1132,7 +1132,7 @@ void SDR()
 		break;
 	case 1:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1143,7 +1143,7 @@ void SDR()
 		break;
 	case 2:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1154,7 +1154,7 @@ void SDR()
 		break;
 	case 3:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1165,7 +1165,7 @@ void SDR()
 		break;
 	case 4:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1176,7 +1176,7 @@ void SDR()
 		break;
 	case 5:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1187,7 +1187,7 @@ void SDR()
 		break;
 	case 6:
 		address = (lsaddr) & 0xFFFFFFF8;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_dword_in_memory();
 		if (address)
 		{
@@ -1207,13 +1207,13 @@ void SDR()
 
 void SWR()
 {
-	unsigned long long int old_word = 0;
+	long long int old_word = 0;
 	PC++;
 	switch ((lsaddr) & 3)
 	{
 	case 0:
 		address = lsaddr;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		if (address)
 		{
@@ -1224,7 +1224,7 @@ void SWR()
 		break;
 	case 1:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		if (address)
 		{
@@ -1235,7 +1235,7 @@ void SWR()
 		break;
 	case 2:
 		address = (lsaddr) & 0xFFFFFFFC;
-		rdword = (unsigned long long int*)&old_word;
+		rdword = &old_word;
 		read_word_in_memory();
 		if (address)
 		{
@@ -1262,7 +1262,7 @@ void LL()
 {
 	PC++;
 	address = lsaddr;
-	rdword = (unsigned long long int*)&lsrt;
+	rdword = &lsrt;
 	read_word_in_memory();
 	if (address)
 	{
@@ -1273,11 +1273,11 @@ void LL()
 
 void LWC1()
 {
-	unsigned long long int temp;
+	long long int temp;
 	if (check_cop1_unusable()) return;
 	PC++;
 	address = lslfaddr;
-	rdword = (unsigned long long int*)&temp;
+	rdword = &temp;
 	read_word_in_memory();
 	if (address)
 		*((long*) reg_cop1_simple[lslfft]) = *rdword;
@@ -1288,7 +1288,7 @@ void LDC1()
 	if (check_cop1_unusable()) return;
 	PC++;
 	address = lslfaddr;
-	rdword = (unsigned long long int*)(unsigned long long*) reg_cop1_double[lslfft];
+	rdword = (long long int*) reg_cop1_double[lslfft];
 	read_dword_in_memory();
 }
 
@@ -1296,7 +1296,7 @@ void LD()
 {
 	PC++;
 	address = lsaddr;
-	rdword = (unsigned long long int*)&lsrt;
+	rdword = &lsrt;
 	read_dword_in_memory();
 }
 
@@ -1652,64 +1652,29 @@ void init_blocks()
 
 void go()
 {
+	debug_count = 0;
+	delay_slot = 0;
 	stop = 0;
+
+	last_addr = 0xa4000040;
+	next_interupt = 624999;
+	init_interupt();
+	interpcore = 0;
+	interp_addr = 0xa4000040;
 
 	if (!r4300emu)
 	{
-		//printf ("interpreter\n");
 		init_blocks();
 		last_addr = PC->addr;
 		
 		while (!stop)
 		{
-			//if ((debug_count+Count) >= 0x78a8091) break; // obj 0x16aeb8a
-			//if ((debug_count+Count) >= 0x16b1360)
-			/*if ((debug_count+Count) >= 0xf203ae0)
-			  {
-			 printf ("PC=%x:%x\n", (unsigned int)(PC->addr),
-				 (unsigned int)(rdram[(PC->addr&0xFFFFFF)/4]));
-			 for (j=0; j<16; j++)
-			   printf ("reg[%2d]:%8x%8x        reg[%d]:%8x%8x\n",
-				   j,
-				   (unsigned int)(reg[j] >> 32),
-				   (unsigned int)reg[j],
-				   j+16,
-				   (unsigned int)(reg[j+16] >> 32),
-				   (unsigned int)reg[j+16]);
-			 printf("hi:%8x%8x        lo:%8x%8x\n",
-				(unsigned int)(hi >> 32),
-				(unsigned int)hi,
-				(unsigned int)(lo >> 32),
-				(unsigned int)lo);
-			 printf("apr�s %d instructions soit %x\n",(unsigned int)(debug_count+Count)
-				,(unsigned int)(debug_count+Count));
-			 getchar();
-			  }*/
-			/*if ((debug_count+Count) >= 0x80000000)
-			  printf("%x:%x, %x\n", (int)PC->addr,
-				 (int)rdram[(PC->addr & 0xFFFFFF)/4],
-				 (int)(debug_count+Count));*/
-#ifdef COMPARE_CORE
-			if (PC->ops == FIN_BLOCK &&
-					(PC->addr < 0x80000000 || PC->addr >= 0xc0000000))
-				virtual_to_physical_address(PC->addr, 2);
-			compare_core();
-#endif
 			PC->ops();
-			/*if (j!= (Count & 0xFFF00000))
-			  {
-			 j = (Count & 0xFFF00000);
-			 printf("%x\n", j);
-			  }*/
-			//check_PC;
-#ifdef DBG
-			if (debugger_mode)
-				update_debugger();
-#endif
 		}
 	}
 	else if (r4300emu == 2)
 	{
+		PC = malloc(sizeof (precomp_instr));
 		r4300emu = 0;
 		interpcore = 1;
 		pure_interpreter();
@@ -1719,17 +1684,14 @@ void go()
 	{
 		interpcore = 0;
 		r4300emu = 1;
-		//printf("dynamic recompiler\n");
 		RecompCache_Init();
 		init_blocks();
 #ifdef PPC_DYNAREC
-		//jump_to(0xa4000040);
 		dynarec(interp_addr);
 #else
 		code = (void *) (actual->code + (actual->block[0x40 / 4].local_addr));
 		dyna_start(code);
 #endif
-		//PC++;
 	}
 	debug_count += Count;
 }
@@ -1956,33 +1918,8 @@ void r4300_reset_soft(void)
 
 void cpu_init(void)
 {
-	debug_count = 0;
-
-	delay_slot = 0;
-	stop = 0;
-
-	for (i = 0; i < 0x100000; i++)
-	{
-		tlb_LUT_r[i] = 0;
-		tlb_LUT_w[i] = 0;
-	}
-
-
 	r4300_reset_hard();
 	r4300_reset_soft();
-
-	last_addr = 0xa4000040;
-	next_interupt = 624999;
-	init_interupt();
-	interpcore = 0;
-
-	// I'm adding this from pure_interpreter()
-	interp_addr = 0xa4000040;
-	// FIXME: I'm making an assumption:
-	//          worst case is probably this will leak mem
-	if (r4300emu == 2)
-		PC = malloc(sizeof (precomp_instr));
-	// Hack for the interpreter
 }
 
 void cpu_deinit(void)
@@ -1990,6 +1927,7 @@ void cpu_deinit(void)
 	// No need to check these if we were in the pure interp
 	if (r4300emu != 2)
 	{
+		int i;
 		for (i = 0; i < 0x100000; i++)
 		{
 			PowerPC_block* temp_block = blocks_get(i);

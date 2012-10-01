@@ -87,10 +87,10 @@ static unsigned short *address_low = (unsigned short *)(&address);
 unsigned int word;
 unsigned char cpu_byte;
 unsigned short hword;
-unsigned long long int dword;
+long long int dword;
 
 // addresse where the read value will be stored
-unsigned long long int* rdword;
+long long int* rdword;
 
 // trash : when we write to unmaped memory it is written here
 static unsigned int trash;

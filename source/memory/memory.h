@@ -46,7 +46,7 @@ extern unsigned int *rdram;
 extern unsigned int address, word;
 extern unsigned char cpu_byte;
 extern unsigned short hword;
-extern unsigned long long dword, *rdword;
+extern long long int dword, *rdword;
 
 extern void (*readmem[0x10000])(void);
 extern void (*readmemb[0x10000])(void);

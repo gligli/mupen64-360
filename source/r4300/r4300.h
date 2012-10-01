@@ -49,7 +49,7 @@ extern PowerPC_block *actual;
 extern precomp_block *blocks[0x100000], *actual;
 #endif
 extern int stop, llbit;
-extern unsigned long long int reg[36];
+extern long long int reg[36];
 #define hi (reg[32])
 #define lo (reg[33])
 #define local_rs (reg[34])

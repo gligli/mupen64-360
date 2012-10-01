@@ -253,7 +253,7 @@ unsigned int dyna_mem_usage[16]={};
 
 unsigned int dyna_mem(unsigned int value, unsigned int addr,
                       memType type, unsigned int pc, int isDelaySlot){
-	static unsigned long long dyna_rdword;
+	static long long dyna_rdword;
 	
 	++dyna_mem_usage[type];
 
