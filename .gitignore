@@ -3,3 +3,4 @@
 build
 netbeans/
 /files/compiled/*.bin
+*.elf32

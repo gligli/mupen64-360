@@ -120,10 +120,25 @@ char txtbuffer[1024];
 
 int run_rom(char * romfile);
 
+void WaitNoButtonPress() {
+	struct controller_data_s c = {0};
+
+	for(;;){
+		usb_do_poll();
+		get_controller_data(&c, 0);
+		
+		if(!(c.a || c.b || c.x || c.y || c.back || c.logo || c.start ||
+				c.rb || c.lb || c.up || c.down || c.left || c.right))
+			return;
+	}
+}
+
 void ActionAbout(void * other) {
-	struct controller_data_s ctrl;
+	struct controller_data_s ctrl = {0};
 	float x=0.2,y=-0.75,nl=0.1;
 	
+	WaitNoButtonPress();
+
 	// Begin to draw
 	Browser.Begin();
 
@@ -148,21 +163,29 @@ void ActionAbout(void * other) {
 	// Draw is finished
 	Browser.End();
 
-	// Update code ...
 	for(;;){
 		usb_do_poll();
-		if(get_controller_data(&ctrl, 0) && (ctrl.a || ctrl.b)){
+		get_controller_data(&ctrl, 0);
+		
+		if(ctrl.a || ctrl.b){
 			return;
 		}
 	}
+
+	WaitNoButtonPress();
 }
 
 void ActionLaunchFile(char * filename) {
+
+	WaitNoButtonPress();
+
 	if( run_rom(filename) )
 	{
 		sprintf(txtbuffer,"Could not load file:\n\n%s\n\nIt is probably not a N64 rom.",filename);
 		Browser.Alert(txtbuffer);
 	}
+	
+	WaitNoButtonPress();
 }
 
 void ActionShutdown(void * unused) {
@@ -345,6 +368,9 @@ void do_GUI() {
     }
 
     Browser.SetLaunchAction(ActionLaunchFile);
+	
+	WaitNoButtonPress();
+	
     Browser.Run(MUPEN_DIR);
 }
 
@@ -497,7 +523,7 @@ u8 * alloc_read_file (char *filename, u32 & osize)
 		}
 
 		struct stat s;
-		fstat(f, &s);
+		stat(filename, &s);
 
 		size = s.st_size;
 		buf=(u8*)malloc(size);

@@ -1222,8 +1222,8 @@ void CxeRender::ApplyScissorWithClipRatio(bool force)
 
 	float ulx = max(xe_origx + windowSetting.clipping.left * xe_scalex, 0);
 	float uly = max(xe_origy + ((gRSP.real_clip_scissor_top)*windowSetting.fMultY) * xe_scaley, 0);
-	float lrx = max(xe_origx + min((windowSetting.clipping.left+windowSetting.clipping.width) * xe_scalex,windowSetting.uDisplayWidth), 0);
-	float lry = max(xe_origy + min(((gRSP.real_clip_scissor_top*windowSetting.fMultY) + windowSetting.clipping.height) * xe_scaley,windowSetting.uDisplayHeight), 0);
+	float lrx = max(xe_origx + min((windowSetting.clipping.left+windowSetting.clipping.width-1) * xe_scalex,windowSetting.uDisplayWidth), 0);
+	float lry = max(xe_origy + min(((gRSP.real_clip_scissor_top*windowSetting.fMultY) + windowSetting.clipping.height-1) * xe_scaley,windowSetting.uDisplayHeight), 0);
 
 	Xe_SetScissor(xe,1,(u32) ulx,(u32) uly,(u32) lrx,(u32) lry);
 
@@ -1333,13 +1333,13 @@ void CxeRender::glViewportWrapper(int x, int y, int width, int height, bool orth
 		else
 		{
 			float vp_x=(f32) (xe_origx + x) / windowSetting.uDisplayWidth;
-			float vp_y=(f32) (xe_origy + (windowSetting.uDisplayHeight-(y+height))*xe_scaley) / windowSetting.uDisplayHeight;
+			float vp_y=(f32) (xe_origy + y) / windowSetting.uDisplayHeight;
 			float vp_w=(f32) (xe_scalex * width) / windowSetting.uDisplayWidth;
 			float vp_h=(f32) (xe_scaley * height) / windowSetting.uDisplayHeight;
 
 			float viewport_matrix[4][4] = {
-				{vp_w,0,0,2.0f*vp_x},
-				{0,vp_h,0,-2.0f*vp_y},
+				{vp_w,0,0,(vp_x*2+vp_w)-1},
+				{0,vp_h,0,(vp_y*2+vp_h)-1},
 				{0,0,1/(FAR-NEAR),NEAR/(NEAR-FAR)},
 				{0,0,0,1},
 			};

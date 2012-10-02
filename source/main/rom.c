@@ -205,7 +205,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     countrycodestring(ROM_HEADER.Country_code>>8, buffer);
     DebugMessage(M64MSG_INFO, "Country: %s", buffer);
     DebugMessage(M64MSG_VERBOSE, "PC = %x", sl((unsigned int)ROM_HEADER.PC));
-    DebugMessage(M64MSG_VERBOSE, "Save type: %d", ROM_SETTINGS.savetype);
+    DebugMessage(M64MSG_INFO, "Save type: %d", ROM_SETTINGS.savetype);
 
     //Prepare Hack for GOLDENEYE
     isGoldeneyeRom = 0;
