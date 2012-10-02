@@ -63,10 +63,6 @@ void getKeys(int Control, BUTTONS *Keys)
 	get_controller_data(&cdata[Control], Control);
 	c=&cdata[Control];
 
-    if (c->back){
-		stop=1;
-	}
-	
     b.START_BUTTON=c->start;
         
     b.A_BUTTON=c->a;

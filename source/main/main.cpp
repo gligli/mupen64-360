@@ -385,6 +385,21 @@ void new_frame()
 
 void new_vi()
 {
+	struct controller_data_s c = {0};
+
+	usb_do_poll();
+	get_controller_data(&c, 0);
+
+    if (c.logo)
+	{
+		stop=1;
+	}
+
+    if (c.back)
+	{
+		ActionToggleLim(NULL);
+		WaitNoButtonPress();
+	}
 }
 
 const char *get_savestatepath(void)
