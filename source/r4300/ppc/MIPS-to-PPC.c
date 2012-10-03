@@ -246,6 +246,9 @@ static int branch(int offset, condition cond, int link, int likely){
 		// Load the address of the next instruction
 		EMIT_LIS(3, (get_src_pc()+4)>>16);
 		EMIT_ORI(3, 3, get_src_pc()+4);
+		// Restore LR
+		EMIT_LWZ(0, DYNAOFF_LR, 1);
+		EMIT_MTLR(0);
 		// If taking the interrupt, return to the trampoline
 		EMIT_BLELR(2, 0);
 
@@ -262,6 +265,9 @@ static int branch(int offset, condition cond, int link, int likely){
 		EMIT_ORI(3, 3, get_src_pc() + (offset<<2));
 		EMIT_STW(3, 0, DYNAREG_LADDR);
 
+		// Restore LR
+		EMIT_LWZ(0, DYNAOFF_LR, 1);
+		EMIT_MTLR(0);
 		// If taking the interrupt, return to the trampoline
 		EMIT_BLELR(2, 0);
 
@@ -355,6 +361,9 @@ static int J(MIPS_instr mips){
 		EMIT_ORI(3, 3, naddr);
 		EMIT_STW(3, 0, DYNAREG_LADDR);
 
+		// Restore LR
+		EMIT_LWZ(0, DYNAOFF_LR, 1);
+		EMIT_MTLR(0);
 		// if(next_interupt <= Count) return;
 		EMIT_BLELR(2, 0);
 
@@ -419,6 +428,9 @@ static int JAL(MIPS_instr mips){
 		EMIT_ORI(3, 3, naddr);
 		EMIT_STW(3, 0, DYNAREG_LADDR);
 
+		// Restore LR
+		EMIT_LWZ(0, DYNAOFF_LR, 1);
+		EMIT_MTLR(0);
 		/// if(next_interupt <= Count) return;
 		EMIT_BLELR(2, 0);
 
@@ -1830,7 +1842,12 @@ static int (*gen_special[64])(MIPS_instr) =
 };
 
 static int SPECIAL(MIPS_instr mips){
+#ifdef INTERPRET_SPECIAL
+	genCallInterp(mips);
+	return INTERPRETED;
+#else
 	return gen_special[MIPS_GET_FUNC(mips)](mips);
+#endif
 }
 
 // -- RegImmed Instructions --
@@ -3518,6 +3535,9 @@ static void genCallInterp(MIPS_instr mips){
 
 static void genJumpTo(unsigned int loc, unsigned int type){
 	if(type == JUMPTO_REG){
+		// Restore LR
+		EMIT_LWZ(0, DYNAOFF_LR, 1);
+		EMIT_MTLR(0);
 		// Load the register as the return value
 		EMIT_LWZ(3, loc*8+4, DYNAREG_REG);
 	} else {
@@ -3684,7 +3704,9 @@ void genCallDynaMem(memType type, int base, short immed){
 	EMIT_BNELR(6, 0);
 }
 
-extern unsigned char invalid_code[0x100000];
+extern char __attribute__((aligned(65536))) invalid_code[0x100000];
+
+#ifdef INVALIDATE_FUNC_ON_CHECK_MEMORY
 
 #define CHECK_INVALID_CODE()                                                   \
 	invalidateRegisters();													   \
@@ -3701,6 +3723,20 @@ extern unsigned char invalid_code[0x100000];
     /* restore LR */                                                           \
     EMIT_LWZ(0, DYNAOFF_LR, 1);                                                \
     EMIT_MTLR(0);
+
+#else
+
+#define CHECK_INVALID_CODE()                                                   \
+    EMIT_ADDI(5, base, immed);                                                 \
+	invalidateRegisters();													   \
+    /* test invalid code */                                                    \
+    EMIT_LIS(12, HA((unsigned int)&invalid_code));                             \
+    EMIT_RLWINM(5, 5, 20, 12, 31);                                             \
+    EMIT_ADD(12, 12, 5);                                                       \
+	EMIT_LI(5,1)															   \
+    EMIT_STB(5,((unsigned int)&invalid_code),12);                             
+
+#endif
 
 static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 	flushRegisters();

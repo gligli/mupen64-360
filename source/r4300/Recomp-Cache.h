@@ -5,8 +5,8 @@
 #ifndef RECOMP_CACHE_H
 #define RECOMP_CACHE_H
 
-#define RECOMP_CACHE_SIZE (16*1024*1024)
-#define RECOMPMETA_SIZE (4*1024*1024)
+#define RECOMP_CACHE_SIZE (24*1024*1024)
+#define RECOMPMETA_SIZE (8*1024*1024)
 
 extern __attribute__((aligned(65536),section(".bss.beginning.upper"))) unsigned char recomp_cache_buffer[RECOMP_CACHE_SIZE];
 
@@ -18,7 +18,6 @@ void ICInvalidateRange(void* startaddr, unsigned int len);
 //   Any memory allocated this way can be freed at any time
 //   you must check invalid_code before you can access it
 void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* func);
-void RecompCache_Realloc(PowerPC_func*, unsigned int new_size);
 void RecompCache_Free(unsigned int addr);
 // Update the LRU info of the indicated block
 //   (call when the block is accessed)

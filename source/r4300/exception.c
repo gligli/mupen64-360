@@ -36,24 +36,31 @@ void TLB_refill_exception(unsigned int address, int w)
 {
 	if (!r4300emu && w != 2) update_count();
 	
-	if (w == 1) Cause = (3 << 2);
-	else Cause = (2 << 2);
+	Cause&=~(0x1f<<2);
 	
+	//gli from the R4300 datasheeet
 	switch(w)
 	{
 	case 0:
-		Cause=2<<2; //gli should be TLBL TLB Exception (Load or instruction fetch)
+		Cause|=2<<2; //TLB Exception (Load or instruction fetch)
 		break;
 	case 1:
-		Cause=1<<2; //gli should be TLBS TLB Exception (Store)
+		Cause|=3<<2; //TLB Exception (Store)
 		break;
 	case 2:
-		Cause=2<<2; //gli not sure here, but same as read makes sense
+		Cause|=2<<2; //not sure here, but same as read makes sense
 		break;
+	}
+
+	int mapped_invalid=0;
+	
+	if(!tlb_LUT_valid[address>>12] && tlb_LUT_r[address>>12])
+	{
+		mapped_invalid=1;;
 	}
 	
 	BadVAddr = address;
-	Context = (Context & 0xFF80000F) | ((address >> 9) & 0x007FFFF0);
+	Context = (Context & 0xFF80000F) | (((address >> 13) << 4) & 0x007FFFF0);
 	EntryHi = address & 0xFFFFE000;
 	if (Status & 0x2) // Testing EXL , to detect double exception
 	{
@@ -65,8 +72,6 @@ void TLB_refill_exception(unsigned int address, int w)
 	}
 	else
 	{
-		DebugMessage(M64MSG_INFO,"TLB refill, addr=%p, w=%d, interp_addr=%p, dslot=%d",address,w,interp_addr,delay_slot);
-				
 		if (!interpcore && !r4300emu)
 		{ 
 			assert(0);
@@ -82,7 +87,18 @@ void TLB_refill_exception(unsigned int address, int w)
 		
 		Cause &= ~0x80000000;
 		Status |= 0x2; //EXL=1
-		interp_addr = 0x80000000;
+
+		if(mapped_invalid)
+		{
+//			DebugMessage(M64MSG_INFO,"TLB invalid, addr=%p, w=%d, interp_addr=%p, dslot=%d",address,w,interp_addr,delay_slot);
+			interp_addr = 0x80000180;
+		}
+		else
+		{
+//			DebugMessage(M64MSG_INFO,"TLB refill, addr=%p, w=%d, interp_addr=%p, dslot=%d",address,w,interp_addr,delay_slot);
+			interp_addr = 0x80000000;
+		}
+				
 	}
 	if (delay_slot == 1 || delay_slot == 3)
 	{
@@ -107,6 +123,8 @@ void TLB_refill_exception(unsigned int address, int w)
 
 void exception_general(void)
 {
+//	DebugMessage(M64MSG_INFO, "General exception, SR=%08x, old EPC=%p, interp_addr=%p, delay_slot=%d",Status,EPC,interp_addr,delay_slot);
+
 	update_count();
 	Status |= 2;
 

@@ -69,7 +69,7 @@ extern unsigned long interpcore;
 extern unsigned int next_interupt, CIC_Chip;
 extern int rounding_mode, trunc_mode, round_mode, ceil_mode, floor_mode;
 extern unsigned long last_addr, interp_addr;
-extern char invalid_code[0x100000];
+extern char __attribute__((aligned(65536))) invalid_code[0x100000];
 extern unsigned long jump_to_address;
 extern int no_audio_delay;
 extern int no_compiled_jump;

@@ -23,16 +23,10 @@
 #ifndef RECOMPILE_H
 #define RECOMPILE_H
 
-#include "../../main/main.h"
-
+#include "main/main.h"
 #include "MIPS-to-PPC.h"
 
 typedef unsigned int uint;
-
-typedef struct hole_node {
-	unsigned short addr;
-	struct hole_node* next;
-} PowerPC_func_hole_node;
 
 struct func;
 
@@ -49,11 +43,11 @@ typedef struct link_node {
 } PowerPC_func_link_node;
 
 typedef struct func {
-	unsigned int start_addr;
-	unsigned int end_addr;
+	unsigned int start_address;
+	unsigned int end_address;
 	PowerPC_instr* code;
+	unsigned int   code_length;
 	unsigned int   lru;
-	PowerPC_func_hole_node* holes;
 	PowerPC_func_link_node* links_in;
 	PowerPC_func_node*      links_out;
 	PowerPC_instr** code_addr;
@@ -65,13 +59,16 @@ void remove_func(PowerPC_func_node** root, PowerPC_func* func);
 void remove_node(PowerPC_func_node** node);
 
 typedef struct {
-	MIPS_instr*     mips_code;     // The code to recompile
-	uint            start_address; // The address this code begins for the 64
-	uint            end_address;
+	unsigned int    start_address; // The address this code begins for the 64
+	unsigned int    end_address;
 	//PowerPC_instr** code_addr;     // table of block offsets to code pointer,
 	                               //   its length is end_addr - start_addr
 	PowerPC_func_node* funcs;      // BST of functions in this block
 	unsigned long   adler32;       // Used for TLB
+	
+	unsigned long splits[1024];
+	int split_count;
+	
 } PowerPC_block;
 
 #define MAX_JUMPS        4096
@@ -79,16 +76,15 @@ typedef struct {
 #define JUMP_TYPE_CALL   2   // the jump is to a C function
 #define JUMP_TYPE_SPEC   4   // special jump, destination precomputed
 typedef struct {
-	MIPS_instr*    src_instr;
+	unsigned int   src_pc;
 	PowerPC_instr* dst_instr;
-	int            old_jump;
-	int            new_jump;
+	unsigned int   old_jump;
+	unsigned int   new_jump;
 	uint           type;
 } jump_node;
 
 MIPS_instr get_next_src(void);
 MIPS_instr peek_next_src(void);
-int        has_next_src(void);
 
 void       set_next_dst(PowerPC_instr);
 
@@ -102,15 +98,17 @@ void       set_jump_special(int which, int new_jump);
 int  func_was_freed(PowerPC_func*);
 void clear_freed_funcs(void);
 
-void invalidate_block(PowerPC_block* ppc_block);
-
 /* These functions are used to initialize, recompile, and deinit a block
    init assumes that all pointers in the block fed it it are NULL or allocated
    memory. Deinit frees a block with the same preconditions.
  */
 PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr);
-void init_block  (MIPS_instr* mips_code, PowerPC_block* ppc_block);
-void deinit_block(PowerPC_block* ppc_block);
+void init_block			(PowerPC_block* ppc_block);
+void deinit_block		(PowerPC_block* ppc_block);
+void invalidate_block	(PowerPC_block* ppc_block);
+
+void add_block_split(PowerPC_block * block, unsigned int addr);
+int is_block_split(PowerPC_block * block, unsigned int addr);
 
 #ifdef HW_RVL
 #include "../../memory/MEM2.h"

@@ -45,65 +45,124 @@
 
 int do_disasm=0;
 
-static MIPS_instr*    src;
+static PowerPC_func* cf=NULL;
+static unsigned int cur_src;
+
 static PowerPC_instr* dst;
-static MIPS_instr*    src_last;
-static MIPS_instr*    src_first;
-static unsigned int   code_length;
-static unsigned int   addr_first;
-static unsigned int   addr_last;
 static jump_node    jump_table[MAX_JUMPS];
 static unsigned int current_jump;
 static PowerPC_instr** code_addr;
 static unsigned char isJmpDst[1024];
 
-static PowerPC_instr code_buffer[1024*32];
+static PowerPC_instr code_buffer[64*1024];
 static PowerPC_instr* code_addr_buffer[1024];
 
-PowerPC_func* current_func;
 static struct func_list {
 	PowerPC_func*     func;
 	struct func_list* next;
 } *freed_funcs = NULL;
 
-static int pass0(PowerPC_block* ppc_block);
-static void pass2(PowerPC_block* ppc_block);
+static int pass0(PowerPC_block* ppc_block,PowerPC_func* func);
+static void pass2(PowerPC_block* ppc_block,PowerPC_func* func);
 //static void genRecompileBlock(PowerPC_block*);
 static void genJumpPad(void);
-void invalidate_block(PowerPC_block* ppc_block);
 
-MIPS_instr get_next_src(void) { return *(src++); }
-MIPS_instr peek_next_src(void){ return *src;     }
-int has_next_src(void){ return (src_last-src) > 0; }
-// Hacks for delay slots
- // Undoes a get_next_src
- void unget_last_src(void){ --src; }
- // Used for finding how many instructions were generated
- PowerPC_instr* get_curr_dst(void){ return dst; }
- // Makes sure a branch to a NOP in the delay slot won't crash
- // This should be called ONLY after get_next_src returns a
- //   NOP in a delay slot
- void nop_ignored(void){ if(src<src_last) code_addr[src-1-src_first] = dst; }
- // Returns whether the current src instruction is branched to
- int is_j_dst(void){ return isJmpDst[(get_src_pc()&0xfff)>>2]; }
+extern int FP_need_check;
+
+int has_next_src(void)
+{
+	return cur_src < cf->end_address; 
+}
+
+MIPS_instr peek_next_src(void)
+{
+	unsigned int old_address=address;
+	long long int * old_rdword=rdword;
+	long long dyna_rdword;
+	
+	rdword = &dyna_rdword;
+
+	if(cur_src<cf->start_address)
+	{
+		address = get_physical_addr(cf->start_address);
+		assert(address!=PHY_INVALID_ADDR);
+		
+		address -= (cur_src - cf->start_address);
+	}
+	else
+	{
+		address = get_physical_addr(cur_src);
+		assert(address!=PHY_INVALID_ADDR);
+	}
+	
+	read_word_in_memory();
+	
+	MIPS_instr mips=dyna_rdword;	
+	
+//	printf("mips %08x %08x\n",address,mips);
+	
+	address=old_address;
+	rdword=old_rdword;
+	
+	return mips;
+}
+
+MIPS_instr get_next_src(void)
+{
+	MIPS_instr mips=peek_next_src();
+	
+	cur_src+=4;
+	
+	return mips; 
+}
+
+// Used for finding how many instructions were generated
+PowerPC_instr* get_curr_dst(void)
+{
+	return dst;
+}
+
 // Returns the MIPS PC
-unsigned int get_src_pc(void){ return addr_first + ((src-1-src_first)<<2); }
+unsigned int get_src_pc(void)
+{
+	return cur_src-4;
+}
 
 void set_next_dst(PowerPC_instr i)
 {
-    *(dst++) = i;
-    ++code_length;
+	*(dst++) = i;
+    ++cf->code_length;
+}
+
+void nop_ignored(void)
+{
+	if(cur_src<cf->end_address)
+	{
+		code_addr[(cur_src-4-cf->start_address)>>2] = dst;
+	}
 }
 
 // Adjusts the code_addr for the current instruction to account for flushes
-void reset_code_addr(void){ if(src<=src_last) code_addr[src-1-src_first] = dst; }
+void reset_code_addr(void)
+{
+	if(cur_src<=cf->end_address)
+	{
+		code_addr[(cur_src-4-cf->start_address)>>2] = dst;
+	}
+}
+
+// Undoes a get_next_src
+void unget_last_src(void)
+{
+	cur_src-=4;
+}
 
 int add_jump(int old_jump, int is_j, int is_call){
 	int id = current_jump;
 	jump_node* jump = &jump_table[current_jump++];
 	jump->old_jump  = old_jump;
 	jump->new_jump  = 0;     // This should be filled in when known
-	jump->src_instr = src-1; // src points to the next
+	jump->src_pc = cur_src-4;
 	jump->dst_instr = dst;   // set_next hasn't happened
 	jump->type      = (is_j    ? JUMP_TYPE_J    : 0)
 	                | (is_call ? JUMP_TYPE_CALL : 0);
@@ -125,154 +184,110 @@ void set_jump_special(int which, int new_jump){
 	jump->new_jump = new_jump;
 }
 
-PowerPC_func* handle_overlap(PowerPC_func_node** node, PowerPC_func* func, PowerPC_block* ppc_block, unsigned int * addr, int * need_pad, int * needInsert)
+int is_j_dst(void)
 {
-	if(!(*node)) return func;
-	// Check for any potentially overlapping functions to the left or right
-	if((*node)->function->end_addr >= func->start_addr)
-		func = handle_overlap(&(*node)->left, func, ppc_block, addr, need_pad, needInsert);
-	if((*node)->function->start_addr < func->end_addr)
-		func = handle_overlap(&(*node)->right, func, ppc_block, addr, need_pad, needInsert);
-	// Check for overlap with this function
-	if((*node)->function->start_addr > func->start_addr &&
-	   (*node)->function->end_addr == func->end_addr){
-		// (*node)->function is a hole in func
-		PowerPC_func_hole_node* hole = malloc(sizeof(PowerPC_func_hole_node));
-		hole->addr = (*node)->function->start_addr;
-		hole->next = func->holes;
-		func->holes = hole;
-		// Add all holes from the hole
-		// Get to the end of this func->holes
-		PowerPC_func_hole_node* fhn;
-		for(fhn=func->holes; fhn->next; fhn=fhn->next);
-		// Add fn->function's holes to the end func->holes
-		fhn->next = (*node)->function->holes;
-		// Make sure those holes aren't freed
-		(*node)->function->holes = NULL;
-		// Add it to the freed_funcs list
-		struct func_list* freed = malloc(sizeof(struct func_list));
-		freed->func = (*node)->function, freed->next = freed_funcs;
-		freed_funcs = freed;
-		// Free the hole
-		RecompCache_Free((*node)->function->start_addr);
-
-	} else if(func->start_addr > (*node)->function->start_addr &&
-			  func->end_addr == (*node)->function->end_addr){
-		// func is a hole in fn->function
-		PowerPC_func_hole_node* hole = malloc(sizeof(PowerPC_func_hole_node));
-		hole->addr = func->start_addr&0xffff;
-		hole->next = (*node)->function->holes;
-		(*node)->function->holes = hole;
-		// Free this func since its just a hole now
-		free(func);
-		// Move all our pointers to the outer function
-		func = (*node)->function;
-		addr_first = func->start_addr;
-		src_first = ppc_block->mips_code + ((addr_first&0xfff)>>2);
-		*addr = addr_first;
-		*need_pad = pass0(ppc_block);
-		RecompCache_Update(func);
-		// Make sure we don't insert the old func again
-		*needInsert = 0;
-		// There cannot be another overlapping function
-		//break;
-
-	} else if(func->start_addr < (*node)->function->end_addr &&
-			  func->end_addr   > (*node)->function->start_addr){
-		// Add it to the freed_funcs list
-		struct func_list* freed = malloc(sizeof(struct func_list));
-		freed->func = (*node)->function, freed->next = freed_funcs;
-		freed_funcs = freed;
-		// We have some other non-containment overlap
-		RecompCache_Free((*node)->function->start_addr);
-	}
-	return func;
+	return isJmpDst[(get_src_pc()&0xfff)>>2];
 }
 
+void add_block_split(PowerPC_block * block, unsigned int addr){
+
+	block->splits[block->split_count++]=addr;
+	assert(block->split_count<1024);
+}
+
+int is_block_split(PowerPC_block * block, unsigned int addr){
+
+	int i;
+	for(i=0;i<block->split_count;++i)
+	{
+		if (block->splits[i]==addr)
+			return 1;
+	}
+
+	return 0;
+}
 
 // Converts a sequence of MIPS instructions to a PowerPC block
 PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
-	src_first = ppc_block->mips_code + ((addr&0xfff)>>2);
-	addr_first = ppc_block->start_address + (addr&0xfff);
+	
 	code_addr = NULL; // Just to make sure this isn't used here
 
 	ppc_block->adler32 = 0;
 
-	int need_pad = pass0(ppc_block); // Sets src_last, addr_last
-
-	code_length = 0;
-
 	// Create a PowerPC_func for this function
 	PowerPC_func* func = malloc(sizeof(PowerPC_func));
-	func->start_addr = addr_first;
-	func->end_addr = addr_last;
+	
+	cf=func;
+
+	cur_src = addr;
+	
+	func->start_address = addr;
+	func->end_address = ppc_block->end_address;
 	func->code = NULL;
-	func->holes = NULL;
 	func->links_in = NULL;
 	func->links_out = NULL;
 	func->code_addr = NULL;
-	// We'll need to insert this func into the block
-	int needInsert = 1;
+	func->code_length = 0;
 
-	// Check for and remove any overlapping functions
-	func = handle_overlap(&ppc_block->funcs, func, ppc_block, &addr, &need_pad, &needInsert);
-	if(needInsert) insert_func(&ppc_block->funcs, func);
-	current_func = func;
+	int need_pad = pass0(ppc_block,func);
 
-	PowerPC_func_hole_node* hole;
-	for(hole = func->holes; hole != NULL; hole = hole->next){
-		isJmpDst[ (hole->addr&0xfff) >> 2 ] = 1;
-	}
+	// insert this func into the block
+	insert_func(&ppc_block->funcs, func);
+	
+	cf=func;
 
-	src = src_first;
+	cur_src = func->start_address;
 	dst = code_buffer; // Use buffer to avoid guessing length
 	current_jump = 0;
 	code_addr = code_addr_buffer;
-	memset(code_addr, 0, addr_last - addr_first);
-
+	memset(code_addr, 0, func->end_address - func->start_address);
+	
 	start_new_block();
-	isJmpDst[src-ppc_block->mips_code] = 1;
+	isJmpDst[(cur_src-ppc_block->start_address)>>2] = 1;
+	
+	int i;
+	for(i=0;i<ppc_block->split_count;++i){
+		isJmpDst[(ppc_block->splits[i]-ppc_block->start_address)>>2] = 1;
+	}
+
 	// If the final instruction is a branch delay slot and is branched to
 	//   we will need a jump pad so that execution will continue after it
-	need_pad |= isJmpDst[src_last-1-ppc_block->mips_code];
-
+	need_pad |= isJmpDst[(func->end_address-4-ppc_block->start_address)>>2];
+	
 	while(has_next_src()){
-		unsigned int offset = src - ppc_block->mips_code;
-
+		unsigned int offset = (cur_src-ppc_block->start_address)>>2;
+		
 		if(isJmpDst[offset]){
-			src++; start_new_mapping(); src--;
+			cur_src+=4; start_new_mapping(); cur_src-=4;
 		}
 
-		//ppc_block->code_addr[offset] = dst;
 		convert();
 	}
 
 	// Flush any remaining mapped registers
 	flushRegisters(); //start_new_mapping();
+	
 	// In case we couldn't compile the whole function, use a pad
 	if(need_pad)
 		genJumpPad();
 
 	// Allocate the func buffers and copy the code
-	if(!func->code){
-		// We aren't recompiling from a hole
+	assert(!func->code);
+
 #ifdef USE_RECOMP_CACHE
-		RecompCache_Alloc(code_length * sizeof(PowerPC_instr), addr, func);
+	RecompCache_Alloc(func->code_length * sizeof(PowerPC_instr), addr, func);
 #else
-		func->code = malloc(code_length * sizeof(PowerPC_instr));
+	func->code = malloc(func->code_length * sizeof(PowerPC_instr));
 #endif
-	} else {
-		// We're recompiling from a hole, and we need to adjust the buffer size
-		RecompCache_Realloc(func, code_length * sizeof(PowerPC_instr));
-	}
-	memcpy(func->code, code_buffer, code_length * sizeof(PowerPC_instr));
-	memcpy(func->code_addr, code_addr_buffer, addr_last - addr_first + 4);
+	
+	memcpy(func->code, code_buffer, func->code_length * sizeof(PowerPC_instr));
+	memcpy(func->code_addr, code_addr_buffer, func->end_address - func->start_address + 4);
 
 	// Readjusting pointers to the func buffers
 	code_addr = func->code_addr;
 	dst = func->code + (dst - code_buffer);
-	int i;
-	for(i=0; i<src-src_first; ++i)
+
+	for(i=0; i<(cur_src-func->start_address)>>2; ++i)
 		if(code_addr[i])
 			code_addr[i] = func->code + (code_addr[i] - code_buffer);
 	
@@ -281,43 +296,40 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 		                          (jump_table[i].dst_instr - code_buffer);
 
 	// Here we recompute jumps and branches
-	pass2(ppc_block);
+	pass2(ppc_block,func);
 
 	// Since this is a fresh block of code,
 	// Make sure it wil show up in the ICache
-	DCFlushRange(func->code, code_length*sizeof(PowerPC_instr));
-	ICInvalidateRange(func->code, code_length*sizeof(PowerPC_instr));
+	DCFlushRange(func->code, func->code_length*sizeof(PowerPC_instr));
+	ICInvalidateRange(func->code, func->code_length*sizeof(PowerPC_instr));
 
-	for(i=0;i<code_length;++i)
+	int force_disasm=0;
+	
+	if (do_disasm || force_disasm)
 	{
-		int force_disasm=0;
-		if(do_disasm || force_disasm) disassemble((uint32_t)&func->code[i],func->code[i]);
+		for(i=0;i<func->code_length;++i)
+		{
+			if(do_disasm || force_disasm) disassemble((uint32_t)&func->code[i],func->code[i]);
+		}
+
+		for(i=0;i<(func->end_address-func->start_address)>>2;++i)
+		{
+			if(func->code_addr[i])
+				printf("%p = %p\n",(i<<2)+func->start_address,func->code_addr[i]);
+		}
 	}
 
 	return func;
 }
 
-void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
-//	unsigned int length = (ppc_block->end_address - ppc_block->start_address)/sizeof(MIPS_instr);
-  PowerPC_block* temp_block;
-
-	/*if(!ppc_block->code_addr){
-		ppc_block->code_addr = malloc(length * sizeof(PowerPC_instr*));
-		memset(ppc_block->code_addr, 0, length * sizeof(PowerPC_instr*));
-	}*/
-	ppc_block->mips_code = mips_code;
+void init_block(PowerPC_block* ppc_block){
+	PowerPC_block* temp_block;
 
 	// FIXME: Equivalent addresses should point to the same code/funcs?
 	if(ppc_block->end_address < 0x80000000 || ppc_block->start_address >= 0xc0000000){
 		unsigned long paddr;
 
 		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
-		
-		if(paddr==PHY_INVALID_ADDR)
-		{
-			assert(0); //gli not sure what to do here
-		}
-		
 		invalid_code[paddr>>12]=0;
 		temp_block = blocks_get(paddr>>12);
 		if(!temp_block){
@@ -327,7 +339,7 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 		     temp_block->funcs = NULL;
 		     temp_block->start_address = paddr & ~0xFFF;
 		     temp_block->end_address = (paddr & ~0xFFF) + 0x1000;
-		     init_block(mips_code, temp_block);
+		     init_block(temp_block);
 		}
 
 		paddr += ppc_block->end_address - ppc_block->start_address - 4;
@@ -340,7 +352,7 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 		     temp_block->funcs = NULL;
 		     temp_block->start_address = paddr & ~0xFFF;
 		     temp_block->end_address = (paddr & ~0xFFF) + 0x1000;
-		     init_block(mips_code + 0xffc, temp_block);
+		     init_block(temp_block);
 		}
 
 	} else {
@@ -357,7 +369,7 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 				temp_block->funcs = NULL;
 				temp_block->start_address = (start+0x20000000) & ~0xFFF;
 				temp_block->end_address		= ((start+0x20000000) & ~0xFFF) + 0x1000;
-				init_block(mips_code, temp_block);
+				init_block(temp_block);
 			}
 		}
 		if(start >= 0xa0000000 && end < 0xc0000000 &&
@@ -371,7 +383,7 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 				temp_block->funcs = NULL;
 				temp_block->start_address		= (start-0x20000000) & ~0xFFF;
 				temp_block->end_address			= ((start-0x20000000) & ~0xFFF) + 0x1000;
-				init_block(mips_code, temp_block);
+				init_block(temp_block);
 					
 			}
 		}
@@ -380,13 +392,9 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 }
 
 void deinit_block(PowerPC_block* ppc_block){
-  PowerPC_block* temp_block;
+	PowerPC_block* temp_block;
 	invalidate_block(ppc_block);
-	/*if(ppc_block->code_addr){
-		invalidate_block(ppc_block);
-		free(ppc_block->code_addr);
-		ppc_block->code_addr = NULL;
-	}*/
+
 	invalid_code[ppc_block->start_address>>12]=1;
 
 	// We need to mark all equivalent addresses as invalid
@@ -394,12 +402,6 @@ void deinit_block(PowerPC_block* ppc_block){
 		unsigned long paddr;
 
 		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
-		
-		if(paddr==PHY_INVALID_ADDR)
-		{
-			assert(0); //gli not sure what to do here
-		}
-		
 		temp_block = blocks_get(paddr>>12);
 		if(temp_block){
 		     //blocks[paddr>>12]->code_addr = NULL;
@@ -431,16 +433,16 @@ void deinit_block(PowerPC_block* ppc_block){
 
 int is_j_out(int branch, int is_aa){
 	if(is_aa)
-		return ((branch << 2 | (addr_first & 0xF0000000)) <  addr_first ||
-		        (branch << 2 | (addr_first & 0xF0000000)) >= addr_last);
+		return ((branch << 2 | (cf->start_address & 0xF0000000)) <  cf->start_address ||
+		        (branch << 2 | (cf->start_address & 0xF0000000)) >= cf->end_address);
 	else {
-		int dst_instr = (src-1 - src_first) + branch;
-		return (dst_instr < 0 || dst_instr >= (addr_last-addr_first)>>2);
+		int dst_instr = ((cur_src-cf->start_address-4)>>2) + branch;
+		return (dst_instr < 0 || dst_instr >= (cf->end_address-cf->start_address)>>2);
 	}
 }
 
 // Pass 2 fills in all the new addresses
-static void pass2(PowerPC_block* ppc_block){
+static void pass2(PowerPC_block* ppc_block,PowerPC_func* func){
 	int i;
 	PowerPC_instr* current;
 	for(i=0; i<current_jump; ++i){
@@ -470,7 +472,7 @@ static void pass2(PowerPC_block* ppc_block){
 
 		} else if(!(jump_table[i].type & JUMP_TYPE_J)){ // Branch instruction
 			int jump_offset = (unsigned int)jump_table[i].old_jump +
-				         ((unsigned int)jump_table[i].src_instr - (unsigned int)src_first)/4;
+				         ((jump_table[i].src_pc - func->start_address)>>2);
 
 			jump_table[i].new_jump = code_addr[jump_offset] - current;
 
@@ -490,7 +492,7 @@ static void pass2(PowerPC_block* ppc_block){
 			                         (ppc_block->start_address & 0xF0000000);
 
 			// We're jumping within this block, find out where
-			int jump_offset = (jump_addr - addr_first) >> 2;
+			int jump_offset = (jump_addr - func->start_address) >> 2;
 			jump_table[i].new_jump = code_addr[jump_offset] - current;
 
 			*current &= ~(PPC_LI_MASK << PPC_LI_SHIFT);
@@ -500,37 +502,29 @@ static void pass2(PowerPC_block* ppc_block){
 	}
 }
 
-static int pass0(PowerPC_block* ppc_block){
-	// Scan over the MIPS code for this function and detect any
-	//   any local branches and mark their destinations (for flushing).
-	//   Determine src_last and addr_last by the end of the block
-	//   (if reached) or the end of the function (exclusive of the
-	//   delay slot as it will be recompiled ahead of the J/JR and
-	//   does not need to be recompiled after the J/JR as it belongs
-	//   to the next function if its used in that way.
-	// If the function continues into the next block, we'll need to use
-	//   a jump pad at the end of the block.
-	unsigned int pc = addr_first >> 2;
-	int i;
-	// Set this to the end address of the block for is_j_out
-	addr_last = ppc_block->end_address;
+static int pass0(PowerPC_block* ppc_block,PowerPC_func* func){
+	
 	// Zero out the jump destinations table
+	int i;
 	for(i=0; i<1024; ++i) isJmpDst[i] = 0;
-	// Go through each instruction and map every branch instruction's destination
-	for(src = src_first; (pc < addr_last >> 2); ++src, ++pc){
-		int opcode = MIPS_GET_OPCODE(*src);
-		int index = pc - (ppc_block->start_address >> 2);
+
+	for(cur_src = func->start_address; cur_src < func->end_address; cur_src+=4){
+	
+		MIPS_instr mips=peek_next_src();
+
+		int opcode = MIPS_GET_OPCODE(mips);
+		int index = (cur_src - ppc_block->start_address) >> 2;
 		if(opcode == MIPS_OPCODE_J || opcode == MIPS_OPCODE_JAL){
-			unsigned int li = MIPS_GET_LI(*src);
-			src+=2; ++pc;
+			unsigned int li = MIPS_GET_LI(mips);
+			cur_src+=8;
 			if(!is_j_out(li, 1)){
 				assert( ((li&0x3FF) >= 0) && ((li&0x3FF) < 1024) );
 				isJmpDst[ li & 0x3FF ] = 1;
 			}
-			--src;
+			cur_src-=4;
 			if(opcode == MIPS_OPCODE_JAL && index + 2 < 1024)
 				isJmpDst[ index + 2 ] = 1;
-			if(opcode == MIPS_OPCODE_J){ ++src, ++pc; break; }
+			if(opcode == MIPS_OPCODE_J){ cur_src+=4; break; }
 		} else if(opcode == MIPS_OPCODE_BEQ   ||
 		          opcode == MIPS_OPCODE_BNE   ||
 		          opcode == MIPS_OPCODE_BLEZ  ||
@@ -541,41 +535,40 @@ static int pass0(PowerPC_block* ppc_block){
 		          opcode == MIPS_OPCODE_BGTZL ||
 		          opcode == MIPS_OPCODE_B     ||
 		          (opcode == MIPS_OPCODE_COP1 &&
-		           MIPS_GET_RS(*src) == MIPS_FRMT_BC)){
-			int bd = MIPS_GET_IMMED(*src);
-			src+=2; ++pc;
+		           MIPS_GET_RS(mips) == MIPS_FRMT_BC)){
+			int bd = MIPS_GET_IMMED(mips);
+			cur_src+=8;
 			bd |= (bd & 0x8000) ? 0xFFFF0000 : 0; // sign extend
 			if(!is_j_out(bd, 0)){
 				assert( index + 1 + bd >= 0 && index + 1 + bd < 1024 );
 				isJmpDst[ index + 1 + bd ] = 1;
 			}
-			--src;
+			cur_src-=4;
+
 			if(index + 2 < 1024)
 				isJmpDst[ index + 2 ] = 1;
+			
 		} else if(opcode == MIPS_OPCODE_R &&
-		          (MIPS_GET_FUNC(*src) == MIPS_FUNC_JR ||
-		           MIPS_GET_FUNC(*src) == MIPS_FUNC_JALR)){
-			src+=2, pc+=2;
+		          (MIPS_GET_FUNC(mips) == MIPS_FUNC_JR ||
+		           MIPS_GET_FUNC(mips) == MIPS_FUNC_JALR)){
+			cur_src+=8;
 			break;
 		} else if(opcode == MIPS_OPCODE_COP0 &&
-		          MIPS_GET_FUNC(*src) == MIPS_FUNC_ERET){
-			++src, ++pc;
+		          MIPS_GET_FUNC(mips) == MIPS_FUNC_ERET){
+			cur_src+=4;
 			break;
 		}
 	}
-	if(pc < addr_last >> 2){
-		src_last = src;
-		addr_last = pc << 2;
+	
+	if(cur_src < func->end_address){
+		func->end_address=cur_src;
 		return 0;
 	} else {
-		src_last = ppc_block->mips_code + 1024;
-		addr_last = ppc_block->end_address;
 		return 1;
 	}
 }
 
 extern int stop;
-inline unsigned long update_invalid_addr(unsigned long addr);
 
 void jump_to(unsigned int address)
 {
@@ -623,16 +616,15 @@ PowerPC_func_node* free_tree(PowerPC_func_node* node){
 	if(!node) return NULL;
 	node->left = free_tree(node->left);
 	node->right = free_tree(node->right);
-	RecompCache_Free(node->function->start_addr);
+	RecompCache_Free(node->function->start_address);
 	return NULL;
 }
 
 void invalidate_block(PowerPC_block* ppc_block){
 	ppc_block->funcs = free_tree(ppc_block->funcs);
-	// NULL out code_addr
-	//memset(ppc_block->code_addr, 0, 1024 * sizeof(PowerPC_instr*));
+
 	// Now that we've handled the invalidation, reinit ourselves
-	init_block(ppc_block->mips_code, ppc_block);
+	init_block(ppc_block);
 }
 
 int func_was_freed(PowerPC_func* func){

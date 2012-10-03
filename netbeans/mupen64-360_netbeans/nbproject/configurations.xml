@@ -105,7 +105,7 @@
         </df>
         <in>ARAM-blocks.c</in>
         <in>ARAM-blocks.h</in>
-        <in>Recomp-Cache-Heap.c</in>
+        <in>Recomp-Cache.c</in>
         <in>Recomp-Cache.h</in>
         <in>bc.c</in>
         <in>cop0.c</in>
@@ -222,6 +222,7 @@
       </df>
       <in>libogc_lwp_heap.c</in>
       <in>libogc_lwp_heap.h</in>
+      <in>libogc_lwp_heap.inl</in>
       <in>shaders.S</in>
       <in>winlnxdefs.h</in>
     </df>
@@ -253,31 +254,588 @@
           <executablePath></executablePath>
           <cTool>
             <incDir>
-              <pElem>../../../libsrc/zlib-1.2.5</pElem>
-              <pElem>../../source</pElem>
+              <pElem>../../build</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/mupen64plus-rsp-hle</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/plugin</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/memory</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/api</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/xenon_input</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300/x86</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_sound</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300/ppc</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/input</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_uart</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/osal</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/main</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include/sys</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300/ppc/disasm</pElem>
+              <pElem>../../../../../../usr/local/xenon/lib/gcc/xenon/4.7.1/include</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/ppc</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/main/zip</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/xenos_audio</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_soc</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/usb</pElem>
             </incDir>
             <preprocessorList>
-              <Elem>FASTMEM</Elem>
-              <Elem>M64P_BIG_ENDIAN</Elem>
               <Elem>PPC_DYNAREC</Elem>
-              <Elem>_BIG_ENDIAN</Elem>
-              <Elem>__BIG_ENDIAN__</Elem>
             </preprocessorList>
           </cTool>
           <ccTool>
             <incDir>
-              <pElem>../../source</pElem>
+              <pElem>../../build</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/mupen64plus-rsp-hle</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/plugin</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/memory</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1/ext</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1/bits</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/Rice_GX_Xenos</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/api</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/xenon_input</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_sound</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/xenos</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/input</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/console</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include/sys</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1/debug</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/sys</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/main</pElem>
+              <pElem>../../../../../../usr/local/xenon/lib/gcc/xenon/4.7.1/include</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/ppc</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source/main/zip</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1</pElem>
+              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1/xenon/32/bits</pElem>
+              <pElem>../../../../../../mnt/ppc/mupen64-360/source</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/libxemit</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_smc</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/usb</pElem>
+              <pElem>../../../../../../usr/local/xenon/usr/include/zlx</pElem>
             </incDir>
-            <preprocessorList>
-              <Elem>FASTMEM</Elem>
-              <Elem>M64P_BIG_ENDIAN</Elem>
-              <Elem>PPC_DYNAREC</Elem>
-              <Elem>_BIG_ENDIAN</Elem>
-              <Elem>__BIG_ENDIAN__</Elem>
-            </preprocessorList>
           </ccTool>
         </makeTool>
       </makefileType>
+      <item path="../../source/Rice_GX_Xenos/Combiner.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/CombinerTable.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/Config.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/ConvertImage.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/ConvertImage16.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/Debugger.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/DecodedMux.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/DeviceBuilder.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/FrameBuffer.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/GFXPlugin.h"
+            ex="true"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="../../source/Rice_GX_Xenos/GeneralCombiner.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/GraphicsContext.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/Graphics_1.3.h"
+            ex="true"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="../../source/Rice_GX_Xenos/RSP_Parser.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/RSP_S2DEX.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/Render.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/RenderBase.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/RenderExt.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/RenderTexture.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/Texture.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/TextureFilters.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/TextureFilters_2xsai.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/TextureFilters_hq2x.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/TextureFilters_hq4x.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/TextureManager.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/VertexShaderConstantDef.h"
+            ex="true"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="../../source/Rice_GX_Xenos/Video.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/blender.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/gl.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/Rice_GX_Xenos/glATI.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/Rice_GX_Xenos/glext.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/Rice_GX_Xenos/math.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/messagebox_nogui.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/Rice_GX_Xenos/version.h"
+            ex="true"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="../../source/Rice_GX_Xenos/xenos_backend.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/api/callbacks.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/api/config_core.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/libogc_lwp_heap.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/main/adler32.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/main/bininc.S" ex="true" tool="4" flavor2="0">
+      </item>
+      <item path="../../source/main/guifuncs.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/main/main.cpp" ex="false" tool="1" flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/main/mchk.c" ex="true" tool="0" flavor2="0">
+      </item>
+      <item path="../../source/main/md5.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/main/rom.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/main/savestates.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/main/util.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/main/version.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/main/zip/ioapi.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/main/zip/unzip.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/main/zip/zip.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/memory/dma.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/memory/flashram.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/memory/memory.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/memory/n64_cic_nus_6105.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/memory/pif.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/memory/tlb.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/mupen64plus-rsp-hle/idct.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/mupen64plus-rsp-hle/jpeg.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/mupen64plus-rsp-hle/rsp_main.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/mupen64plus-rsp-hle/ucode1.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/mupen64plus-rsp-hle/ucode2.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/mupen64plus-rsp-hle/ucode3.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/mupen64plus-rsp-hle/ucode3mp3.cpp"
+            ex="false"
+            tool="1"
+            flavor2="4">
+        <ccTool>
+        </ccTool>
+      </item>
+      <item path="../../source/osal/files_unix.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/osal/preproc.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/plugin/plugin.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/ARAM-blocks.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/Recomp-Cache.c" ex="false" tool="0" flavor2="0">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/bc.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/cop0.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/cop1.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/cop1_d.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/cop1_l.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/cop1_s.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/cop1_w.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/exception.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/fpu.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/r4300/interupt.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/macros.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/r4300/ops.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/r4300/ppc/FuncTree.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/ppc/Interpreter.h"
+            ex="true"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="../../source/r4300/ppc/MIPS-to-PPC.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/ppc/Recompile.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/ppc/Register-Cache.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/ppc/Wrappers.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/ppc/disasm/asm_ppc.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/ppc/disasm/opintl.h"
+            ex="true"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="../../source/r4300/ppc/disasm/ppc-dis.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/ppc/disasm/ppc-opc.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/profile.c" ex="true" tool="0" flavor2="0">
+      </item>
+      <item path="../../source/r4300/pure_interp.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/r4300.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/recomp.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/regimm.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/special.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/tlb_r4300.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/r4300/x86/interpret.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/r4300/x86/regcache.h" ex="true" tool="3" flavor2="0">
+      </item>
+      <item path="../../source/shaders.S" ex="true" tool="4" flavor2="0">
+      </item>
+      <item path="../../source/xenon_input/input.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
+      <item path="../../source/xenos_audio/AudioPlugin.h"
+            ex="true"
+            tool="3"
+            flavor2="0">
+      </item>
+      <item path="../../source/xenos_audio/audio.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+        </cTool>
+      </item>
     </conf>
   </confs>
 </configurationDescriptor>

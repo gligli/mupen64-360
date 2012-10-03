@@ -168,12 +168,6 @@ static void free_func(PowerPC_func* func, unsigned int addr){
 	// Free the code associated with the func
 	__lwp_heap_free(cache, func->code);
 	MetaCache_Free(func->code_addr);
-	// Remove any holes into this func
-	PowerPC_func_hole_node* hole, * next_hole;
-	for(hole = func->holes; hole != NULL; hole = next_hole){
-		next_hole = hole->next;
-		free(hole);
-	}
 
 	// Remove any pointers to this code
 	// Remove the func from the block
@@ -238,7 +232,7 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 		release(size);
 		code = __lwp_heap_allocate(cache, size);
 	}
-	int num_instrs = (func->end_addr - func->start_addr + 4) >> 2;
+	int num_instrs = (func->end_address - func->start_address + 4) >> 2;
 	void* code_addr = MetaCache_Alloc(num_instrs * sizeof(void*));
 
 	cacheSize += size;
@@ -248,29 +242,6 @@ void RecompCache_Alloc(unsigned int size, unsigned int address, PowerPC_func* fu
 	heapPush(newBlock);
 	// Make this function the LRU
 	update_lru(func);
-}
-
-void RecompCache_Realloc(PowerPC_func* func, unsigned int new_size){
-	// There should be no need for the code to be preserved
-	__lwp_heap_free(cache, func->code);
-	func->code = __lwp_heap_allocate(cache, new_size);
-	while(!func->code){
-		release(new_size);
-		func->code = __lwp_heap_allocate(cache, new_size);
-	}
-	
-	// Update the size for the cache
-	int i;
-	for(i=heapSize-1; i>=0; --i){
-		if(cacheHeap[i]->func == func){
-			cacheSize += new_size - cacheHeap[i]->size;
-			cacheHeap[i]->size = new_size;
-			break;
-		}
-	}
-	
-	// Remove any func links since the code has changed
-	unlink_func(func);
 }
 
 void RecompCache_Free(unsigned int addr){

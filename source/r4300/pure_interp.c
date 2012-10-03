@@ -30,6 +30,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+
+#include <debug.h>
+
 #include "r4300.h"
 #include "exception.h"
 #include "memory/memory.h"
@@ -45,20 +48,10 @@ extern void update_debugger();
 #endif
 
 #ifdef PPC_DYNAREC
-#include "ARAM-blocks.h"
 
-static void invalidate_func(unsigned int addr)
-{
-	PowerPC_block* block = blocks_get(address >> 12);
-	PowerPC_func* func = find_func(&block->funcs, addr);
-	if (func)
-		RecompCache_Free(func->start_addr);
-}
+void check_invalidate_memory(unsigned int addr);
+#define check_memory() if(r4300emu) check_invalidate_memory(address);
 
-#define check_memory() \
-	if((r4300emu) && !invalid_code[address>>12]/* && \
-	   blocks[address>>12]->code_addr[(address&0xfff)>>2]*/) \
-		invalidate_func(address); //invalid_code_set(address>>12, 1);
 #else
 #define check_memory()
 #endif
@@ -815,6 +808,10 @@ static void TLBR()
 	EntryLo1 = (tlb_e[index].pfn_odd << 6) | (tlb_e[index].c_odd << 3)
 			| (tlb_e[index].d_odd << 2) | (tlb_e[index].v_odd << 1)
 			| tlb_e[index].g;
+	
+	
+//	printf("TLBR %p %p %p %p %p\n",Index,PageMask,EntryHi,EntryLo0,EntryLo1);
+	
 	interp_addr += 4;
 }
 
@@ -822,12 +819,15 @@ extern void TLBWrite(unsigned int idx);
 
 static void TLBWI()
 {
+//	printf("TLBWI\n");
+	
 	TLBWrite(Index&0x3F);
 	interp_addr += 4;
 }
 
 static void TLBWR()
 {
+//	printf("TLBWR\n");
 	update_count();
 	Random = (Count/2 % (32 - Wired)) + Wired;
 	TLBWrite(Random);
@@ -836,25 +836,30 @@ static void TLBWR()
 
 static void TLBP()
 {
+//	printf("TLBP %p\n",EntryHi);
+	
+
 	int i;
 	Index |= 0x80000000;
 	for (i = 0; i < 32; i++)
 	{
-		if (((tlb_e[i].vpn2 & (~tlb_e[i].mask)) ==
-				(((EntryHi & 0xFFFFE000) >> 13) & (~tlb_e[i].mask))) &&
-				((tlb_e[i].g) ||
-				(tlb_e[i].asid == (EntryHi & 0xFF))))
+/*		if(EntryHi==0x10028000)
+			printf("TLBP idx %d e %d se %p pe %p o %d so %p po %p pm %p\n",i,tlb_e[i].v_even,tlb_e[i].start_even,tlb_e[i].phys_even,tlb_e[i].v_odd,tlb_e[i].start_odd,tlb_e[i].phys_odd,tlb_e[i].mask);*/
+		if ((tlb_e[i].vpn2 == (EntryHi >> 13))/* &&
+			((tlb_e[i].g) || (tlb_e[i].asid == (EntryHi & 0xFF)))*/)
 		{
 			Index = i;
+//			printf("TLBP found %d %p %p\n",i,tlb_e[i].vpn2,tlb_e[i].mask);
 			break;
 		}
 	}
+
 	interp_addr += 4;
 }
 
 static void ERET()
 {
-	//DEBUG_print("ERET\n", DBG_USBGECKO);
+//	printf("ERET\n");
 	update_count();
 	if (Status & 0x4)
 	{
@@ -983,6 +988,7 @@ static void MTC0()
 		break;
 	case 14: // EPC
 		EPC = rrt;
+//		printf("MTC0 EPC %p\n",EPC);
 		break;
 	case 15: // PRevID
 		break;

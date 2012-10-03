@@ -1676,7 +1676,7 @@ void read_nomemd(void)
 
 void write_nomem(void)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER)
+    if (r4300emu && !interpcore)
 		invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
     if (address == PHY_INVALID_ADDR) return;
@@ -1685,7 +1685,7 @@ void write_nomem(void)
 
 void write_nomemb(void)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER)
+    if (r4300emu && !interpcore)
         invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
     if (address == PHY_INVALID_ADDR) return;
@@ -1694,7 +1694,7 @@ void write_nomemb(void)
 
 void write_nomemh(void)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER)
+    if (r4300emu && !interpcore)
 		invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
     if (address == PHY_INVALID_ADDR) return;
@@ -1703,7 +1703,7 @@ void write_nomemh(void)
 
 void write_nomemd(void)
 {
-    if (r4300emu != CORE_PURE_INTERPRETER)
+    if (r4300emu && !interpcore)
         invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
     if (address == PHY_INVALID_ADDR) return;

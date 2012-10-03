@@ -21,7 +21,9 @@
 **/
 
 #include <stdlib.h>
+#include <assert.h>
 #include <debug.h>
+#include <ctype.h>
 #include "../ARAM-blocks.h"
 #include "../../memory/memory.h"
 #include "../interupt.h"
@@ -101,37 +103,25 @@ unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 		: "r" (code)
 		: "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "22", "ctr", "lr", "cr0", "cr2");
 
-/*	if(!naddr)
-	{
-		TRI(link_branch)
-		TRI(return_addr)
-		TRI(last_func)
-		if(last_func)
-		{
-			TRI(last_func->start_addr)
-			TRI(last_func->end_addr)
-		}
-		naddr=last_func->end_addr;
-		noCheckInterrupt=1;
-	}*/
-	
 	link_branch = link_branch == return_addr ? NULL : link_branch - 1;
 	
 	return naddr;
 }
 
 void dynarec(unsigned int address){
+	
 	while(!stop){
 		refresh_stat();
 
-		if(!address) stack_trace(5);
-		
 		start_section(TRAMP_SECTION);
 		PowerPC_block* dst_block = blocks_get(address>>12);
-		unsigned long paddr = update_invalid_addr(address);
+		unsigned long paddr = get_physical_addr(address);
 
-/*		static int dtr=0;
-		
+		static int dtr=0;
+		static int dcp=0;
+		static int dtb=0;
+
+#if 0		
 		if(kbhit())
 		{
 			switch(getch())
@@ -139,89 +129,166 @@ void dynarec(unsigned int address){
 			case 't':
 				dtr=!dtr;
 				break;
+			case 'p':
+				dcp=!dcp;
+				break;
+			case 'b':
+				dtb=!dtb;
+				break;
 			case 'd':
 				do_disasm=!do_disasm;
 				break;
+			case 'x':
+				exit(0);
+				break;
 			}
 		}
-			
+#endif			
 		
-		if(dtr)
-		{
-			sprintf(txtbuffer, "trp %p pa %p\n", address, paddr);
-			DEBUG_print(txtbuffer, DBG_USBGECKO);
-		}*/
-		
-		if(paddr==PHY_INVALID_ADDR){ //gli tlb exception
-			sprintf(txtbuffer, "tlb exception old addr %p new addr %p pa %p blk %p\n", address, interp_addr, paddr,dst_block);
-			DEBUG_print(txtbuffer, DBG_USBGECKO);
+		if(paddr==PHY_INVALID_ADDR){
+
+			TLB_refill_exception(address,2);
 			
-			paddr = address = interp_addr;
-			dst_block = blocks_get(address>>12);
+			if(dtb)
+			{
+				sprintf(txtbuffer, "tlb exception old addr %p new addr %p\n", address, interp_addr);
+				DEBUG_print(txtbuffer, DBG_USBGECKO);
+			}
+			
+			address = interp_addr;
+			continue;
 		}
 		
 		if(!dst_block){
-			sprintf(txtbuffer, "block at %08x doesn't exist, paddr %p\n", address,paddr);
-			DEBUG_print(txtbuffer, DBG_USBGECKO);
+			
+			if(dcp)
+			{
+				sprintf(txtbuffer, "block at %08x doesn't exist, paddr %p\n", address,paddr);
+				DEBUG_print(txtbuffer, DBG_USBGECKO);
+			}
+			
 			dst_block = calloc(1,sizeof(PowerPC_block));
 			blocks_set(address>>12, dst_block);
-			//dst_block->code_addr     = NULL;
-			dst_block->funcs         = NULL;
 			dst_block->start_address = address & ~0xFFF;
 			dst_block->end_address   = (address & ~0xFFF) + 0x1000;
-
-  			if((paddr >= 0xb0000000 && paddr < 0xc0000000) ||
-			   (paddr >= 0x90000000 && paddr < 0xa0000000)){
-				init_block(NULL, dst_block);
-			} else {
-				init_block(&rdram[(((paddr-(address-dst_block->start_address)) & 0x1FFFFFFF)>>2)],
-						   dst_block);
-			}
+			
+			init_block(dst_block);
 		} else if(invalid_code[address>>12]){
-			sprintf(txtbuffer, "invalidate blk %p %p %p\n",dst_block,dst_block->start_address,dst_block->end_address);
-			DEBUG_print(txtbuffer, DBG_USBGECKO);
+			if(dcp)			
+			{
+				sprintf(txtbuffer, "invalidate blk %p %p %p\n",address,dst_block->start_address,dst_block->end_address);
+				DEBUG_print(txtbuffer, DBG_USBGECKO);
+			}
+			
 			invalidate_block(dst_block);
 		}
 
 		PowerPC_func* func = find_func(&dst_block->funcs, address);
+		
+		if(!func || !func->code_addr[(address-func->start_address)>>2]){
+			
+			unsigned int saddr=address;
+			
+			if(func)
+			{
+				if(dcp)			
+				{
+					sprintf(txtbuffer, "function split at %p %p %p\n", address,func->start_address,func->end_address);
+					DEBUG_print(txtbuffer, DBG_USBGECKO);
+				}
 
-		if(!func || !func->code_addr[(address-func->start_addr)>>2]){
-			sprintf(txtbuffer, "code at %08x is not compiled\n", address);
-			DEBUG_print(txtbuffer, DBG_USBGECKO);
-			if((paddr >= 0xb0000000 && paddr < 0xc0000000) ||
-			   (paddr >= 0x90000000 && paddr < 0xa0000000))
-				dst_block->mips_code = (MIPS_instr*)
-					(rom + ((paddr-(address-dst_block->start_address))&0x0FFFFFFF)); //gli ROMCache_pointer((paddr-(address-dst_block->start_address))&0x0FFFFFFF);
+				saddr=func->start_address;
+
+				invalidate_func(saddr);
+				add_block_split(dst_block,address);
+			}
+			
 			start_section(COMPILER_SECTION);
-			func = recompile_block(dst_block, address);
+			func = recompile_block(dst_block, saddr);
 			end_section(COMPILER_SECTION);
+		
+			if(dcp)			
+			{
+				sprintf(txtbuffer, "compiled code at %p %p %p\n", address,func->start_address,func->end_address);
+				DEBUG_print(txtbuffer, DBG_USBGECKO);
+			}
 		} else {
 #ifdef USE_RECOMP_CACHE
 			RecompCache_Update(func);
 #endif
 		}
 
-		int index = (address - func->start_addr)>>2;
+		int index = (address - func->start_address)>>2;
 
 		// Recompute the block offset
 		unsigned int (*code)(void);
 		code = (unsigned int (*)(void))func->code_addr[index];
 		
+		if(dtr)
+		{
+			sprintf(txtbuffer, "trp %p ppc %p\n", address, code);
+			DEBUG_print(txtbuffer, DBG_USBGECKO);
+		}
+		
+		assert(code);
+		
 		// Create a link if possible
-		/*
-		if(link_branch && !func_was_freed(last_func))
-			RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);*/
+		if(link_branch && !func_was_freed(last_func) &&
+			((last_func->start_address>=0x80000000 && last_func->start_address<0xc0000000) || isGoldeneyeRom) && //gli don't link TLB mapped stuff
+			link_branch>=last_func->code && link_branch<last_func->code+last_func->code_length) //gli test ppc location coherency
+		{
+#if 0
+			unsigned int lfaddr=PHY_INVALID_ADDR;
+			unsigned int lfaddr_bef=last_func->start_address;
+			unsigned int lfaddr_aft=last_func->end_address;
+			
+			int i;
+			for(i=0;i<(last_func->end_address-last_func->start_address)>>2;++i)
+			{
+				if (last_func->code_addr[i]==link_branch)
+				{
+					lfaddr=(i<<2)+last_func->start_address;
+				}
+				else if (last_func->code_addr[i]<link_branch)
+				{
+					lfaddr_bef=(i<<2)+last_func->start_address;
+				}
+				else
+				{
+					lfaddr_aft=(i<<2)+last_func->start_address;
+					break;
+				}
+			}
+			
+			if (lfaddr==PHY_INVALID_ADDR)
+			{
+				//gli I'll need a split, tho I don't have the mips address
+
+				unsigned int saddr=last_func->start_address;
+
+				printf("linking tlb needs split btw %p %p\n",lfaddr_bef,lfaddr_aft);
+				
+//				invalidate_func(saddr);
+//				add_block_split(blocks_get(saddr>>12),address);
+			}
+			else
+			{
+	  			RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);
+			}
+#else
+			RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);
+#endif
+		}
+		
 		clear_freed_funcs();
 		
 		interp_addr = address = dyna_run(func, code);
-		
+
 		if(!noCheckInterrupt){
 			last_addr = interp_addr;
 			// Check for interrupts
 			if(next_interupt <= Count){
 				gen_interupt();
-				sprintf(txtbuffer, "gen_interupt from trampoline from %p ia %p\n", address, interp_addr);
-				DEBUG_print(txtbuffer, DBG_USBGECKO);
 				address = interp_addr;
 			}
 		}
@@ -286,13 +353,16 @@ void invalidate_func(unsigned int addr){
 	PowerPC_block* block = blocks_get(addr>>12);
 	PowerPC_func* func = find_func(&block->funcs, addr);
 	if(func)
-		RecompCache_Free(func->start_addr);
+		RecompCache_Free(func->start_address);
 }
 
-void check_memory(unsigned int addr){
-	if(!invalid_code[addr>>12]/* && \
-	   blocks[address>>12]->code_addr[(address&0xfff)>>2]*/) \
+void check_invalidate_memory(unsigned int addr){
+#ifdef INVALIDATE_FUNC_ON_CHECK_MEMORY
+	if(!invalid_code[addr>>12])
 		invalidate_func(addr);
+#else
+	invalid_code[addr>>12] = 1;
+#endif	
 }
 
 unsigned int dyna_mem_usage[16]={};
@@ -348,32 +418,32 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 		case MEM_SW:
 			word = value;
 			write_word_in_memory();
-			check_memory(address);
+			check_invalidate_memory(address);
 			break;
 		case MEM_SH:
 			hword = value;
 			write_hword_in_memory();
-			check_memory(address);
+			check_invalidate_memory(address);
 			break;
 		case MEM_SB:
 			cpu_byte = value;
 			write_byte_in_memory();
-			check_memory(address);
+			check_invalidate_memory(address);
 			break;
 		case MEM_SD:
 			dword = reg[value];
 			write_dword_in_memory();
-			check_memory(address);
+			check_invalidate_memory(address);
 			break;
 		case MEM_SWC1:
 			word = *((long*)reg_cop1_simple[value]);
 			write_word_in_memory();
-			check_memory(address);
+			check_invalidate_memory(address);
 			break;
 		case MEM_SDC1:
 			dword = *((unsigned long long*)reg_cop1_double[value]);
 			write_dword_in_memory();
-			check_memory(address);
+			check_invalidate_memory(address);
 			break;
 		default:
 			printf("dyna_mem bad type\n");

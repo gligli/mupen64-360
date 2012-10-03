@@ -91,7 +91,6 @@ void dyna_start(void (*code)(void));
 void dyna_stop(void);
 #endif
 
-void free_block(precomp_block *block);
 void recompile_opcode(void);
 void prefetch_opcode(unsigned long instr);
 void *realloc_exec(void *ptr, size_t oldsize, size_t newsize);
