@@ -101,6 +101,20 @@ unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 		: "r" (code)
 		: "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "22", "ctr", "lr", "cr0", "cr2");
 
+/*	if(!naddr)
+	{
+		TRI(link_branch)
+		TRI(return_addr)
+		TRI(last_func)
+		if(last_func)
+		{
+			TRI(last_func->start_addr)
+			TRI(last_func->end_addr)
+		}
+		naddr=last_func->end_addr;
+		noCheckInterrupt=1;
+	}*/
+	
 	link_branch = link_branch == return_addr ? NULL : link_branch - 1;
 	
 	return naddr;
@@ -109,23 +123,47 @@ unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 void dynarec(unsigned int address){
 	while(!stop){
 		refresh_stat();
+
+		if(!address) stack_trace(5);
 		
 		start_section(TRAMP_SECTION);
 		PowerPC_block* dst_block = blocks_get(address>>12);
 		unsigned long paddr = update_invalid_addr(address);
 
-		//sprintf(txtbuffer, "trampolining to 0x%08x\n", address);
-		//DEBUG_print(txtbuffer, DBG_USBGECKO);
+/*		static int dtr=0;
 		
-		if(!paddr){ 
-			address = paddr = update_invalid_addr(interp_addr);
-			dst_block = blocks_get(address>>12); 
+		if(kbhit())
+		{
+			switch(getch())
+			{
+			case 't':
+				dtr=!dtr;
+				break;
+			case 'd':
+				do_disasm=!do_disasm;
+				break;
+			}
+		}
+			
+		
+		if(dtr)
+		{
+			sprintf(txtbuffer, "trp %p pa %p\n", address, paddr);
+			DEBUG_print(txtbuffer, DBG_USBGECKO);
+		}*/
+		
+		if(paddr==PHY_INVALID_ADDR){ //gli tlb exception
+			sprintf(txtbuffer, "tlb exception old addr %p new addr %p pa %p blk %p\n", address, interp_addr, paddr,dst_block);
+			DEBUG_print(txtbuffer, DBG_USBGECKO);
+			
+			paddr = address = interp_addr;
+			dst_block = blocks_get(address>>12);
 		}
 		
 		if(!dst_block){
-			sprintf(txtbuffer, "block at %08x doesn't exist\n", address&~0xFFF);
+			sprintf(txtbuffer, "block at %08x doesn't exist, paddr %p\n", address,paddr);
 			DEBUG_print(txtbuffer, DBG_USBGECKO);
-			dst_block = malloc(sizeof(PowerPC_block));
+			dst_block = calloc(1,sizeof(PowerPC_block));
 			blocks_set(address>>12, dst_block);
 			//dst_block->code_addr     = NULL;
 			dst_block->funcs         = NULL;
@@ -136,10 +174,12 @@ void dynarec(unsigned int address){
 			   (paddr >= 0x90000000 && paddr < 0xa0000000)){
 				init_block(NULL, dst_block);
 			} else {
-				init_block(&rdram[0]+(((paddr-(address-dst_block->start_address)) & 0x1FFFFFFF)>>2),
+				init_block(&rdram[(((paddr-(address-dst_block->start_address)) & 0x1FFFFFFF)>>2)],
 						   dst_block);
 			}
 		} else if(invalid_code[address>>12]){
+			sprintf(txtbuffer, "invalidate blk %p %p %p\n",dst_block,dst_block->start_address,dst_block->end_address);
+			DEBUG_print(txtbuffer, DBG_USBGECKO);
 			invalidate_block(dst_block);
 		}
 
@@ -168,17 +208,20 @@ void dynarec(unsigned int address){
 		code = (unsigned int (*)(void))func->code_addr[index];
 		
 		// Create a link if possible
+		/*
 		if(link_branch && !func_was_freed(last_func))
-			RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);
+			RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);*/
 		clear_freed_funcs();
 		
 		interp_addr = address = dyna_run(func, code);
-
+		
 		if(!noCheckInterrupt){
 			last_addr = interp_addr;
 			// Check for interrupts
 			if(next_interupt <= Count){
 				gen_interupt();
+				sprintf(txtbuffer, "gen_interupt from trampoline from %p ia %p\n", address, interp_addr);
+				DEBUG_print(txtbuffer, DBG_USBGECKO);
 				address = interp_addr;
 			}
 		}

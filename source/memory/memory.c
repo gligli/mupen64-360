@@ -1649,28 +1649,28 @@ void write_nothingd(void)
 void read_nomem(void)
 {
     address = virtual_to_physical_address(address,0);
-    if (address == 0x00000000) return;
+    if (address == PHY_INVALID_ADDR) return;
     read_word_in_memory();
 }
 
 void read_nomemb(void)
 {
     address = virtual_to_physical_address(address,0);
-    if (address == 0x00000000) return;
+    if (address == PHY_INVALID_ADDR) return;
     read_byte_in_memory();
 }
 
 void read_nomemh(void)
 {
     address = virtual_to_physical_address(address,0);
-    if (address == 0x00000000) return;
+    if (address == PHY_INVALID_ADDR) return;
     read_hword_in_memory();
 }
 
 void read_nomemd(void)
 {
     address = virtual_to_physical_address(address,0);
-    if (address == 0x00000000) return;
+    if (address == PHY_INVALID_ADDR) return;
     read_dword_in_memory();
 }
 
@@ -1679,7 +1679,7 @@ void write_nomem(void)
     if (r4300emu != CORE_PURE_INTERPRETER)
 		invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
-    if (address == 0x00000000) return;
+    if (address == PHY_INVALID_ADDR) return;
     write_word_in_memory();
 }
 
@@ -1688,7 +1688,7 @@ void write_nomemb(void)
     if (r4300emu != CORE_PURE_INTERPRETER)
         invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
-    if (address == 0x00000000) return;
+    if (address == PHY_INVALID_ADDR) return;
     write_byte_in_memory();
 }
 
@@ -1697,7 +1697,7 @@ void write_nomemh(void)
     if (r4300emu != CORE_PURE_INTERPRETER)
 		invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
-    if (address == 0x00000000) return;
+    if (address == PHY_INVALID_ADDR) return;
     write_hword_in_memory();
 }
 
@@ -1706,7 +1706,7 @@ void write_nomemd(void)
     if (r4300emu != CORE_PURE_INTERPRETER)
         invalid_code[address>>12] = 1;
     address = virtual_to_physical_address(address,1);
-    if (address == 0x00000000) return;
+    if (address == PHY_INVALID_ADDR) return;
     write_dword_in_memory();
 }
 
@@ -3752,23 +3752,4 @@ void write_pifd(void)
         else
             update_pif_write();
     }
-}
-
-unsigned int *fast_mem_access(unsigned int address)
-{
-    /* This code is performance critical, specially on pure interpreter mode.
-     * Removing error checking saves some time, but the emulator may crash. */
-    if (address < 0x80000000 || address >= 0xc0000000)
-        address = virtual_to_physical_address(address, 2);
-
-    if ((address & 0x1FFFFFFF) >= 0x10000000)
-        return (unsigned int *)rom + ((address & 0x1FFFFFFF) - 0x10000000)/4;
-    else if ((address & 0x1FFFFFFF) < 0x800000)
-        return (unsigned int *)rdram + (address & 0x1FFFFFFF)/4;
-    else if (address >= 0xa4000000 && address <= 0xa4001000)
-        return (unsigned int *)SP_DMEM + (address & 0xFFF)/4;
-    else if ((address >= 0xa4001000 && address <= 0xa4002000))
-        return (unsigned int *)SP_IMEM + (address & 0xFFF)/4;
-    else
-        return NULL;
 }

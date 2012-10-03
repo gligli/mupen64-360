@@ -94,8 +94,6 @@ void set_next_dst(PowerPC_instr i)
     *(dst++) = i;
     ++code_length;
 }
-void dbg_dst(int line,const char * func){printf("####### %p %s %d\n",dst,func,line);}
-
 
 // Adjusts the code_addr for the current instruction to account for flushes
 void reset_code_addr(void){ if(src<=src_last) code_addr[src-1-src_first] = dst; }
@@ -198,6 +196,8 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	addr_first = ppc_block->start_address + (addr&0xfff);
 	code_addr = NULL; // Just to make sure this isn't used here
 
+	ppc_block->adler32 = 0;
+
 	int need_pad = pass0(ppc_block); // Sets src_last, addr_last
 
 	code_length = 0;
@@ -290,7 +290,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 
 	for(i=0;i<code_length;++i)
 	{
-		bool force_disasm=false;
+		int force_disasm=0;
 		if(do_disasm || force_disasm) disassemble((uint32_t)&func->code[i],func->code[i]);
 	}
 
@@ -312,6 +312,12 @@ void init_block(MIPS_instr* mips_code, PowerPC_block* ppc_block){
 		unsigned long paddr;
 
 		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
+		
+		if(paddr==PHY_INVALID_ADDR)
+		{
+			assert(0); //gli not sure what to do here
+		}
+		
 		invalid_code[paddr>>12]=0;
 		temp_block = blocks_get(paddr>>12);
 		if(!temp_block){
@@ -388,6 +394,12 @@ void deinit_block(PowerPC_block* ppc_block){
 		unsigned long paddr;
 
 		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
+		
+		if(paddr==PHY_INVALID_ADDR)
+		{
+			assert(0); //gli not sure what to do here
+		}
+		
 		temp_block = blocks_get(paddr>>12);
 		if(temp_block){
 		     //blocks[paddr>>12]->code_addr = NULL;

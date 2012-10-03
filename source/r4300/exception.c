@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <assert.h>
+#include <debug.h>
 
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
@@ -29,55 +30,59 @@
 #include "r4300.h"
 #include "macros.h"
 #include "recomph.h"
+#include "ppc/Wrappers.h"
 
 void TLB_refill_exception(unsigned int address, int w)
 {
-	int usual_handler = 0, i;
-
-	if (r4300emu != CORE_DYNAREC && w != 2) update_count();
+	if (!r4300emu && w != 2) update_count();
+	
 	if (w == 1) Cause = (3 << 2);
 	else Cause = (2 << 2);
+	
+	switch(w)
+	{
+	case 0:
+		Cause=2<<2; //gli should be TLBL TLB Exception (Load or instruction fetch)
+		break;
+	case 1:
+		Cause=1<<2; //gli should be TLBS TLB Exception (Store)
+		break;
+	case 2:
+		Cause=2<<2; //gli not sure here, but same as read makes sense
+		break;
+	}
+	
 	BadVAddr = address;
 	Context = (Context & 0xFF80000F) | ((address >> 9) & 0x007FFFF0);
 	EntryHi = address & 0xFFFFE000;
-	if (Status & 0x2) // Test de EXL
+	if (Status & 0x2) // Testing EXL , to detect double exception
 	{
+		DebugMessage(M64MSG_ERROR,"TLB refill while in exception, addr=%p, w=%d",address,w);
+
 		interp_addr = 0x80000180;
 		if (delay_slot == 1 || delay_slot == 3) Cause |= 0x80000000;
 		else Cause &= 0x7FFFFFFF;
 	}
 	else
 	{
+		DebugMessage(M64MSG_INFO,"TLB refill, addr=%p, w=%d, interp_addr=%p, dslot=%d",address,w,interp_addr,delay_slot);
+				
 		if (!interpcore && !r4300emu)
 		{ 
 			assert(0);
 		}
-		else if(r4300emu && w==2) {
+		else if(w==2)
+		{
 			EPC = address;
-		} else {
+		}
+		else
+		{
 			EPC = interp_addr;
 		}
 		
 		Cause &= ~0x80000000;
 		Status |= 0x2; //EXL=1
-
-		if (address >= 0x80000000 && address < 0xc0000000)
-			usual_handler = 1;
-		for (i = 0; i < 32; i++)
-		{
-			if (address >= tlb_e[i].start_even && address <= tlb_e[i].end_even)
-				usual_handler = 1;
-			if (address >= tlb_e[i].start_odd && address <= tlb_e[i].end_odd)
-				usual_handler = 1;
-		}
-		if (usual_handler)
-		{
-			interp_addr = 0x80000180;
-		}
-		else
-		{
-			interp_addr = 0x80000000;
-		}
+		interp_addr = 0x80000000;
 	}
 	if (delay_slot == 1 || delay_slot == 3)
 	{

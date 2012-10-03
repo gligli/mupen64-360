@@ -1372,7 +1372,7 @@ void NOTCOMPILED()
 		if (PC->addr >= 0x80000000 && PC->addr < 0xc0000000) paddr = PC->addr;
 			//else paddr = (tlb_LUT_r[PC->addr>>12]&0xFFFFF000)|(PC->addr&0xFFF);
 		else paddr = virtual_to_physical_address(PC->addr, 2);
-		if (paddr)
+		if (paddr!=PHY_INVALID_ADDR)
 		{
 			if ((paddr & 0x1FFFFFFF) >= 0x10000000)
 			{
@@ -1431,7 +1431,7 @@ inline unsigned long update_invalid_addr(unsigned long addr)
 	else
 	{
 		unsigned long paddr = virtual_to_physical_address(addr, 2);
-		if (paddr)
+		if (paddr!=PHY_INVALID_ADDR)
 		{
 			unsigned long beg_paddr = paddr - (addr - (addr&~0xFFF));
 			update_invalid_addr(paddr);

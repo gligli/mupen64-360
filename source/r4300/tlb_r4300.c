@@ -35,10 +35,9 @@
 #include "../main/md5.h"
 #include "../memory/memory.h"
 #include "ARAM-blocks.h"
+#include "ppc/Wrappers.h"
 
-#include <zlib.h>
-
-uLong ZEXPORT adler32(uLong adler, const Bytef *buf, uInt len);
+#include <debug.h>
 
 void TLBR()
 {
@@ -58,48 +57,6 @@ void TLBR()
 void TLBWrite(unsigned int idx)
 {
 	unsigned int i;
-
-   if (r4300emu != CORE_PURE_INTERPRETER)
-   {
-		if (tlb_e[idx].v_even)
-		{
-			for (i = tlb_e[idx].start_even >> 12; i <= tlb_e[idx].end_even >> 12; i++)
-			{
-				if (!invalid_code[i] && (invalid_code[tlb_LUT_r[i] >> 12] ||
-						invalid_code[(tlb_LUT_r[i] >> 12) + 0x20000]))
-					invalid_code[i] = 1;
-				if (!invalid_code[i])
-				{
-					blocks[i]->adler32 = adler32(0, (const unsigned char *) &rdram[(tlb_LUT_r[i]&0x7FF000) / 4], 0x1000);
-
-					invalid_code[i] = 1;
-				}
-				else if (blocks[i])
-				{
-					blocks[i]->adler32 = 0;
-				}
-			}
-		}
-		if (tlb_e[idx].v_odd)
-		{
-			for (i = tlb_e[idx].start_odd >> 12; i <= tlb_e[idx].end_odd >> 12; i++)
-			{
-				if (!invalid_code[i] && (invalid_code[tlb_LUT_r[i] >> 12] ||
-						invalid_code[(tlb_LUT_r[i] >> 12) + 0x20000]))
-					invalid_code[i] = 1;
-				if (!invalid_code[i])
-				{
-					blocks[i]->adler32 = adler32(0, (const unsigned char *) &rdram[(tlb_LUT_r[i]&0x7FF000) / 4], 0x1000);
-
-					invalid_code[i] = 1;
-				}
-				else if (blocks[i])
-				{
-					blocks[i]->adler32 = 0;
-				}
-			}
-		}
-   }
 
 	tlb_unmap(&tlb_e[idx]);
 
@@ -129,32 +86,27 @@ void TLBWrite(unsigned int idx)
 
 	tlb_map(&tlb_e[idx]);
 
-   if (r4300emu != CORE_PURE_INTERPRETER)
-   {
+	if (!interpcore)
+	{
+		//printf("e %d se %p ee %p o %d so %p vo %p\n",tlb_e[idx].v_even,tlb_e[idx].start_even,tlb_e[idx].end_even,tlb_e[idx].v_odd,tlb_e[idx].start_odd,tlb_e[idx].end_odd);
 		if (tlb_e[idx].v_even)
 		{
 			for (i = tlb_e[idx].start_even >> 12; i <= tlb_e[idx].end_even >> 12; i++)
 			{
-				if (blocks[i] && blocks[i]->adler32)
-				{
-					if (blocks[i]->adler32 == adler32(0, (const unsigned char *) &rdram[(tlb_LUT_r[i]&0x7FF000) / 4], 0x1000))
-						invalid_code[i] = 0;
-				}
+				invalid_code[i] = 1;
+				//if(tlb_LUT_r[i]) invalid_code[tlb_LUT_r[i]>>12] = 1;
 			}
 		}
-
 		if (tlb_e[idx].v_odd)
 		{
 			for (i = tlb_e[idx].start_odd >> 12; i <= tlb_e[idx].end_odd >> 12; i++)
 			{
-				if (blocks[i] && blocks[i]->adler32)
-				{
-					if (blocks[i]->adler32 == adler32(0, (const unsigned char *) &rdram[(tlb_LUT_r[i]&0x7FF000) / 4], 0x1000))
-						invalid_code[i] = 0;
-				}
+				invalid_code[i] = 1;
+				//if(tlb_LUT_r[i]) invalid_code[tlb_LUT_r[i]>>12] = 1;
 			}
 		}
-   }
+	}
+
 }
 
 void TLBWI()

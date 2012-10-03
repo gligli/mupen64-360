@@ -59,8 +59,9 @@ unsigned int dyna_check_cop1_unusable(unsigned int pc, int isDelaySlot);
 unsigned int dyna_mem(unsigned int value, unsigned int addr,
                       memType type, unsigned int pc, int isDelaySlot);
 
-void invalidate_func();
+void invalidate_func(unsigned int addr);
 void check_memory(unsigned int addr);
+
 
 //cop0 macros
 #define Index reg_cop0[0]

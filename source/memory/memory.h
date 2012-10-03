@@ -396,11 +396,6 @@ void update_ai_dacrate(unsigned int word);
 void update_vi_status(unsigned int word);
 void update_vi_width(unsigned int word);
 
-/* Returns a pointer to a block of contiguous memory
- * Can access RDRAM, SP_DMEM, SP_IMEM and ROM, using TLB if necessary
- * Useful for getting fast access to a zone with executable code. */
-unsigned int *fast_mem_access(unsigned int address);
-
 void do_SP_Task(int delayedDP, int cycles);
 
 #endif

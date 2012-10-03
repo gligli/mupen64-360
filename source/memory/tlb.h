@@ -47,6 +47,8 @@ typedef struct _tlb
    unsigned int phys_odd;
 } tlb;
 
+#define PHY_INVALID_ADDR 0xffffffff
+
 extern unsigned int tlb_LUT_r[0x100000];
 extern unsigned int tlb_LUT_w[0x100000];
 void tlb_unmap(tlb *entry);

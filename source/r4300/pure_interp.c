@@ -56,7 +56,7 @@ static void invalidate_func(unsigned int addr)
 }
 
 #define check_memory() \
-	if((r4300emu==CORE_DYNAREC) && !invalid_code[address>>12]/* && \
+	if((r4300emu) && !invalid_code[address>>12]/* && \
 	   blocks[address>>12]->code_addr[(address&0xfff)>>2]*/) \
 		invalidate_func(address); //invalid_code_set(address>>12, 1);
 #else
@@ -854,7 +854,7 @@ static void TLBP()
 
 static void ERET()
 {
-	//	DEBUG_print("ERET\n", DBG_USBGECKO);
+	//DEBUG_print("ERET\n", DBG_USBGECKO);
 	update_count();
 	if (Status & 0x4)
 	{
@@ -3069,7 +3069,7 @@ void prefetch()
 	{
 		unsigned long addr = interp_addr, phys;
 		phys = virtual_to_physical_address(interp_addr, 2);
-		if (phys != 0x00000000) interp_addr = phys;
+		if (phys != PHY_INVALID_ADDR) interp_addr = phys;
 		else
 		{
 			prefetch();

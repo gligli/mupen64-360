@@ -92,9 +92,6 @@ int        has_next_src(void);
 
 void       set_next_dst(PowerPC_instr);
 
-void dbg_dst(int line,const char * func);
-#define DBG_DST dbg_dst(__LINE__,__FUNCTION__);
-
 int        add_jump(int old_jump, int is_j, int is_call);
 int        is_j_out(int branch, int is_aa);
 int        is_j_dst(void);
@@ -127,7 +124,7 @@ extern PowerPC_block *blocks[0x100000];
 extern char txtbuffer[1024];
 #define DBG_USBGECKO
 
-#if 0
+#if 1
 #define DEBUG_print(txtbuffer, dummy) printf("%s",txtbuffer)
 #else
 #define DEBUG_print(txtbuffer, dummy)
