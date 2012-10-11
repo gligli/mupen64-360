@@ -1634,14 +1634,10 @@ void init_blocks()
 	blocks[0xa4000000 >> 12]->start = 0xa4000000;
 	blocks[0xa4000000 >> 12]->end = 0xa4001000;
 #else
-	PowerPC_block* temp_block = malloc(sizeof (PowerPC_block));
-	blocks_set(0xa4000000 >> 12, temp_block);
-	//blocks[0xa4000000>>12]->code_addr = NULL;
-	temp_block->funcs = NULL;
+	PowerPC_block* temp_block = calloc(1,sizeof (PowerPC_block));
 	temp_block->start_address = 0xa4000000;
 	temp_block->end_address = 0xa4001000;
 #endif
-	invalid_code[0xa4000000 >> 12] = 1;
 	actual = temp_block;
 	init_block(temp_block);
 #ifdef PPC_DYNAREC

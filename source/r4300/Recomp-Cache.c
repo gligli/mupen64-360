@@ -297,26 +297,24 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 __attribute__((aligned(65536),section(".bss.beginning.upper"))) unsigned char recomp_cache_buffer[RECOMP_CACHE_SIZE];
 
 void RecompCache_Init(void){
-	if(cache)
+	if(!cache)
 	{
-		free(cache);
+		cache = malloc(sizeof(heap_cntrl));
 	}
 	
-	cache = malloc(sizeof(heap_cntrl));
 	__lwp_heap_init(cache, recomp_cache_buffer,	RECOMP_CACHE_SIZE, 32);
 
 #ifndef MALLOC_RECOMPMETA	
-	if(meta_cache)
-	{
-		free(meta_cache);
-	}
-
 	if(!recompmeta_buf)
 	{
 		recompmeta_buf = malloc(RECOMPMETA_SIZE);
 	}
 	
-	meta_cache = malloc(sizeof(heap_cntrl));
+	if(!meta_cache)
+	{
+		meta_cache = malloc(sizeof(heap_cntrl));
+	}
+
 	__lwp_heap_init(meta_cache, recompmeta_buf, RECOMPMETA_SIZE, 32);
 #endif	
 }

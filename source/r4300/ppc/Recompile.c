@@ -324,18 +324,18 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 void init_block(PowerPC_block* ppc_block){
 	PowerPC_block* temp_block;
 
+	blocks_set(ppc_block->start_address>>12, ppc_block);
+	
 	// FIXME: Equivalent addresses should point to the same code/funcs?
 	if(ppc_block->end_address < 0x80000000 || ppc_block->start_address >= 0xc0000000){
 		unsigned long paddr;
 
-		paddr = get_physical_addr(ppc_block->start_address);
+		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
 		invalid_code[paddr>>12]=0;
 		temp_block = blocks_get(paddr>>12);
 		if(!temp_block){
-  		   temp_block = malloc(sizeof(PowerPC_block));
+  		   temp_block = calloc(1,sizeof(PowerPC_block));
 		     blocks_set(paddr>>12, temp_block);
-		     //blocks[paddr>>12]->code_addr = ppc_block->code_addr;
-		     temp_block->funcs = NULL;
 		     temp_block->start_address = paddr & ~0xFFF;
 		     temp_block->end_address = (paddr & ~0xFFF) + 0x1000;
 		     init_block(temp_block);
@@ -345,10 +345,8 @@ void init_block(PowerPC_block* ppc_block){
 		invalid_code[paddr>>12]=0;
 		temp_block = blocks_get(paddr>>12);
 		if(!temp_block){
-  		   temp_block = malloc(sizeof(PowerPC_block));
+  		   temp_block = calloc(1,sizeof(PowerPC_block));
 		     blocks_set(paddr>>12, temp_block);
-		     //blocks[paddr>>12]->code_addr = ppc_block->code_addr;
-		     temp_block->funcs = NULL;
 		     temp_block->start_address = paddr & ~0xFFF;
 		     temp_block->end_address = (paddr & ~0xFFF) + 0x1000;
 		     init_block(temp_block);
@@ -362,10 +360,8 @@ void init_block(PowerPC_block* ppc_block){
 		   invalid_code[(start+0x20000000)>>12]){
 			invalid_code[(start+0x20000000)>>12]=0;
 			if(!temp_block){
-  			temp_block = malloc(sizeof(PowerPC_block));
+  			temp_block = calloc(1,sizeof(PowerPC_block));
 				blocks_set((start+0x20000000)>>12, temp_block);
-				//blocks[(start+0x20000000)>>12]->code_addr = ppc_block->code_addr;
-				temp_block->funcs = NULL;
 				temp_block->start_address = (start+0x20000000) & ~0xFFF;
 				temp_block->end_address		= ((start+0x20000000) & ~0xFFF) + 0x1000;
 				init_block(temp_block);
@@ -376,10 +372,8 @@ void init_block(PowerPC_block* ppc_block){
 			invalid_code[(start-0x20000000)>>12]=0;
 			temp_block = blocks_get((start-0x20000000)>>12);
 			if(!temp_block){
-  			temp_block = malloc(sizeof(PowerPC_block));
+  			temp_block = calloc(1,sizeof(PowerPC_block));
 				blocks_set((start-0x20000000)>>12, temp_block);
-				//blocks[(start-0x20000000)>>12]->code_addr = ppc_block->code_addr;
-				temp_block->funcs = NULL;
 				temp_block->start_address		= (start-0x20000000) & ~0xFFF;
 				temp_block->end_address			= ((start-0x20000000) & ~0xFFF) + 0x1000;
 				init_block(temp_block);
@@ -392,25 +386,22 @@ void init_block(PowerPC_block* ppc_block){
 
 void deinit_block(PowerPC_block* ppc_block){
 	PowerPC_block* temp_block;
+	
 	invalidate_block(ppc_block);
-
-	invalid_code[ppc_block->start_address>>12]=1;
 
 	// We need to mark all equivalent addresses as invalid
 	if(ppc_block->end_address < 0x80000000 || ppc_block->start_address >= 0xc0000000){
 		unsigned long paddr;
 
-		paddr = get_physical_addr(ppc_block->start_address);
+		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
 		temp_block = blocks_get(paddr>>12);
 		if(temp_block){
-		     //blocks[paddr>>12]->code_addr = NULL;
 		     invalid_code[paddr>>12]=1;
 		}
 
 		paddr += ppc_block->end_address - ppc_block->start_address - 4;
 		temp_block = blocks_get(paddr>>12);
 		if(temp_block){
-		     //blocks[paddr>>12]->code_addr = NULL;
 		     invalid_code[paddr>>12]=1;
 		}
 
@@ -419,15 +410,15 @@ void deinit_block(PowerPC_block* ppc_block){
 		unsigned int end   = ppc_block->end_address;
 		temp_block = blocks_get((start+0x20000000)>>12);
 		if(start >= 0x80000000 && end < 0xa0000000 && temp_block){
-			//blocks[(start+0x20000000)>>12]->code_addr = NULL;
 			invalid_code[(start+0x20000000)>>12]=1;
 		}
 		temp_block = blocks_get((start-0x20000000)>>12);
 		if(start >= 0xa0000000 && end < 0xc0000000 && temp_block){
-			//blocks[(start-0x20000000)>>12]->code_addr = NULL;
 			invalid_code[(start-0x20000000)>>12]=1;
 		}
 	}
+
+	invalid_code[ppc_block->start_address>>12]=1;
 }
 
 int is_j_out(int branch, int is_aa){

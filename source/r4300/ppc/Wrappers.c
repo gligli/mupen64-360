@@ -172,7 +172,6 @@ void dynarec(unsigned int address){
 			}
 			
 			dst_block = calloc(1,sizeof(PowerPC_block));
-			blocks_set(address>>12, dst_block);
 			dst_block->start_address = address & ~0xFFF;
 			dst_block->end_address   = (address & ~0xFFF) + 0x1000;
 			
