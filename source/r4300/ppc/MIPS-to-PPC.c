@@ -726,10 +726,9 @@ static int LWL(MIPS_instr mips){
 #ifdef INTERPRET_LWL
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_LWL
-	// TODO: lwl
-	return CONVERT_ERROR;
 #endif
+
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LWL,MIPS_GET_IMMED(mips));
 }
 
 static int LW(MIPS_instr mips){
@@ -767,10 +766,9 @@ static int LWR(MIPS_instr mips){
 #ifdef INTERPRET_LWR
 	genCallInterp(mips);
 	return INTERPRETED;
-#else // INTERPRET_LWR
-	// TODO: lwr
-	return CONVERT_ERROR;
 #endif
+	
+    return genCallDynaMemVM(MIPS_GET_RS(mips),MIPS_GET_RT(mips),MEM_LWR,MIPS_GET_IMMED(mips));
 }
 
 static int LWU(MIPS_instr mips){
@@ -3824,6 +3822,32 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             EMIT_STW(r2, 4, addr);
 			flushRegisters();
             break;
+        }
+		case MEM_LWL:
+        {
+			EMIT_ADDI(rd, rd, immed);
+			EMIT_RLWINM(0, rd, 0, 30, 31);	// r0 = addr & 3
+			EMIT_CMPI(0, 0, 1);
+			EMIT_BNE(1, 6, 0, 0);
+
+            int r = mapRegisterNew( rt_reg );
+            EMIT_LWZ(r, 0, rd);
+			flushRegisters();
+        	break;
+        }
+        case MEM_LWR:
+        {
+			EMIT_ADDI(rd, rd, immed);
+			EMIT_RLWINM(0, rd, 0, 30, 31);	// r0 = addr & 3
+			EMIT_CMPI(0, 3, 1);
+			EMIT_BNE(1, 7, 0, 0);
+			
+			EMIT_RLWINM(rd, rd, 0, 0, 29);	// addr &= 0xFFFFFFFC
+
+            int r = mapRegisterNew( rt_reg );
+            EMIT_LWZ(r, 0, rd);
+			flushRegisters();
+        	break;
         }
         case MEM_SB:
         {

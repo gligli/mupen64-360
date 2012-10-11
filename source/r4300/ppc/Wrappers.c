@@ -350,90 +350,127 @@ void check_invalidate_memory(unsigned int addr){
 #endif	
 }
 
-unsigned int dyna_mem_usage[16]={};
-
 unsigned int dyna_mem(unsigned int value, unsigned int addr,
                       memType type, unsigned int pc, int isDelaySlot){
-	static long long dyna_rdword;
+	static unsigned long long int dyna_rdword;
 	
-	++dyna_mem_usage[type];
-
 	address = addr;
-	rdword = &dyna_rdword;
+	rdword = (long long int *)&dyna_rdword;
 	PC->addr = interp_addr = pc;
 	delay_slot = isDelaySlot;
 
-	switch(type){
-		case MEM_LW:
-			read_word_in_memory();
-			reg[value] = (long long)((long)dyna_rdword);
-			break;
-		case MEM_LWU:
-			read_word_in_memory();
-			reg[value] = (unsigned long long)((long)dyna_rdword);
-			break;
-		case MEM_LH:
-			read_hword_in_memory();
-			reg[value] = (long long)((short)dyna_rdword);
-			break;
-		case MEM_LHU:
-			read_hword_in_memory();
-			reg[value] = (unsigned long long)((unsigned short)dyna_rdword);
-			break;
-		case MEM_LB:
-			read_byte_in_memory();
-			reg[value] = (long long)((signed char)dyna_rdword);
-			break;
-		case MEM_LBU:
-			read_byte_in_memory();
-			reg[value] = (unsigned long long)((unsigned char)dyna_rdword);
-			break;
-		case MEM_LD:
-			read_dword_in_memory();
+	switch(type)
+	{
+	case MEM_LW:
+		read_word_in_memory();
+		reg[value] = (long long)((long)dyna_rdword);
+		break;
+	case MEM_LWU:
+		read_word_in_memory();
+		reg[value] = (unsigned long long)((long)dyna_rdword);
+		break;
+	case MEM_LH:
+		read_hword_in_memory();
+		reg[value] = (long long)((short)dyna_rdword);
+		break;
+	case MEM_LHU:
+		read_hword_in_memory();
+		reg[value] = (unsigned long long)((unsigned short)dyna_rdword);
+		break;
+	case MEM_LB:
+		read_byte_in_memory();
+		reg[value] = (long long)((signed char)dyna_rdword);
+		break;
+	case MEM_LBU:
+		read_byte_in_memory();
+		reg[value] = (unsigned long long)((unsigned char)dyna_rdword);
+		break;
+	case MEM_LD:
+		read_dword_in_memory();
+		reg[value] = dyna_rdword;
+		break;
+	case MEM_LWC1:
+		read_word_in_memory();
+		*((long*)reg_cop1_simple[value]) = (long)dyna_rdword;
+		break;
+	case MEM_LDC1:
+		read_dword_in_memory();
+		*((long long*)reg_cop1_double[value]) = dyna_rdword;
+		break;
+	case MEM_LWL:
+		address = addr & 0xFFFFFFFC;
+		read_word_in_memory();
+		switch(addr&3)
+		{
+		case 0:
 			reg[value] = dyna_rdword;
 			break;
-		case MEM_LWC1:
-			read_word_in_memory();
-			*((long*)reg_cop1_simple[value]) = (long)dyna_rdword;
+		case 1:
+			reg[value] = (reg[value]&0x00000000000000FFLL) | (dyna_rdword<<8);
 			break;
-		case MEM_LDC1:
-			read_dword_in_memory();
-			*((long long*)reg_cop1_double[value]) = dyna_rdword;
+		case 2:
+			reg[value] = (reg[value]&0x000000000000FFFFLL) | (dyna_rdword<<16);
 			break;
-		case MEM_SW:
-			word = value;
-			write_word_in_memory();
-			check_invalidate_memory(address);
+		case 3:
+			reg[value] = (reg[value]&0x0000000000FFFFFFLL) | (dyna_rdword<<24);
 			break;
-		case MEM_SH:
-			hword = value;
-			write_hword_in_memory();
-			check_invalidate_memory(address);
+		}
+		sign_extended(reg[value]);
+		break;
+	case MEM_LWR:
+		address = addr & 0xFFFFFFFC;
+		read_word_in_memory();
+		switch(addr&3)
+		{
+		case 0:
+			reg[value] = (reg[value]&0xFFFFFFFFFFFFFF00LL) | ((dyna_rdword>>24)&0xFF);
 			break;
-		case MEM_SB:
-			cpu_byte = value;
-			write_byte_in_memory();
-			check_invalidate_memory(address);
+		case 1:
+			reg[value] = (reg[value]&0xFFFFFFFFFFFF0000LL) | ((dyna_rdword>>16)&0xFFFF);
 			break;
-		case MEM_SD:
-			dword = reg[value];
-			write_dword_in_memory();
-			check_invalidate_memory(address);
+		case 2:
+			reg[value] = (reg[value]&0xFFFFFFFFFF000000LL) | ((dyna_rdword>>8)&0xFFFFFF);
 			break;
-		case MEM_SWC1:
-			word = *((long*)reg_cop1_simple[value]);
-			write_word_in_memory();
-			check_invalidate_memory(address);
+		case 3:
+			reg[value] = dyna_rdword;
 			break;
-		case MEM_SDC1:
-			dword = *((unsigned long long*)reg_cop1_double[value]);
-			write_dword_in_memory();
-			check_invalidate_memory(address);
-			break;
-		default:
-			printf("dyna_mem bad type\n");
-			stop = 1;
-			break;
+		}
+		sign_extended(reg[value]);
+		break;
+	case MEM_SW:
+		word = value;
+		write_word_in_memory();
+		check_invalidate_memory(address);
+		break;
+	case MEM_SH:
+		hword = value;
+		write_hword_in_memory();
+		check_invalidate_memory(address);
+		break;
+	case MEM_SB:
+		cpu_byte = value;
+		write_byte_in_memory();
+		check_invalidate_memory(address);
+		break;
+	case MEM_SD:
+		dword = reg[value];
+		write_dword_in_memory();
+		check_invalidate_memory(address);
+		break;
+	case MEM_SWC1:
+		word = *((long*)reg_cop1_simple[value]);
+		write_word_in_memory();
+		check_invalidate_memory(address);
+		break;
+	case MEM_SDC1:
+		dword = *((unsigned long long*)reg_cop1_double[value]);
+		write_dword_in_memory();
+		check_invalidate_memory(address);
+		break;
+	default:
+		printf("dyna_mem bad type\n");
+		stop = 1;
+		break;
 	}
 	delay_slot = 0;
 

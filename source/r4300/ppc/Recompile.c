@@ -317,6 +317,8 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 				printf("%p = %p\n",(i<<2)+func->start_address,func->code_addr[i]);
 		}
 	}
+	
+	do_disasm=0;
 
 	return func;
 }
