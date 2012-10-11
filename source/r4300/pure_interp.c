@@ -135,7 +135,7 @@ static void JR()
 
 static void JALR()
 {
-	long long int *dest = PC->f.r.rd;
+	unsigned long long int *dest = (unsigned long long int *)PC->f.r.rd;
 	local_rs32 = rrs32;
 	interp_addr += 4;
 	delay_slot = 1;
@@ -648,7 +648,7 @@ static void BLTZAL()
 	short local_immediate = iimmediate;
 	local_rs = irs;
 	reg[31] = interp_addr + 8;
-	if ((&irs) != (long long int *)(reg + 31))
+	if ((&irs) != (reg + 31))
 	{
 		if ((interp_addr + (local_immediate + 1)*4) == interp_addr)
 			if (local_rs < 0)
@@ -683,7 +683,7 @@ static void BGEZAL()
 	short local_immediate = iimmediate;
 	local_rs = irs;
 	reg[31] = interp_addr + 8;
-	if ((&irs) != (long long int *)(reg + 31))
+	if ((&irs) != (reg + 31))
 	{
 		if ((interp_addr + (local_immediate + 1)*4) == interp_addr)
 			if (local_rs >= 0)
@@ -718,7 +718,7 @@ static void BLTZALL()
 	short local_immediate = iimmediate;
 	local_rs = irs;
 	reg[31] = interp_addr + 8;
-	if ((&irs) != (long long int *)(reg + 31))
+	if ((&irs) != (reg + 31))
 	{
 		if ((interp_addr + (local_immediate + 1)*4) == interp_addr)
 			if (local_rs < 0)
@@ -756,7 +756,7 @@ static void BGEZALL()
 	short local_immediate = iimmediate;
 	local_rs = irs;
 	reg[31] = interp_addr + 8;
-	if ((&irs) != (long long int *)(reg + 31))
+	if ((&irs) != (reg + 31))
 	{
 		if ((interp_addr + (local_immediate + 1)*4) == interp_addr)
 			if (local_rs >= 0)
@@ -2427,7 +2427,7 @@ static void DADDIU()
 
 static void LDL()
 {
-	long long int word = 0;
+	unsigned long long int word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 7)
 	{
@@ -2438,43 +2438,43 @@ static void LDL()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFF) | (word << 8);
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFF) | (word << 16);
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFF) | (word << 24);
 		break;
 	case 4:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFF) | (word << 32);
 		break;
 	case 5:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFLL) | (word << 40);
 		break;
 	case 6:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFFLL) | (word << 48);
 		break;
 	case 7:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFFFFLL) | (word << 56);
 		break;
@@ -2483,49 +2483,49 @@ static void LDL()
 
 static void LDR()
 {
-	long long int word = 0;
+	unsigned long long int word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 7)
 	{
 	case 0:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFFFF00LL) | (word >> 56);
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFF0000LL) | (word >> 48);
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFFFF000000LL) | (word >> 40);
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFFFF00000000LL) | (word >> 32);
 		break;
 	case 4:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFFFF0000000000LL) | (word >> 24);
 		break;
 	case 5:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFFFF000000000000LL) | (word >> 16);
 		break;
 	case 6:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_dword_in_memory();
 		irt = (irt & 0xFF00000000000000LL) | (word >> 8);
 		break;
@@ -2558,7 +2558,7 @@ static void LH()
 
 static void LWL()
 {
-	long long int word = 0;
+	unsigned long long int word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 3)
 	{
@@ -2569,19 +2569,19 @@ static void LWL()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_word_in_memory();
 		irt = (irt & 0xFF) | (word << 8);
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFF) | (word << 16);
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFFFF) | (word << 24);
 		break;
@@ -2616,25 +2616,25 @@ static void LHU()
 
 static void LWR()
 {
-	long long int word = 0;
+	unsigned long long int word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 3)
 	{
 	case 0:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFFFF00LL) | ((word >> 24) & 0xFF);
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFFFFFFFFFF0000LL) | ((word >> 16) & 0xFFFF);
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &word;
+		rdword = (long long int *)&word;
 		read_word_in_memory();
 		irt = (irt & 0xFFFFFFFFFF000000LL) | ((word >> 8) & 0xFFFFFF);
 		break;
@@ -2674,7 +2674,7 @@ static void SH()
 
 static void SWL()
 {
-	long long int old_word = 0;
+	unsigned long long int old_word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 3)
 	{
@@ -2686,7 +2686,7 @@ static void SWL()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt >> 8) | (old_word & 0xFF000000);
 		write_word_in_memory();
@@ -2694,7 +2694,7 @@ static void SWL()
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt >> 16) | (old_word & 0xFFFF0000);
 		write_word_in_memory();
@@ -2720,7 +2720,7 @@ static void SW()
 
 static void SDL()
 {
-	long long int old_word = 0;
+	unsigned long long int old_word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 7)
 	{
@@ -2732,7 +2732,7 @@ static void SDL()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 8) | (old_word & 0xFF00000000000000LL);
 		write_dword_in_memory();
@@ -2740,7 +2740,7 @@ static void SDL()
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 16) | (old_word & 0xFFFF000000000000LL);
 		write_dword_in_memory();
@@ -2748,7 +2748,7 @@ static void SDL()
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 24) | (old_word & 0xFFFFFF0000000000LL);
 		write_dword_in_memory();
@@ -2756,7 +2756,7 @@ static void SDL()
 		break;
 	case 4:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 32) | (old_word & 0xFFFFFFFF00000000LL);
 		write_dword_in_memory();
@@ -2764,7 +2764,7 @@ static void SDL()
 		break;
 	case 5:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 40) | (old_word & 0xFFFFFFFFFF000000LL);
 		write_dword_in_memory();
@@ -2772,7 +2772,7 @@ static void SDL()
 		break;
 	case 6:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 48) | (old_word & 0xFFFFFFFFFFFF0000LL);
 		write_dword_in_memory();
@@ -2780,7 +2780,7 @@ static void SDL()
 		break;
 	case 7:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = ((unsigned long long) irt >> 56) | (old_word & 0xFFFFFFFFFFFFFF00LL);
 		write_dword_in_memory();
@@ -2791,13 +2791,13 @@ static void SDL()
 
 static void SDR()
 {
-	long long int old_word = 0;
+	unsigned long long int old_word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 7)
 	{
 	case 0:
 		address = iimmediate + irs32;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = (irt << 56) | (old_word & 0x00FFFFFFFFFFFFFFLL);
 		write_dword_in_memory();
@@ -2805,7 +2805,7 @@ static void SDR()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = (irt << 48) | (old_word & 0x0000FFFFFFFFFFFFLL);
 		write_dword_in_memory();
@@ -2813,7 +2813,7 @@ static void SDR()
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = (irt << 40) | (old_word & 0x000000FFFFFFFFFFLL);
 		write_dword_in_memory();
@@ -2821,7 +2821,7 @@ static void SDR()
 		break;
 	case 3:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = (irt << 32) | (old_word & 0x00000000FFFFFFFFLL);
 		write_dword_in_memory();
@@ -2829,7 +2829,7 @@ static void SDR()
 		break;
 	case 4:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = (irt << 24) | (old_word & 0x0000000000FFFFFFLL);
 		write_dword_in_memory();
@@ -2837,7 +2837,7 @@ static void SDR()
 		break;
 	case 5:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = (irt << 16) | (old_word & 0x000000000000FFFFLL);
 		write_dword_in_memory();
@@ -2845,7 +2845,7 @@ static void SDR()
 		break;
 	case 6:
 		address = (iimmediate + irs32) & 0xFFFFFFF8;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_dword_in_memory();
 		dword = (irt << 8) | (old_word & 0x00000000000000FFLL);
 		write_dword_in_memory();
@@ -2862,13 +2862,13 @@ static void SDR()
 
 static void SWR()
 {
-	long long int old_word = 0;
+	unsigned long long int old_word = 0;
 	interp_addr += 4;
 	switch ((iimmediate + irs32) & 3)
 	{
 	case 0:
 		address = iimmediate + irs32;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt << 24) | (old_word & 0x00FFFFFF);
 		write_word_in_memory();
@@ -2876,7 +2876,7 @@ static void SWR()
 		break;
 	case 1:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt << 16) | (old_word & 0x0000FFFF);
 		write_word_in_memory();
@@ -2884,7 +2884,7 @@ static void SWR()
 		break;
 	case 2:
 		address = (iimmediate + irs32) & 0xFFFFFFFC;
-		rdword = &old_word;
+		rdword = (long long int *)&old_word;
 		read_word_in_memory();
 		word = ((unsigned long) irt << 8) | (old_word & 0x000000FF);
 		write_word_in_memory();
@@ -2916,11 +2916,11 @@ static void LL()
 
 static void LWC1()
 {
-	long long int temp;
+	unsigned long long int temp;
 	if (check_cop1_unusable()) return;
 	interp_addr += 4;
 	address = lfoffset + reg[lfbase];
-	rdword = &temp;
+	rdword = (long long int *)&temp;
 	read_word_in_memory();
 	*((long*) reg_cop1_simple[lfft]) = *rdword;
 }
@@ -2930,7 +2930,7 @@ static void LDC1()
 	if (check_cop1_unusable()) return;
 	interp_addr += 4;
 	address = lfoffset + reg[lfbase];
-	rdword = (long long int*) reg_cop1_double[lfft];
+	rdword = (long long*) reg_cop1_double[lfft];
 	read_dword_in_memory();
 }
 
