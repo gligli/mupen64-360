@@ -39,14 +39,29 @@
 #include "util.h"
 #include "osal/files.h"
 #include "osal/preproc.h"
+#include "main.h"
 
 /**********************
      File utilities
  **********************/
 
+static char file_cache_filename[PATH_MAX] = "";
+static unsigned char file_cache_buffer[256*1024];
+
 file_status_t read_from_file(const char *filename, void *data, size_t size)
 {
-    FILE *f = fopen(filename, "rb");
+	// cache query
+	if(!stricmp(filename,file_cache_filename) && size<sizeof(file_cache_buffer))
+	{
+		memcpy(data,file_cache_buffer,size);
+		return file_ok;
+	}
+	
+	// cache invalidate
+	file_cache_filename[0]='\0';    
+	printf("read %s %d\n",filename,size);
+
+	FILE *f = fopen(filename, "rb");
     if (f == NULL)
     {
         return file_open_error;
@@ -59,12 +74,30 @@ file_status_t read_from_file(const char *filename, void *data, size_t size)
     }
 
     fclose(f);
+	
+	// cache fill
+	if(size<sizeof(file_cache_buffer))
+	{
+		strcpy(file_cache_filename,filename);
+		memcpy(file_cache_buffer,data,size);
+	}
+	
     return file_ok;
 }
 
 file_status_t write_to_file(const char *filename, const void *data, size_t size)
 {
-    FILE *f = fopen(filename, "wb");
+	// cache query
+	if(!stricmp(filename,file_cache_filename) && size<sizeof(file_cache_buffer) && !memcmp(data,file_cache_buffer,size))
+	{
+		return file_ok;
+	}
+
+	// cache invalidate
+	file_cache_filename[0]='\0';    
+	printf("write %s %d\n",filename,size);
+	
+	FILE *f = fopen(filename, "wb");
     if (f == NULL)
     {
         return file_open_error;
@@ -77,6 +110,14 @@ file_status_t write_to_file(const char *filename, const void *data, size_t size)
     }
 
     fclose(f);
+
+	// cache fill
+	if(size<sizeof(file_cache_buffer))
+	{
+		strcpy(file_cache_filename,filename);
+		memcpy(file_cache_buffer,data,size);
+	}
+	
     return file_ok;
 }
 
