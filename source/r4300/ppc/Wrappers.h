@@ -40,7 +40,7 @@
 
 #define REG_LOCALRS    34
 
-//#define INVALIDATE_FUNC_ON_CHECK_MEMORY
+#define INVALIDATE_FUNC_ON_CHECK_MEMORY
 
 extern int noCheckInterrupt;
 

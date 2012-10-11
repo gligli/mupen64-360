@@ -246,9 +246,6 @@ static int branch(int offset, condition cond, int link, int likely){
 		// Load the address of the next instruction
 		EMIT_LIS(3, (get_src_pc()+4)>>16);
 		EMIT_ORI(3, 3, get_src_pc()+4);
-		// Restore LR
-		EMIT_LWZ(0, DYNAOFF_LR, 1);
-		EMIT_MTLR(0);
 		// If taking the interrupt, return to the trampoline
 		EMIT_BLELR(2, 0);
 
@@ -265,9 +262,6 @@ static int branch(int offset, condition cond, int link, int likely){
 		EMIT_ORI(3, 3, get_src_pc() + (offset<<2));
 		EMIT_STW(3, 0, DYNAREG_LADDR);
 
-		// Restore LR
-		EMIT_LWZ(0, DYNAOFF_LR, 1);
-		EMIT_MTLR(0);
 		// If taking the interrupt, return to the trampoline
 		EMIT_BLELR(2, 0);
 
@@ -361,9 +355,6 @@ static int J(MIPS_instr mips){
 		EMIT_ORI(3, 3, naddr);
 		EMIT_STW(3, 0, DYNAREG_LADDR);
 
-		// Restore LR
-		EMIT_LWZ(0, DYNAOFF_LR, 1);
-		EMIT_MTLR(0);
 		// if(next_interupt <= Count) return;
 		EMIT_BLELR(2, 0);
 
@@ -428,9 +419,6 @@ static int JAL(MIPS_instr mips){
 		EMIT_ORI(3, 3, naddr);
 		EMIT_STW(3, 0, DYNAREG_LADDR);
 
-		// Restore LR
-		EMIT_LWZ(0, DYNAOFF_LR, 1);
-		EMIT_MTLR(0);
 		/// if(next_interupt <= Count) return;
 		EMIT_BLELR(2, 0);
 
@@ -3535,9 +3523,6 @@ static void genCallInterp(MIPS_instr mips){
 
 static void genJumpTo(unsigned int loc, unsigned int type){
 	if(type == JUMPTO_REG){
-		// Restore LR
-		EMIT_LWZ(0, DYNAOFF_LR, 1);
-		EMIT_MTLR(0);
 		// Load the register as the return value
 		EMIT_LWZ(3, loc*8+4, DYNAREG_REG);
 	} else {

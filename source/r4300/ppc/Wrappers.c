@@ -32,6 +32,7 @@
 #include "Recompile.h"
 #include "Wrappers.h"
 #include "r4300/exception.h"
+#include "r4300/macros.h"
 
 extern int stop;
 extern unsigned long instructionCount;
@@ -58,7 +59,7 @@ unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 
 	__asm__ volatile(
 		// Create the stack frame for code
-		"stwu	1, -64(1) \n"
+		"stwu	1, -32(1) \n"
 		"mfcr	14        \n"
 		"stw	14, 8(1)  \n"
 		// Setup saved registers for code
@@ -121,7 +122,7 @@ void dynarec(unsigned int address){
 		static int dcp=0;
 		static int dtb=0;
 
-#if 0		
+#if 0
 		if(kbhit())
 		{
 			switch(getch())
@@ -154,6 +155,9 @@ void dynarec(unsigned int address){
 				sprintf(txtbuffer, "tlb exception old addr %p new addr %p\n", address, interp_addr);
 				DEBUG_print(txtbuffer, DBG_USBGECKO);
 			}
+			
+			//gli we had an exception, so don't try to link
+			link_branch=NULL;
 			
 			address = interp_addr;
 			continue;
@@ -233,54 +237,36 @@ void dynarec(unsigned int address){
 		assert(code);
 		
 		// Create a link if possible
-		if(link_branch && !func_was_freed(last_func) &&
-			((last_func->start_address>=0x80000000 && last_func->start_address<0xc0000000) || isGoldeneyeRom) && //gli don't link TLB mapped stuff
+		if(link_branch &&
 			link_branch>=last_func->code && link_branch<last_func->code+last_func->code_length) //gli test ppc location coherency
 		{
-#if 0
-			unsigned int lfaddr=PHY_INVALID_ADDR;
-			unsigned int lfaddr_bef=last_func->start_address;
-			unsigned int lfaddr_aft=last_func->end_address;
+			PowerPC_block  * lfblk=blocks_get(last_func->start_address>>12);
 			
-			int i;
-			for(i=0;i<(last_func->end_address-last_func->start_address)>>2;++i)
+			if(!lfblk)
 			{
-				if (last_func->code_addr[i]==link_branch)
-				{
-					lfaddr=(i<<2)+last_func->start_address;
-				}
-				else if (last_func->code_addr[i]<link_branch)
-				{
-					lfaddr_bef=(i<<2)+last_func->start_address;
-				}
-				else
-				{
-					lfaddr_aft=(i<<2)+last_func->start_address;
-					break;
-				}
-			}
-			
-			if (lfaddr==PHY_INVALID_ADDR)
-			{
-				//gli I'll need a split, tho I don't have the mips address
-
-				unsigned int saddr=last_func->start_address;
-
-				printf("linking tlb needs split btw %p %p\n",lfaddr_bef,lfaddr_aft);
-				
-//				invalidate_func(saddr);
-//				add_block_split(blocks_get(saddr>>12),address);
+				sprintf(txtbuffer, "link !lfblk : lfs %p lfe %p\n", last_func->start_address, last_func->end_address);
+				DEBUG_print(txtbuffer, DBG_USBGECKO);
 			}
 			else
 			{
-	  			RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);
+				PowerPC_func * ffunc=find_func(&lfblk->funcs,last_func->start_address);
+
+				if(!ffunc)
+				{
+					sprintf(txtbuffer, "link !ffunc : lfs %p lfe %p\n", last_func->start_address, last_func->end_address);
+					DEBUG_print(txtbuffer, DBG_USBGECKO);
+				}
+				else if(ffunc!=last_func)
+				{
+					sprintf(txtbuffer, "link ffunc!=last_func : lfs %p lfe %p ffs %p ffe %p\n", last_func->start_address, last_func->end_address, ffunc->start_address, ffunc->end_address);
+					DEBUG_print(txtbuffer, DBG_USBGECKO);
+				}
+				else
+				{		
+					RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);
+				}
 			}
-#else
-			RecompCache_Link(last_func, link_branch, func,(PowerPC_instr*) code);
-#endif
 		}
-		
-		clear_freed_funcs();
 		
 		interp_addr = address = dyna_run(func, code);
 

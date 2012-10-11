@@ -254,68 +254,18 @@
           <executablePath></executablePath>
           <cTool>
             <incDir>
-              <pElem>../../build</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/mupen64plus-rsp-hle</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/plugin</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/memory</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/api</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/xenon_input</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300/x86</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_sound</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300/ppc</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/input</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_uart</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/osal</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/main</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include/sys</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300/ppc/disasm</pElem>
-              <pElem>../../../../../../usr/local/xenon/lib/gcc/xenon/4.7.1/include</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/ppc</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/main/zip</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/xenos_audio</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_soc</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/usb</pElem>
+              <pElem>../../files</pElem>
+              <pElem>../../source</pElem>
             </incDir>
             <preprocessorList>
               <Elem>PPC_DYNAREC</Elem>
+              <Elem>USE_RECOMP_CACHE</Elem>
             </preprocessorList>
           </cTool>
           <ccTool>
             <incDir>
-              <pElem>../../build</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/mupen64plus-rsp-hle</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/plugin</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/memory</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1/ext</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1/bits</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/Rice_GX_Xenos</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/api</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/xenon_input</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/r4300</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_sound</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/xenos</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/input</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/console</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include/sys</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1/debug</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/sys</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/main</pElem>
-              <pElem>../../../../../../usr/local/xenon/lib/gcc/xenon/4.7.1/include</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/ppc</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source/main/zip</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1</pElem>
-              <pElem>../../../../../../usr/local/xenon/xenon/include/c++/4.7.1/xenon/32/bits</pElem>
-              <pElem>../../../../../../mnt/ppc/mupen64-360/source</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/libxemit</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/xenon_smc</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/usb</pElem>
-              <pElem>../../../../../../usr/local/xenon/usr/include/zlx</pElem>
+              <pElem>../../files</pElem>
+              <pElem>../../source</pElem>
             </incDir>
           </ccTool>
         </makeTool>
@@ -685,10 +635,6 @@
         </cTool>
       </item>
       <item path="../../source/r4300/ARAM-blocks.c" ex="false" tool="0" flavor2="2">
-        <cTool>
-        </cTool>
-      </item>
-      <item path="../../source/r4300/Recomp-Cache.c" ex="false" tool="0" flavor2="0">
         <cTool>
         </cTool>
       </item>

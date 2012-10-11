@@ -95,9 +95,6 @@ int        is_j_dst(void);
 int        add_jump_special(int is_j);
 void       set_jump_special(int which, int new_jump);
 
-int  func_was_freed(PowerPC_func*);
-void clear_freed_funcs(void);
-
 /* These functions are used to initialize, recompile, and deinit a block
    init assumes that all pointers in the block fed it it are NULL or allocated
    memory. Deinit frees a block with the same preconditions.

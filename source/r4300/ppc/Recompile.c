@@ -57,11 +57,6 @@ static unsigned char isJmpDst[1024];
 static PowerPC_instr code_buffer[64*1024];
 static PowerPC_instr* code_addr_buffer[1024];
 
-static struct func_list {
-	PowerPC_func*     func;
-	struct func_list* next;
-} *freed_funcs = NULL;
-
 static int pass0(PowerPC_block* ppc_block,PowerPC_func* func);
 static void pass2(PowerPC_block* ppc_block,PowerPC_func* func);
 //static void genRecompileBlock(PowerPC_block*);
@@ -220,7 +215,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	cf=func;
 
 	cur_src = addr;
-	
+
 	func->start_address = addr;
 	func->end_address = ppc_block->end_address;
 	func->code = NULL;
@@ -230,6 +225,10 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	func->code_length = 0;
 
 	int need_pad = pass0(ppc_block,func);
+	
+	//gli part of the function could already be compiled,
+	//gli just remove it to ensure function unicity for a given mips address
+	invalidate_func(func->end_address-4);
 
 	// insert this func into the block
 	insert_func(&ppc_block->funcs, func);
@@ -329,7 +328,7 @@ void init_block(PowerPC_block* ppc_block){
 	if(ppc_block->end_address < 0x80000000 || ppc_block->start_address >= 0xc0000000){
 		unsigned long paddr;
 
-		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
+		paddr = get_physical_addr(ppc_block->start_address);
 		invalid_code[paddr>>12]=0;
 		temp_block = blocks_get(paddr>>12);
 		if(!temp_block){
@@ -401,7 +400,7 @@ void deinit_block(PowerPC_block* ppc_block){
 	if(ppc_block->end_address < 0x80000000 || ppc_block->start_address >= 0xc0000000){
 		unsigned long paddr;
 
-		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
+		paddr = get_physical_addr(ppc_block->start_address);
 		temp_block = blocks_get(paddr>>12);
 		if(temp_block){
 		     //blocks[paddr>>12]->code_addr = NULL;
@@ -625,20 +624,4 @@ void invalidate_block(PowerPC_block* ppc_block){
 
 	// Now that we've handled the invalidation, reinit ourselves
 	init_block(ppc_block);
-}
-
-int func_was_freed(PowerPC_func* func){
-	struct func_list* node;
-	for(node = freed_funcs; node != NULL; node = node->next)
-		if(node->func == func) return 1;
-	return 0;
-}
-
-void clear_freed_funcs(void){
-	struct func_list* node, * next;
-	for(node = freed_funcs; node != NULL; node = next){
-		next = node->next;
-		free(node);
-	}
-	freed_funcs = NULL;
 }
