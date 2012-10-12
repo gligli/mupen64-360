@@ -398,5 +398,7 @@ void update_vi_width(unsigned int word);
 
 void do_SP_Task(int delayedDP, int cycles);
 
+void memory_vm_unmap_address(unsigned int vaddr);
+
 #endif
 

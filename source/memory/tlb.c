@@ -79,10 +79,17 @@ void tlb_map(tlb *entry)
             entry->phys_even < 0x20000000)
         {
             for (i=entry->start_even;i<entry->end_even;i+=0x1000)
+			{
                 tlb_LUT_r[i>>12] = 0x80000000 | (entry->phys_even + (i - entry->start_even) + 0xFFF);
+				memory_vm_unmap_address(i);
+			}
+			
             if (entry->d_even)
                 for (i=entry->start_even;i<entry->end_even;i+=0x1000)
+				{
                     tlb_LUT_w[i>>12] = 0x80000000 | (entry->phys_even + (i - entry->start_even) + 0xFFF);
+					memory_vm_unmap_address(i);
+				}
         }
     }
 
@@ -93,10 +100,17 @@ void tlb_map(tlb *entry)
             entry->phys_odd < 0x20000000)
         {
             for (i=entry->start_odd;i<entry->end_odd;i+=0x1000)
+			{
                 tlb_LUT_r[i>>12] = 0x80000000 | (entry->phys_odd + (i - entry->start_odd) + 0xFFF);
+				memory_vm_unmap_address(i);
+			}
+			
             if (entry->d_odd)
                 for (i=entry->start_odd;i<entry->end_odd;i+=0x1000)
+				{
                     tlb_LUT_w[i>>12] = 0x80000000 | (entry->phys_odd + (i - entry->start_odd) + 0xFFF);
+					memory_vm_unmap_address(i);
+				}
         }
     }
 }

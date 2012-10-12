@@ -104,7 +104,7 @@ unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 		: "r" (code)
 		: "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "22", "ctr", "lr", "cr0", "cr2");
 
-	link_branch = link_branch == return_addr ? NULL : link_branch - 1;
+	link_branch = (link_branch == return_addr || link_branch == NULL) ? NULL : link_branch - 1;
 	
 	return naddr;
 }
@@ -366,28 +366,28 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 		reg[value] = (long long)((long)dyna_rdword);
 		break;
 	case MEM_LWU:
+		rdword = &reg[value];
 		read_word_in_memory();
-		reg[value] = (unsigned long long)((long)dyna_rdword);
 		break;
 	case MEM_LH:
 		read_hword_in_memory();
 		reg[value] = (long long)((short)dyna_rdword);
 		break;
 	case MEM_LHU:
+		rdword = &reg[value];
 		read_hword_in_memory();
-		reg[value] = (unsigned long long)((unsigned short)dyna_rdword);
 		break;
 	case MEM_LB:
 		read_byte_in_memory();
 		reg[value] = (long long)((signed char)dyna_rdword);
 		break;
 	case MEM_LBU:
+		rdword = &reg[value];
 		read_byte_in_memory();
-		reg[value] = (unsigned long long)((unsigned char)dyna_rdword);
 		break;
 	case MEM_LD:
+		rdword = &reg[value];
 		read_dword_in_memory();
-		reg[value] = dyna_rdword;
 		break;
 	case MEM_LWC1:
 		read_word_in_memory();
@@ -395,7 +395,7 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 		break;
 	case MEM_LDC1:
 		read_dword_in_memory();
-		*((long long*)reg_cop1_double[value]) = dyna_rdword;
+		*((long long*)reg_cop1_double[value]) = (long long)dyna_rdword;
 		break;
 	case MEM_LWL:
 		address = addr & 0xFFFFFFFC;

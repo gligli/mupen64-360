@@ -127,6 +127,15 @@ static FrameBufferInfo frameBufferInfos[6];
 static char framebufferRead[0x800];
 static int firstFrameBufferSetting;
 
+#define MEMORY_VM_BASE 0x40000000
+#define MEMORY_VM_SIZE (1024*1024*1024)
+
+void memory_vm_unmap_address(unsigned int addr)
+{
+//    printf("vm unmap %p\n",addr);
+	vm_destroy_user_mapping((addr&0x3fff0000) | MEMORY_VM_BASE,VM_USER_PAGE_SIZE);
+}
+
 void * memory_vm_segfault_handler(int pir_,void * srr0,void * dar,int write)
 {
     if((uint32_t)srr0>=(uint32_t)recomp_cache_buffer && (uint32_t)srr0<(uint32_t)recomp_cache_buffer+RECOMP_CACHE_SIZE)
@@ -150,7 +159,7 @@ void memory_vm_init()
 {
     vm_set_user_mapping_segfault_handler(memory_vm_segfault_handler);
 
-    uint32_t base=0x40000000;
+    uint32_t base=MEMORY_VM_BASE;
     
     // the dynarec can try to read just below the rdram page
     memset(dummy_buf,0,VM_USER_PAGE_SIZE);
@@ -159,20 +168,21 @@ void memory_vm_init()
     // map rdram
     vm_create_user_mapping(base,(uint32_t)rdram_buf&0x7fffffff,sizeof(rdram_buf),VM_WIMG_CACHED);
     vm_create_user_mapping(base+0x20000000,(uint32_t)rdram_buf&0x7fffffff,sizeof(rdram_buf),VM_WIMG_CACHED);
-    rdram=(unsigned int *)base;
-    rdramb=(unsigned char *)base;
+
+    rdram=(unsigned int *)rdram_buf;
+    rdramb=(unsigned char *)rdram_buf;
     
     // map rom
     vm_create_user_mapping(base+0x10000000,((uint32_t)rom_buf&0x7fffffff),rom_size,VM_WIMG_CACHED_READ_ONLY);
-    rom=(unsigned char *)base+0x10000000;
+    vm_create_user_mapping(base+0x30000000,((uint32_t)rom_buf&0x7fffffff),rom_size,VM_WIMG_CACHED_READ_ONLY);
+
+    rom=(unsigned char *)rom_buf;
 }
 
 void memory_vm_destroy()
 {
     vm_set_user_mapping_segfault_handler(NULL);
-
-    uint32_t base=0x40000000;
-    vm_destroy_user_mapping(base,1024*1024*1024);
+    vm_destroy_user_mapping(MEMORY_VM_BASE,MEMORY_VM_SIZE);
 }
 
 int init_memory(int DoByteSwap)
