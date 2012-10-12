@@ -77,16 +77,19 @@ MIPS_instr peek_next_src(void)
 	
 	rdword = &dyna_rdword;
 
-	if(cur_src<cf->start_address)
+	if(cur_src+4==cf->start_address) // can happen when the rec checks for previous delay slot
 	{
 		address = get_physical_addr(cf->start_address);
 		assert(address!=PHY_INVALID_ADDR);
 		
-		address -= (cur_src - cf->start_address);
+		address -= 4;
 	}
 	else
 	{
+		assert(cur_src>=cf->start_address && cur_src<cf->end_address+4); // the rec can go 1 op past function end
+		
 		address = get_physical_addr(cur_src);
+
 		assert(address!=PHY_INVALID_ADDR);
 	}
 	
