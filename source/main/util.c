@@ -39,7 +39,6 @@
 #include "util.h"
 #include "osal/files.h"
 #include "osal/preproc.h"
-#include "main.h"
 
 /**********************
      File utilities
@@ -47,20 +46,35 @@
 
 static char file_cache_filename[PATH_MAX] = "";
 static unsigned char file_cache_buffer[256*1024];
+static int file_cache_size=-1;
 
 file_status_t read_from_file(const char *filename, void *data, size_t size)
 {
 	// cache query
-	if(!stricmp(filename,file_cache_filename) && size<sizeof(file_cache_buffer))
+	if(!stricmp(filename,file_cache_filename))
 	{
-		memcpy(data,file_cache_buffer,size);
-		return file_ok;
+//		printf("cached r %s %d\n",file_cache_filename,size);
+		if(file_cache_size<0)
+		{
+			return file_open_error;
+		}
+		else
+		{
+			memcpy(data,file_cache_buffer,size);
+			return file_ok;
+		}
 	}
 	
-	// cache invalidate
-	file_cache_filename[0]='\0';    
 	printf("read %s %d\n",filename,size);
 
+	// cache invalidate && prefill
+	file_cache_filename[0]='\0';    
+	if(size<sizeof(file_cache_buffer))
+	{
+		strcpy(file_cache_filename,filename);
+		file_cache_size=-1; // assume not found for now
+	}
+	
 	FILE *f = fopen(filename, "rb");
     if (f == NULL)
     {
@@ -78,8 +92,9 @@ file_status_t read_from_file(const char *filename, void *data, size_t size)
 	// cache fill
 	if(size<sizeof(file_cache_buffer))
 	{
-		strcpy(file_cache_filename,filename);
 		memcpy(file_cache_buffer,data,size);
+		file_cache_size=size;
+		printf("cache fill r %s %d\n",file_cache_filename,size);
 	}
 	
     return file_ok;
@@ -88,8 +103,9 @@ file_status_t read_from_file(const char *filename, void *data, size_t size)
 file_status_t write_to_file(const char *filename, const void *data, size_t size)
 {
 	// cache query
-	if(!stricmp(filename,file_cache_filename) && size<sizeof(file_cache_buffer) && !memcmp(data,file_cache_buffer,size))
+	if(!stricmp(filename,file_cache_filename) && size==file_cache_size && !memcmp(data,file_cache_buffer,size))
 	{
+//		printf("cached w %s %d\n",file_cache_filename,size);
 		return file_ok;
 	}
 
@@ -116,6 +132,7 @@ file_status_t write_to_file(const char *filename, const void *data, size_t size)
 	{
 		strcpy(file_cache_filename,filename);
 		memcpy(file_cache_buffer,data,size);
+		printf("cache fill w %s %d\n",file_cache_filename,size);
 	}
 	
     return file_ok;
