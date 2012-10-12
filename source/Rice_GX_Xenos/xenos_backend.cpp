@@ -705,15 +705,17 @@ void CxeRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
         if( m_textureUnitMap[textureNo] == tex )
         {
             CxeTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCxeTexture;
-            if( pTexture ) 
+            if( pTexture) 
             {
                 EnableTexUnit(textureNo,TRUE);
 				
-				pTexture->tex->u_addressing=xeXUVFlagMaps[dwFlag].realFlag;
+				if( pTexture->tex)
+				{
+					pTexture->tex->u_addressing=xeXUVFlagMaps[dwFlag].realFlag;
+				}
 				
 	            BindTexture(pTexture, textureNo);
             }
-            //SetTexWrapS(textureNo, xeXUVFlagMaps[dwFlag].realFlag);
         }
     }
 }
@@ -744,15 +746,17 @@ void CxeRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
         if( m_textureUnitMap[textureNo] == tex )
         {
             CxeTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCxeTexture;
-            if( pTexture )
+            if( pTexture) 
             {
                 EnableTexUnit(textureNo,TRUE);
 	           
-				pTexture->tex->v_addressing=xeXUVFlagMaps[dwFlag].realFlag;
+				if( pTexture->tex)
+				{
+					pTexture->tex->v_addressing=xeXUVFlagMaps[dwFlag].realFlag;
+				}
 				
 				BindTexture(pTexture, textureNo);
             }
-            //SetTexWrapT(textureNo, xeXUVFlagMaps[dwFlag].realFlag);
         }
     }
 }
@@ -1124,7 +1128,7 @@ void CxeRender::BindTexture(CxeTexture *texture, int unitno)
 {
 	if( unitno < m_maxTexUnits )
 	{
-		if(texture)
+		if( texture && texture->tex)
 		{
 			texture->tex->use_filtering=m_dwMinFilter == FILTER_LINEAR || m_dwMagFilter == FILTER_LINEAR;
 			Xe_SetTexture(xe,unitno,texture->tex);
