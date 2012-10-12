@@ -335,7 +335,7 @@ void init_block(PowerPC_block* ppc_block){
 	if(ppc_block->end_address < 0x80000000 || ppc_block->start_address >= 0xc0000000){
 		unsigned long paddr;
 
-		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
+		paddr = get_physical_addr(ppc_block->start_address);
 		invalid_code[paddr>>12]=0;
 		temp_block = blocks_get(paddr>>12);
 		if(!temp_block){
@@ -398,7 +398,7 @@ void deinit_block(PowerPC_block* ppc_block){
 	if(ppc_block->end_address < 0x80000000 || ppc_block->start_address >= 0xc0000000){
 		unsigned long paddr;
 
-		paddr = virtual_to_physical_address(ppc_block->start_address, 2);
+		paddr = get_physical_addr(ppc_block->start_address);
 		temp_block = blocks_get(paddr>>12);
 		if(temp_block){
 		     invalid_code[paddr>>12]=1;
