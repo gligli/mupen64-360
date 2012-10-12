@@ -815,22 +815,21 @@ static void TLBR()
 	interp_addr += 4;
 }
 
-extern void TLBWrite(unsigned int idx);
-
 static void TLBWI()
 {
 //	printf("TLBWI\n");
 	
-	TLBWrite(Index&0x3F);
+	tlb_write(Index&0x3F);
 	interp_addr += 4;
 }
 
 static void TLBWR()
 {
 //	printf("TLBWR\n");
+	
 	update_count();
 	Random = (Count/2 % (32 - Wired)) + Wired;
-	TLBWrite(Random);
+	tlb_write(Random);
 	interp_addr += 4;
 }
 

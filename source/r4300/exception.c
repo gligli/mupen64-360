@@ -52,11 +52,24 @@ void TLB_refill_exception(unsigned int address, int w)
 		break;
 	}
 
-	int mapped_invalid=0;
-	
-	if(!tlb_LUT_valid[address>>12] && tlb_LUT_r[address>>12])
+	int mapped_invalid = 0, i;
+
+	if (address >= 0x80000000 && address < 0xc0000000)
 	{
-		mapped_invalid=1;;
+		mapped_invalid = 1;
+	}
+	
+	for (i = 0; i < 32; i++)
+	{
+		if (address >= tlb_e[i].start_even && address <= tlb_e[i].end_even)
+		{
+			mapped_invalid = 1;
+		}
+		
+		if (address >= tlb_e[i].start_odd && address <= tlb_e[i].end_odd)
+		{
+			mapped_invalid = 1;
+		}
 	}
 	
 	BadVAddr = address;

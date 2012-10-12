@@ -36,10 +36,6 @@
 #include "../memory/memory.h"
 #include "ARAM-blocks.h"
 
-#include <zlib.h>
-
-uLong ZEXPORT adler32(uLong adler, const Bytef *buf, uInt len);
-
 void TLBR()
 {
 	int index;
@@ -55,112 +51,9 @@ void TLBR()
 	PC++;
 }
 
-void TLBWrite(unsigned int idx)
-{
-	unsigned int i;
-
-   if (r4300emu && !interpcore)
-   {
-		if (tlb_e[idx].v_even)
-		{
-			for (i = tlb_e[idx].start_even >> 12; i <= tlb_e[idx].end_even >> 12; i++)
-			{
-				if (!invalid_code[i] && (invalid_code[tlb_LUT_r[i] >> 12] ||
-						invalid_code[(tlb_LUT_r[i] >> 12) + 0x20000]))
-					invalid_code[i] = 1;
-				if (!invalid_code[i])
-				{
-					blocks[i]->adler32 = adler32(0, (const unsigned char *) &rdram[(tlb_LUT_r[i]&0x7FF000) / 4], 0x1000);
-
-					invalid_code[i] = 1;
-				}
-				else if (blocks[i])
-				{
-					blocks[i]->adler32 = 0;
-				}
-			}
-		}
-		if (tlb_e[idx].v_odd)
-		{
-			for (i = tlb_e[idx].start_odd >> 12; i <= tlb_e[idx].end_odd >> 12; i++)
-			{
-				if (!invalid_code[i] && (invalid_code[tlb_LUT_r[i] >> 12] ||
-						invalid_code[(tlb_LUT_r[i] >> 12) + 0x20000]))
-					invalid_code[i] = 1;
-				if (!invalid_code[i])
-				{
-					blocks[i]->adler32 = adler32(0, (const unsigned char *) &rdram[(tlb_LUT_r[i]&0x7FF000) / 4], 0x1000);
-
-					invalid_code[i] = 1;
-				}
-				else if (blocks[i])
-				{
-					blocks[i]->adler32 = 0;
-				}
-			}
-		}
-   }
-
-	tlb_unmap(&tlb_e[idx]);
-
-	tlb_e[idx].g = (EntryLo0 & EntryLo1 & 1);
-	tlb_e[idx].pfn_even = (EntryLo0 & 0x3FFFFFC0) >> 6;
-	tlb_e[idx].pfn_odd = (EntryLo1 & 0x3FFFFFC0) >> 6;
-	tlb_e[idx].c_even = (EntryLo0 & 0x38) >> 3;
-	tlb_e[idx].c_odd = (EntryLo1 & 0x38) >> 3;
-	tlb_e[idx].d_even = (EntryLo0 & 0x4) >> 2;
-	tlb_e[idx].d_odd = (EntryLo1 & 0x4) >> 2;
-	tlb_e[idx].v_even = (EntryLo0 & 0x2) >> 1;
-	tlb_e[idx].v_odd = (EntryLo1 & 0x2) >> 1;
-	tlb_e[idx].asid = (EntryHi & 0xFF);
-	tlb_e[idx].vpn2 = (EntryHi & 0xFFFFE000) >> 13;
-	tlb_e[idx].mask = (PageMask & 0x1FFE000) >> 13;
-
-	tlb_e[idx].start_even = tlb_e[idx].vpn2 << 13;
-	tlb_e[idx].end_even = tlb_e[idx].start_even +
-			(tlb_e[idx].mask << 12) + 0xFFF;
-	tlb_e[idx].phys_even = tlb_e[idx].pfn_even << 12;
-
-
-	tlb_e[idx].start_odd = tlb_e[idx].end_even + 1;
-	tlb_e[idx].end_odd = tlb_e[idx].start_odd +
-			(tlb_e[idx].mask << 12) + 0xFFF;
-	tlb_e[idx].phys_odd = tlb_e[idx].pfn_odd << 12;
-
-	tlb_map(&tlb_e[idx]);
-
-//	printf("idx %d e %d se %p pe %p o %d so %p po %p pm %p\n",idx,tlb_e[idx].v_even,tlb_e[idx].start_even,tlb_e[idx].phys_even,tlb_e[idx].v_odd,tlb_e[idx].start_odd,tlb_e[idx].phys_odd,tlb_e[idx].mask);
-   if (r4300emu && !interpcore)
-   {
-		if (tlb_e[idx].v_even)
-		{
-			for (i = tlb_e[idx].start_even >> 12; i <= tlb_e[idx].end_even >> 12; i++)
-			{
-				if (blocks[i] && blocks[i]->adler32)
-				{
-					if (blocks[i]->adler32 == adler32(0, (const unsigned char *) &rdram[(tlb_LUT_r[i]&0x7FF000) / 4], 0x1000))
-						invalid_code[i] = 0;
-				}
-			}
-		}
-
-		if (tlb_e[idx].v_odd)
-		{
-			for (i = tlb_e[idx].start_odd >> 12; i <= tlb_e[idx].end_odd >> 12; i++)
-			{
-				if (blocks[i] && blocks[i]->adler32)
-				{
-					if (blocks[i]->adler32 == adler32(0, (const unsigned char *) &rdram[(tlb_LUT_r[i]&0x7FF000) / 4], 0x1000))
-						invalid_code[i] = 0;
-				}
-			}
-		}
-   }
-}
-
 void TLBWI()
 {
-	TLBWrite(Index & 0x3F);
+	tlb_write(Index & 0x3F);
 	PC++;
 }
 
@@ -168,7 +61,7 @@ void TLBWR()
 {
 	update_count();
 	Random = (Count / 2 % (32 - Wired)) + Wired;
-	TLBWrite(Random);
+	tlb_write(Random);
 	PC++;
 }
 

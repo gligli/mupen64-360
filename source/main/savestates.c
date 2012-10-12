@@ -372,7 +372,7 @@ static int savestates_load_m64p(char *filepath)
     flashram_info.write_pointer = GETDATA(curr, unsigned int);
 
     COPYARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
-    COPYARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
+    COPYARRAY(tlb_LUT_w, curr, unsigned int, 0x100000);
 
     llbit = GETDATA(curr, unsigned int);
     COPYARRAY(reg, curr, long long int, 32);
@@ -642,7 +642,7 @@ static int savestates_load_pj64(char *filepath, void *handle,
 
     // tlb
     memset(tlb_LUT_r, 0, 0x400000);
-    memset(tlb_LUT_r, 0, 0x400000);
+    memset(tlb_LUT_w, 0, 0x400000);
     for (i=0; i < 32; i++)
     {
         (void)GETDATA(curr, unsigned int); // Dummy read - EntryDefined
@@ -1028,7 +1028,7 @@ static int savestates_save_m64p(char *filepath)
     PUTDATA(curr, unsigned int, flashram_info.write_pointer);
 
     PUTARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
-    PUTARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
+    PUTARRAY(tlb_LUT_w, curr, unsigned int, 0x100000);
 
     PUTDATA(curr, unsigned int, llbit);
     PUTARRAY(reg, curr, long long int, 32);

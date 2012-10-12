@@ -50,14 +50,14 @@ typedef struct _tlb
 #define PHY_INVALID_ADDR 0xffffffff
 
 extern unsigned int tlb_LUT_r[0x100000];
-extern unsigned char tlb_LUT_valid[0x100000];
-
+extern unsigned int tlb_LUT_w[0x100000];
 void tlb_unmap(tlb *entry);
 void tlb_map(tlb *entry);
 unsigned int get_physical_addr(unsigned int vaddr);
 unsigned int virtual_to_physical_address(unsigned int vaddr, int w);
 int probe_nop(unsigned long address);
 void tlb_init();
+void tlb_write(unsigned int idx);
 
 #endif
 
