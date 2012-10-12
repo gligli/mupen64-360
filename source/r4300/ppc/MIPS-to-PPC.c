@@ -3911,7 +3911,7 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 	PowerPC_instr* preCall = get_curr_dst();
 
 	// load into rt
-    if(type<MEM_SW)
+    if(type!=MEM_SW && type!=MEM_SH && type!=MEM_SB && type!=MEM_SD)
     {
         EMIT_LI(3, rt_reg);
     }
