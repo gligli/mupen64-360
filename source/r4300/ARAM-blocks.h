@@ -26,16 +26,8 @@
 #include <xetypes.h>
 #include "ppc/Recompile.h"
 
-#ifdef ARAM_BLOCKCACHE
-
-PowerPC_block* blocks_get(u32 addr);
-void blocks_set(u32 addr, PowerPC_block* ptr);
-
-#else
-
 inline PowerPC_block* blocks_get(u32 addr);
 inline void blocks_set(u32 addr, PowerPC_block* ptr);
 
-#endif
 #endif
 

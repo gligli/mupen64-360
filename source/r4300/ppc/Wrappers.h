@@ -62,8 +62,7 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
                       memType type, unsigned int pc, int isDelaySlot);
 
 void invalidate_func(unsigned int addr);
-void check_memory(unsigned int addr);
-
+void check_invalidate_memory(unsigned int addr);
 
 //cop0 macros
 #define Index reg_cop0[0]

@@ -203,7 +203,7 @@ void dynarec(unsigned int address){
 				saddr=func->start_address;
 
 				invalidate_func(saddr);
-				add_block_split(dst_block,address);
+				dst_block->flags[(address-dst_block->start_address)>>2]|=BLOCK_FLAG_SPLIT;
 			}
 			
 			start_section(COMPILER_SECTION);
@@ -268,7 +268,7 @@ void dynarec(unsigned int address){
 		}
 		
 		interp_addr = address = dyna_run(func, code);
-
+		
 		if(!noCheckInterrupt){
 			last_addr = interp_addr;
 			// Check for interrupts
@@ -336,9 +336,16 @@ void invalidate_func(unsigned int addr){
 //	printf("invalidate_func %08x %d\n",address,invalid_code_get(address>>12));
 
 	PowerPC_block* block = blocks_get(addr>>12);
-	PowerPC_func* func = find_func(&block->funcs, addr);
-	if(func)
-		RecompCache_Free(func->start_address);
+	
+	for(;;)
+	{
+		PowerPC_func* func = find_func(&block->funcs, addr);
+		
+		if(func)
+			RecompCache_Free(func->start_address);
+		else
+			break;
+	}
 }
 
 void check_invalidate_memory(unsigned int addr){

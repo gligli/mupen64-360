@@ -58,6 +58,8 @@ void insert_func(PowerPC_func_node** root, PowerPC_func* func);
 void remove_func(PowerPC_func_node** root, PowerPC_func* func);
 void remove_node(PowerPC_func_node** node);
 
+#define BLOCK_FLAG_SPLIT 1
+
 typedef struct {
 	unsigned int    start_address; // The address this code begins for the 64
 	unsigned int    end_address;
@@ -66,9 +68,7 @@ typedef struct {
 	PowerPC_func_node* funcs;      // BST of functions in this block
 	unsigned long   adler32;       // Used for TLB
 	
-	unsigned long splits[1024];
-	int split_count;
-	
+	unsigned char flags[1024];
 } PowerPC_block;
 
 #define MAX_JUMPS        4096
@@ -88,6 +88,8 @@ MIPS_instr peek_next_src(void);
 
 void       set_next_dst(PowerPC_instr);
 
+int		   mips_is_jump(MIPS_instr instr);
+
 int        add_jump(int old_jump, int is_j, int is_call);
 int        is_j_out(int branch, int is_aa);
 int        is_j_dst(void);
@@ -103,18 +105,9 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr);
 void init_block			(PowerPC_block* ppc_block);
 void deinit_block		(PowerPC_block* ppc_block);
 void invalidate_block	(PowerPC_block* ppc_block);
-
-void add_block_split(PowerPC_block * block, unsigned int addr);
-int is_block_split(PowerPC_block * block, unsigned int addr);
-
-#ifdef HW_RVL
-#include "../../memory/MEM2.h"
-extern PowerPC_block **blocks;
-#else
-#ifndef ARAM_BLOCKCACHE
 extern PowerPC_block *blocks[0x100000];
-#endif
-#endif
+
+#define FUNC_END_MAGIC 0xaa554269
 
 extern char txtbuffer[1024];
 #define DBG_USBGECKO
@@ -148,6 +141,8 @@ int disassemble(unsigned int a, unsigned int op);
 {PowerPC_instr ppc;GEN_LHA(ppc,rd,immed,ra);set_next_dst(ppc);}
 #define EMIT_LBZ(rd,immed,ra) \
 {PowerPC_instr ppc;GEN_LBZ(ppc,rd,immed,ra);set_next_dst(ppc);}
+#define EMIT_LBZX(rd,ra,rb) \
+{PowerPC_instr ppc;GEN_LBZX(ppc,rd,ra,rb);set_next_dst(ppc);}
 #define EMIT_EXTSB(rd,rs) \
 {PowerPC_instr ppc;GEN_EXTSB(ppc,rd,rs);set_next_dst(ppc);}
 #define EMIT_EXTSH(rd,rs) \

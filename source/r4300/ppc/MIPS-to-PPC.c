@@ -24,15 +24,20 @@
 		 Optimize instruction scheduling & reduce branch instructions
  */
 
+#include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <limits.h>
+#include <assert.h>
+
 #include "MIPS-to-PPC.h"
 #include "Register-Cache.h"
 #include "Interpreter.h"
 #include "Wrappers.h"
 #include "../../memory/memory.h"
-#include <math.h>
+#include "memory/tlb.h"
+#include "r4300/ARAM-blocks.h"
 
-#include <assert.h>
 #include <debug.h>
 #include <ppc/cache.h>
 
@@ -49,7 +54,6 @@ void genCallDynaMem(memType type, int base, short immed);
 void genCallDynaMem2(int type, int base, short immed);
 static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed);
 void RecompCache_Update(PowerPC_func*);
-static int inline mips_is_jump(MIPS_instr);
 void jump_to(unsigned int);
 void check_interupt();
 extern int llbit;
@@ -3697,8 +3701,7 @@ extern char __attribute__((aligned(65536))) invalid_code[0x100000];
     /* test invalid code */                                                    \
     EMIT_LIS(12, HA((unsigned int)&invalid_code));                             \
     EMIT_RLWINM(5, 3, 20, 12, 31);                                             \
-    EMIT_ADD(12, 12, 5);                                                       \
-    EMIT_LBZ(12,((unsigned int)&invalid_code),12);                             \
+    EMIT_LBZX(12, 12, 5);													   \
     EMIT_CMPI(12,0,6);                                                         \
     EMIT_BNE(6,4,0,0);                                                         \
     /* invalidate code if needed */                                            \
@@ -3952,26 +3955,3 @@ void * rewriteDynaMemVM(void* fault_addr)
     
     return cur_op;
 }
-
-static int mips_is_jump(MIPS_instr instr){
-	int opcode = MIPS_GET_OPCODE(instr);
-	int format = MIPS_GET_RS    (instr);
-	int func   = MIPS_GET_FUNC  (instr);
-	return (opcode == MIPS_OPCODE_J     ||
-                opcode == MIPS_OPCODE_JAL   ||
-                opcode == MIPS_OPCODE_BEQ   ||
-                opcode == MIPS_OPCODE_BNE   ||
-                opcode == MIPS_OPCODE_BLEZ  ||
-                opcode == MIPS_OPCODE_BGTZ  ||
-                opcode == MIPS_OPCODE_BEQL  ||
-                opcode == MIPS_OPCODE_BNEL  ||
-                opcode == MIPS_OPCODE_BLEZL ||
-                opcode == MIPS_OPCODE_BGTZL ||
-                opcode == MIPS_OPCODE_B     ||
-                (opcode == MIPS_OPCODE_R    &&
-                 (func  == MIPS_FUNC_JR     ||
-                  func  == MIPS_FUNC_JALR)) ||
-                (opcode == MIPS_OPCODE_COP1 &&
-                 format == MIPS_FRMT_BC)    );
-}
-
