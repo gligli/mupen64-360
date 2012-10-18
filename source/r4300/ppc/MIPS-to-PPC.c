@@ -3931,21 +3931,25 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 
 void * rewriteDynaMemVM(void* fault_addr)
 {
-    // enabling slow access by noping out the mem access code and the jump over slow access code
+    // enabling slow access by adding a jump from the fault address to the slow mem access code
 
-    PowerPC_instr * cur_op=(PowerPC_instr*)fault_addr;
-
-    while((*cur_op>>PPC_OPCODE_SHIFT)!=PPC_OPCODE_B || (*cur_op&1)!=0)
+    PowerPC_instr * fault_op=(PowerPC_instr*)fault_addr;
+    
+	PowerPC_instr * op=fault_op;
+	
+    while((*op>>PPC_OPCODE_SHIFT)!=PPC_OPCODE_B || (*op&1)!=0)
     {
-        *cur_op=PPC_NOP;
-        ++cur_op;
+        ++op;
     }
 
     // branch op
-    *cur_op=PPC_NOP;
-    ++cur_op;
+	++op;
+	
+	PowerPC_instr * first_slow_op=op;
+
+	GEN_B(*fault_op,first_slow_op-fault_op,0,0);
+	
+    memicbi(fault_op,4);
     
-    memicbi(fault_addr,(unsigned int)cur_op-(unsigned int)fault_addr);
-    
-    return cur_op;
+    return first_slow_op;
 }
