@@ -369,8 +369,6 @@ void do_GUI() {
 
     Browser.SetLaunchAction(ActionLaunchFile);
 	
-	WaitNoButtonPress();
-	
     Browser.Run(MUPEN_DIR);
 }
 

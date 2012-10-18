@@ -232,7 +232,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 	
 	int i;
 	for(i=0;i<1024;++i){
-		if(1||ppc_block->flags[i]&BLOCK_FLAG_SPLIT){
+		if(ppc_block->flags[i]&BLOCK_FLAG_SPLIT){
 			isJmpDst[i] = 1;
 		}
 	}

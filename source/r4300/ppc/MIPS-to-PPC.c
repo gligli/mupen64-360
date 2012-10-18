@@ -20,6 +20,9 @@
  *
 **/
 
+#include "Recompile.h"
+
+
 /* TODO: Optimize idle branches (generate a call to gen_interrupt)
 		 Optimize instruction scheduling & reduce branch instructions
  */
@@ -2009,6 +2012,9 @@ static int MTC0(MIPS_instr mips){
 		EMIT_OR(tmp, tmp, 0);
 		// reg_cop0[rd] = tmp
 		EMIT_STW(tmp, rd*4, DYNAREG_COP0);
+		
+		unmapRegisterTemp(tmp);
+		
 		return CONVERT_SUCCESS;
 	
 	case 5: // PageMask
@@ -2364,10 +2370,10 @@ static int SQRT_FP(MIPS_instr mips, int dbl){
 
 	genCheckFP();
 
-	flushRegisters();
-	mapFPR( MIPS_GET_FS(mips), dbl ); // maps to f1 (FP argument)
-	invalidateRegisters();
+	int fr=mapFPR( MIPS_GET_FS(mips), dbl );
 
+	EMIT_FMR(1,fr);
+	
 	// call sqrt
 #if 1
 	EMIT_B(add_jump((dbl ? (int)&sqrt : (int)&sqrtf), 1, 1), 0, 1);
@@ -2378,8 +2384,10 @@ static int SQRT_FP(MIPS_instr mips, int dbl){
 	EMIT_BCTRL(ppc);
 #endif
 	
-	mapFPRNew( MIPS_GET_FD(mips), dbl ); // maps to f1 (FP return)
+	fr=mapFPRNew( MIPS_GET_FD(mips), dbl ); // maps to f1 (FP return)
 
+	EMIT_FMR(fr,1);
+	
 	// Load old LR
 	EMIT_LWZ(0, DYNAOFF_LR, 1);
 	// Restore LR
@@ -2469,10 +2477,11 @@ static int ROUND_L_FP(MIPS_instr mips, int dbl){
 	
 	genCheckFP();
 
-	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
+	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
+	
+	EMIT_FMR(1,fs);
 
 	// round
 #if 1
@@ -2519,10 +2528,11 @@ static int TRUNC_L_FP(MIPS_instr mips, int dbl){
 
 	genCheckFP();
 
-	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
+	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
+
+	EMIT_FMR(1,fs);
 
 	// convert
 #if 1
@@ -2559,10 +2569,11 @@ static int CEIL_L_FP(MIPS_instr mips, int dbl){
 
 	genCheckFP();
 
-	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
+	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
+
+	EMIT_FMR(1,fs);
 
 	// ceil
 #if 1
@@ -2608,10 +2619,11 @@ static int FLOOR_L_FP(MIPS_instr mips, int dbl){
 
 	genCheckFP();
 
-	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
+	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
+
+	EMIT_FMR(1,fs);
 
 	// round
 #if 1
@@ -2847,10 +2859,11 @@ static int CVT_L_FP(MIPS_instr mips, int dbl){
 
 	genCheckFP();
 
-	flushRegisters();
 	int fd = MIPS_GET_FD(mips);
-	/*int fs =*/ mapFPR( MIPS_GET_FS(mips), dbl );
+	int fs = mapFPR( MIPS_GET_FS(mips), dbl );
 	invalidateFPR( MIPS_GET_FS(mips) );
+
+	EMIT_FMR(1,fs);
 
 	// FIXME: I'm fairly certain this will always trunc
 	// convert
@@ -3412,9 +3425,8 @@ static int CVT_FP_L(MIPS_instr mips, int dbl){
 	
 	genCheckFP();
 
-	flushRegisters();
 	int fs = MIPS_GET_FS(mips);
-	/*int fd =*/ mapFPRNew( MIPS_GET_FD(mips), dbl ); // f1
+	int fd = mapFPRNew( MIPS_GET_FD(mips), dbl ); // f1
 	int hi = mapRegisterTemp(); // r3
 	int lo = mapRegisterTemp(); // r4
 
@@ -3425,6 +3437,9 @@ static int CVT_FP_L(MIPS_instr mips, int dbl){
 	EMIT_LWZ(hi, 0, lo);
 	// lo = *(lo+4) (lo word)
 	EMIT_LWZ(lo, 4, lo);
+	
+	EMIT_OR(3,hi,hi);
+	EMIT_OR(4,lo,lo);
 
 	// convert
 #if 1
@@ -3435,6 +3450,8 @@ static int CVT_FP_L(MIPS_instr mips, int dbl){
 	EMIT_MTCTR(12);
 	EMIT_BCTRL(ppc);
 #endif
+	
+	EMIT_FMR(fd,1);
 	
 	// Load old LR
 	EMIT_LWZ(0, DYNAOFF_LR, 1);
@@ -3629,9 +3646,6 @@ static void genCheckFP(void){
 		EMIT_ANDIS(0, 0, 0x2000);
 		// bne cr0, end
 		EMIT_BNE(0, 8, 0, 0);
-//		EMIT_BNE(0, 11, 0, 0);
-		// Move &dyna_check_cop1_unusable to ctr for call
-		//EMIT_MTCTR(DYNAREG_CHKFP);
 		// Load the current PC as arg 1 (upper half)
 		EMIT_LIS(3, get_src_pc()>>16);
 		// Pass in whether this instruction is in the delay slot as arg 2
@@ -3693,10 +3707,7 @@ void genCallDynaMem(memType type, int base, short immed){
 
 extern char __attribute__((aligned(65536))) invalid_code[0x100000];
 
-#ifdef INVALIDATE_FUNC_ON_CHECK_MEMORY
-
 #define CHECK_INVALID_CODE()                                                   \
-	invalidateRegisters();													   \
     EMIT_ADDI(3, base, immed);                                                 \
     /* test invalid code */                                                    \
     EMIT_LIS(12, HA((unsigned int)&invalid_code));                             \
@@ -3710,38 +3721,27 @@ extern char __attribute__((aligned(65536))) invalid_code[0x100000];
     EMIT_LWZ(0, DYNAOFF_LR, 1);                                                \
     EMIT_MTLR(0);
 
-#else
-
-#define CHECK_INVALID_CODE()                                                   \
-    EMIT_ADDI(5, base, immed);                                                 \
-	invalidateRegisters();													   \
-    /* test invalid code */                                                    \
-    EMIT_LIS(12, HA((unsigned int)&invalid_code));                             \
-    EMIT_RLWINM(5, 5, 20, 12, 31);                                             \
-    EMIT_ADD(12, 12, 5);                                                       \
-	EMIT_LI(5,1)															   \
-    EMIT_STB(5,((unsigned int)&invalid_code),12);                             
-
-#endif
-
 static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
-	flushRegisters();
-	reset_code_addr();
 	
 	if(type==MEM_LWC1 || type==MEM_LDC1 || type==MEM_SWC1 || type==MEM_SDC1)
 	{
 		genCheckFP();
+		
+		if(type==MEM_SWC1 || type==MEM_SDC1)
+		{
+			flushFPR(rt_reg);
+		}
+		else
+		{
+			invalidateFPR(rt_reg);
+		}
 	}
 
-	int rd = mapRegisterTemp(); // r3 = rd
-	int base = mapRegister( rs_reg ); // r4 = addr
-	int addr = -1;
+	int base = mapRegister( rs_reg );
 
-	if(type==MEM_LWC1 || type==MEM_LDC1 || type==MEM_SWC1 || type==MEM_SDC1)
-	{
-		addr = mapRegisterTemp(); // r5 = fpr_addr
-	}
-	
+	int rd = 5;
+	int addr = 6;
+
     EMIT_RLWINM(rd,base,0,2,31);
     EMIT_ORIS(rd,rd,0x4000); // virtual mapping base address
     
@@ -3753,35 +3753,30 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             int r = mapRegisterNew( rt_reg );
             EMIT_LBZ(r, immed, rd);
             EMIT_EXTSB(r,r);
-			flushRegisters();
             break;
         }
         case MEM_LBU:
         {
             int r = mapRegisterNew( rt_reg );
             EMIT_LBZ(r, immed, rd);
-			flushRegisters();
             break;
         }
         case MEM_LH:
         {
             int r = mapRegisterNew( rt_reg );
             EMIT_LHA(r, immed, rd);
-			flushRegisters();
             break;
         }
         case MEM_LHU:
         {
             int r = mapRegisterNew( rt_reg );
             EMIT_LHZ(r, immed, rd)
-			flushRegisters();
             break;
         }
         case MEM_LW:
         {
             int r = mapRegisterNew( rt_reg );
             EMIT_LWZ(r, immed, rd);
-			flushRegisters();
         	break;
         }
         case MEM_LWU:
@@ -3792,7 +3787,6 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             EMIT_LWZ(r.lo, immed, rd);
             // Zero out the upper word
             EMIT_LI(r.hi, 0);
-			flushRegisters();
             break;
         }
         case MEM_LD:
@@ -3802,28 +3796,25 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
             // Perform the actual load
             EMIT_LWZ(r.hi, immed, rd);
             EMIT_LWZ(r.lo, immed+4, rd);
-			flushRegisters();
             break;
         }
         case MEM_LWC1:
         {
-            int r = mapRegisterTemp();
+            int r = 3;
 			EMIT_LWZ(r, immed, rd);
             EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
             EMIT_STW(r, 0, addr);
-			flushRegisters();
             break;
         }
         case MEM_LDC1:
         {
-			int r = mapRegisterTemp();
-			int r2 = mapRegisterTemp();
+			int r = 3;
+			int r2 = 4;
             EMIT_LWZ(r, immed, rd);
             EMIT_LWZ(r2, immed+4, rd);
             EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
             EMIT_STW(r, 0, addr);
             EMIT_STW(r2, 4, addr);
-			flushRegisters();
             break;
         }
 		case MEM_LWL:
@@ -3831,11 +3822,10 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 			EMIT_ADDI(rd, rd, immed);
 			EMIT_RLWINM(0, rd, 0, 30, 31);	// r0 = addr & 3
 			EMIT_CMPI(0, 0, 1);
-			EMIT_BNE(1, 6, 0, 0);
+			EMIT_BNE(1, 3, 0, 0); // /!\ branch to just after 'Skip over else'
 
             int r = mapRegisterNew( rt_reg );
             EMIT_LWZ(r, 0, rd);
-			flushRegisters();
         	break;
         }
         case MEM_LWR:
@@ -3843,13 +3833,12 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 			EMIT_ADDI(rd, rd, immed);
 			EMIT_RLWINM(0, rd, 0, 30, 31);	// r0 = addr & 3
 			EMIT_CMPI(0, 3, 1);
-			EMIT_BNE(1, 7, 0, 0);
+			EMIT_BNE(1, 4, 0, 0); // /!\ branch to just after 'Skip over else'
 			
 			EMIT_RLWINM(rd, rd, 0, 0, 29);	// addr &= 0xFFFFFFFC
 
             int r = mapRegisterNew( rt_reg );
             EMIT_LWZ(r, 0, rd);
-			flushRegisters();
         	break;
         }
         case MEM_SB:
@@ -3883,24 +3872,22 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
         }
         case MEM_SWC1:
         {
-            int r = mapRegisterTemp();
+			int r = 3;
             EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
             EMIT_LWZ(r, 0, addr);
             EMIT_STW(r, immed, rd);
-			flushRegisters();
             CHECK_INVALID_CODE();
             break;
         }
         case MEM_SDC1:
         {
-            int r = mapRegisterTemp();
-            int r2 = mapRegisterTemp();
+            int r = 3;
+            int r2 = 4;
             EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
             EMIT_LWZ(r, 0, addr);
             EMIT_LWZ(r2, 4, addr);
             EMIT_STW(r, immed, rd);
             EMIT_STW(r2, immed+4, rd);
-			flushRegisters();
             CHECK_INVALID_CODE();
             break;
         }
@@ -3924,10 +3911,17 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
         if(r!=3)
             EMIT_OR(3,r,r);
     }
-
-	invalidateRegisters();
 	
 	genCallDynaMem(type, base, immed);
+	
+	if(type==MEM_LW || type==MEM_LH || type==MEM_LB || type==MEM_LHU || type==MEM_LBU || type==MEM_LWL || type==MEM_LWR)
+	{
+		reloadRegister( rt_reg );
+	}
+	else if(type==MEM_LWU || type==MEM_LD)
+	{
+		reloadRegister64( rt_reg );
+	}
 
 	int callSize = get_curr_dst() - preCall;
 	set_jump_special(not_fastmem_id, callSize+1);

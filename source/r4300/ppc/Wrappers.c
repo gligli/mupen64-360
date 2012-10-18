@@ -102,7 +102,11 @@ unsigned int dyna_run(PowerPC_func* func, unsigned int (*code)(void)){
 		: "=r" (naddr), "=r" (link_branch), "=r" (return_addr),
 		  "=r" (last_func)
 		: "r" (code)
-		: "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "22", "ctr", "lr", "cr0", "cr2");
+		: "cr0", "cr2",
+			"2","8","9","10","11","12",
+			"13","14","15","16","17","18","19","20","21","22","23",
+			"24","25","26","27","28","29","30","31","ctr","lr",
+			"%fr14","%fr15","%fr16","%fr17","%fr18","%fr19","%fr20","%fr21","%fr22","%fr23","%fr24","%fr25","%fr26","%fr27");
 
 	link_branch = (link_branch == return_addr || link_branch == NULL) ? NULL : link_branch - 1;
 	
@@ -349,12 +353,8 @@ void invalidate_func(unsigned int addr){
 }
 
 void check_invalidate_memory(unsigned int addr){
-#ifdef INVALIDATE_FUNC_ON_CHECK_MEMORY
 	if(!invalid_code[addr>>12])
 		invalidate_func(addr);
-#else
-	invalid_code[addr>>12] = 1;
-#endif	
 }
 
 unsigned int dyna_mem(unsigned int value, unsigned int addr,

@@ -47,6 +47,10 @@ void flushRegister(int reg);
 RegMappingType getRegisterMapping(int reg);
 
 
+void reloadRegister(int reg);
+void reloadRegister64(int reg);
+
+
 // -- FPRs --
 // Create a mapping for a FPR (fpr) treated as double or single (dbl)
 // Loading the FPR's value if the mapping doesn't already exist

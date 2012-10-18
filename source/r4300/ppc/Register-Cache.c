@@ -38,11 +38,11 @@ static unsigned int nextLRUVal;
 static int availableRegsDefault[32] = {
 	0, /* r0 is mostly used for saving/restoring lr: used as a temp */
 	0, /* sp: leave alone! */
-	0, /* gp: leave alone! */
-	1,1,1,1,1,1,1,1, /* Volatile argument registers */
-	1,1, /* Volatile registers */
+	1, /* gp: leave alone! */
+	0,0,0,0,0,0,0,0, /* Volatile argument registers */
+	0,0, /* Volatile registers */
 	/* Non-volatile registers: using might be too costly */
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1
 	};
 static int availableRegs[32];
 
@@ -181,6 +181,12 @@ int mapRegister(int reg){
 	return regMap[reg].map.lo = lru.lo;
 }
 
+void reloadRegister(int reg){
+	if(regMap[reg].map.lo >= 0){
+		EMIT_LWZ(regMap[reg].map.lo, reg*8+4, DYNAREG_REG);
+	}
+}
+
 RegMapping mapRegister64(int reg){
 	if(!reg) return (RegMapping){ DYNAREG_ZERO, DYNAREG_ZERO };
 	regMap[reg].lru = nextLRUVal++;
@@ -228,6 +234,15 @@ RegMapping mapRegister64(int reg){
 	return regMap[reg].map;
 }
 
+void reloadRegister64(int reg){
+	if(regMap[reg].map.lo >= 0){
+		EMIT_LWZ(regMap[reg].map.lo, reg*8+4, DYNAREG_REG);
+	}
+	if(regMap[reg].map.hi >= 0){
+		EMIT_LWZ(regMap[reg].map.hi, reg*8, DYNAREG_REG);
+	}
+}
+
 void invalidateRegister(int reg){
 	if(regMap[reg].map.hi >= 0)
 		availableRegs[ regMap[reg].map.hi ] = 1;
@@ -266,10 +281,10 @@ static struct {
 static unsigned int nextLRUValFPR;
 static int availableFPRsDefault[32] = {
 	0, /* Volatile: used as a temp */
-	1,1,1,1,1,1,1,1, /* Volatile argument registers */
-	1,1,1,1,1, /* Volatile registers */
+	0,0,0,0,0,0,0,0, /* Volatile argument registers */
+	0,0,0,0,0, /* Volatile registers */
 	/* Non-volatile registers: using might be too costly */
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0
 	};
 static int availableFPRs[32];
 
