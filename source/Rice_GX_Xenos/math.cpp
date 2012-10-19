@@ -282,7 +282,7 @@ XMATRIX* MatrixTranspose(
    return pOut;
 }
 
-XVECTOR4 Vec3Transform(XVECTOR4 *pOut, const XVECTOR3 *pV, const XMATRIX *pM)
+XVECTOR4 __attribute__((noinline)) Vec3Transform(XVECTOR4 *pOut, const XVECTOR3 *pV, const XMATRIX *pM)
 {
    pOut->x = pV->x*pM->_11 + pV->y*pM->_21 + pV->z*pM->_31 + pM->_41;
    pOut->y = pV->x*pM->_12 + pV->y*pM->_22 + pV->z*pM->_32 + pM->_42;

@@ -29,8 +29,8 @@ INCLUDES	:=	files source
 
 MCHK = -Wl,-wrap,malloc  -Wl,-wrap,memalign -Wl,-wrap,realloc -Wl,-wrap,calloc -Wl,-wrap,free -DMCHK
 
-OPTIFLAGS = -g -Ofast -fno-inline-functions -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -mcpu=cell -mtune=cell -flto=4 -fuse-linker-plugin 
-#OPTIFLAGS = -g -Ofast -fno-inline-functions -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -mcpu=cell -mtune=cell
+OPTIFLAGS = -g -Ofast -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -mcpu=cell -mtune=cell -flto=4 -fuse-linker-plugin 
+#OPTIFLAGS = -g -Ofast -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -mcpu=cell -mtune=cell
 
 ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32
 CFLAGS	= $(OPTIFLAGS) -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DM64P_BIG_ENDIAN -DUSE_RECOMP_CACHE -DFASTMEM -DNO_ASM -DUSE_EXPANSION # -D_DEBUG  -DDEBUG_
