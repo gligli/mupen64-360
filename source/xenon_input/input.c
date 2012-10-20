@@ -34,7 +34,7 @@ void initiateControllers(CONTROL_INFO Control_Info)
 }
 
 #define	STICK_DEAD_ZONE (32768*0.15)
-#define	STICK_FACTOR (0.6)
+#define	STICK_FACTOR (0.70)
 
 #define TRIGGER_THRESHOLD 100
 #define STICK_THRESHOLD 20000
