@@ -406,8 +406,16 @@ void do_GUI()
         action->param = NULL;
         Browser.AddAction(action);
     }
-
-    Browser.SetLaunchAction(ActionLaunchFile);
+	
+	// colors
+    Browser.SetDefaultColor(0xffffffff);
+    Browser.SetSelectedColor(0xffff5050);
+	
+	// masks
+    Browser.SetFocusColor(0xffffffff);
+    Browser.SetBlurColor(0x70ffffff);
+	
+	Browser.SetLaunchAction(ActionLaunchFile);
 	
     Browser.Run(MUPEN_DIR);
 }
@@ -674,7 +682,7 @@ int run_rom(char * romfile)
 int main ()
 {
 	ZLX::InitialiseVideo();
-	console_set_colors(0xD8444E00,0x00ffff00); // yellow on blue
+    console_set_colors(0x1E1E1EFF,0x5050FFFF); // light red on dark gray
 	console_init();
 
 	printf("\n" MUPEN_NAME " version " MUPEN_VERSION "\n\n");
