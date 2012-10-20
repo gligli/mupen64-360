@@ -10,6 +10,7 @@
 
 extern __attribute__((aligned(65536),section(".bss.beginning.upper"))) unsigned char recomp_cache_buffer[RECOMP_CACHE_SIZE];
 
+extern unsigned int recomp_cache_nextLRU;
 
 void DCFlushRange(void* startaddr, unsigned int len);
 void ICInvalidateRange(void* startaddr, unsigned int len);

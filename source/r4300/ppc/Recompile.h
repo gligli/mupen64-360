@@ -51,7 +51,10 @@ typedef struct func {
 	PowerPC_func_link_node* links_in;
 	PowerPC_func_node*      links_out;
 	PowerPC_instr** code_addr;
+	unsigned int magic;
 } PowerPC_func;
+
+#define FUNC_MAGIC 0xaa554269
 
 PowerPC_func* find_func(PowerPC_func_node** root, unsigned int addr);
 void insert_func(PowerPC_func_node** root, PowerPC_func* func);
@@ -106,8 +109,6 @@ void init_block			(PowerPC_block* ppc_block);
 void deinit_block		(PowerPC_block* ppc_block);
 void invalidate_block	(PowerPC_block* ppc_block);
 extern PowerPC_block *blocks[0x100000];
-
-#define FUNC_END_MAGIC 0xaa554269
 
 extern char txtbuffer[1024];
 #define DBG_USBGECKO

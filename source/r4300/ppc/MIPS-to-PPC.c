@@ -40,6 +40,7 @@
 #include "../../memory/memory.h"
 #include "memory/tlb.h"
 #include "r4300/ARAM-blocks.h"
+#include "r4300/Recomp-Cache.h"
 
 #include <debug.h>
 #include <ppc/cache.h>
@@ -49,7 +50,7 @@ static void genCallInterp(MIPS_instr);
 #define JUMPTO_REG  0
 #define JUMPTO_OFF  1
 #define JUMPTO_ADDR 2
-#define JUMPTO_OFF_SIZE  11
+#define JUMPTO_OFF_SIZE  13 //11
 static void genJumpTo(unsigned int loc, unsigned int type);
 static void genUpdateCount(int checkCount);
 static void genCheckFP(void);
@@ -3549,23 +3550,32 @@ static void genJumpTo(unsigned int loc, unsigned int type){
 		loc <<= 2;
 		if(type == JUMPTO_OFF) loc += get_src_pc();
 		else loc |= get_src_pc() & 0xf0000000;
+#if 0
 		// Create space to load destination func*
 		EMIT_ORI(0, 0, 0);
 		EMIT_ORI(0, 0, 0);
 		// Move func* into r3 as argument
 		EMIT_ADDI(3, DYNAREG_FUNC, 0);
 		// Call RecompCache_Update(func)
-#if 1
 		EMIT_B(add_jump((int)(RecompCache_Update), 1, 1), 0, 1);
-#else
-		EMIT_LIS(12, ((unsigned int)&RecompCache_Update)>>16);
-		EMIT_ORI(12, 12, (unsigned int)&RecompCache_Update);
-		EMIT_MTCTR(12);
-		EMIT_BCTRL(ppc);
-#endif
 		// Restore LR
 		EMIT_LWZ(0, DYNAOFF_LR, 1);
 		EMIT_MTLR(0);
+#else
+		EMIT_LIS(12,((unsigned int)&recomp_cache_nextLRU)>>16);
+		EMIT_LWZ(3,(unsigned int)&recomp_cache_nextLRU,12);
+
+		// Create space to load destination func*
+		EMIT_ORI(0, 0, 0);
+		EMIT_ORI(0, 0, 0);
+
+		// that block of code must be 4 ops
+		EMIT_ORI(0, 0, 0);
+		EMIT_STW(3,offsetof(PowerPC_func,lru),DYNAREG_FUNC);
+		EMIT_ADDI(3,3,1);
+		EMIT_STW(3,(unsigned int)&recomp_cache_nextLRU,12);
+#endif
+		
 		// Load the address as the return value
 		EMIT_LIS(3, loc >> 16);
 		EMIT_ORI(3, 3, loc);

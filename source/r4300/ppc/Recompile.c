@@ -209,6 +209,7 @@ PowerPC_func* recompile_block(PowerPC_block* ppc_block, unsigned int addr){
 
 	func->start_address = addr;
 	func->end_address = ppc_block->end_address;
+	func->magic = FUNC_MAGIC;
 
 	int need_pad = pass0(ppc_block,func);
 	

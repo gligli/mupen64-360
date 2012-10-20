@@ -165,6 +165,9 @@ static void unlink_func(PowerPC_func* func){
 }
 
 static void free_func(PowerPC_func* func, unsigned int addr){
+	
+	func->magic = 0;
+	
 	// Free the code associated with the func
 	__lwp_heap_free(cache, func->code);
 	MetaCache_Free(func->code_addr);
@@ -179,11 +182,12 @@ static void free_func(PowerPC_func* func, unsigned int addr){
 	free(func);
 }
 
-static inline void update_lru(PowerPC_func* func){
-	static unsigned int nextLRU = 0;
-	/*if(func->lru != nextLRU-1)*/ func->lru = nextLRU++;
+unsigned int recomp_cache_nextLRU = 0;
 
-	if(!nextLRU){
+static inline void update_lru(PowerPC_func* func){
+	func->lru = recomp_cache_nextLRU++;
+
+	if(!recomp_cache_nextLRU || recomp_cache_nextLRU>0xf0000000){
 		// Handle nextLRU overflows
 		// By heap-sorting and assigning new LRUs
 		heapify();
@@ -198,7 +202,7 @@ static inline void update_lru(PowerPC_func* func){
 		free(cacheHeap);
 		cacheHeap = newHeap;
 
-		nextLRU = heapSize = savedSize;
+		recomp_cache_nextLRU = heapSize = savedSize;
 	}
 }
 

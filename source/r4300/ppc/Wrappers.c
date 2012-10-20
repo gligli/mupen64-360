@@ -240,8 +240,7 @@ void dynarec(unsigned int address){
 		assert(code);
 		
 		// Create a link if possible
-		if(link_branch &&
-			link_branch>=last_func->code && link_branch<last_func->code+last_func->code_length) //gli test ppc location coherency
+		if(link_branch && last_func->magic==FUNC_MAGIC)
 		{
 			PowerPC_block  * lfblk=blocks_get(last_func->start_address>>12);
 			
