@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <debug.h>
 #include <ctype.h>
+#include <ppc/timebase.h>
 #include "../ARAM-blocks.h"
 #include "../../memory/memory.h"
 #include "../interupt.h"
@@ -42,6 +43,7 @@ unsigned int dyna_check_cop1_unusable(unsigned int, int);
 unsigned int dyna_mem(unsigned int, unsigned int, memType, unsigned int, int);
 
 int noCheckInterrupt = 0;
+int failsafeRec = 0;
 
 static PowerPC_instr* link_branch = NULL;
 static PowerPC_func* last_func;
@@ -127,6 +129,14 @@ void dynarec(unsigned int address){
 		static int dtb=0;
 
 #if 0
+		static unsigned long long prevtime=0;
+		
+		if(mftb()-prevtime>PPC_TIMEBASE_FREQ*2)
+		{
+			printf("recomp_cache_heapSize %dKB\n",RecompCache_Allocated()/1024);
+			prevtime=mftb();
+		}
+				
 		if(kbhit())
 		{
 			switch(getch())
@@ -240,9 +250,9 @@ void dynarec(unsigned int address){
 		assert(code);
 		
 		// Create a link if possible
-		if(link_branch && last_func->magic==FUNC_MAGIC)
+		if(!(failsafeRec&FAILSAFE_REC_NO_LINK) && link_branch && last_func->magic==FUNC_MAGIC) // no blocks linking in failsafe mode
 		{
-			PowerPC_block  * lfblk=blocks_get(last_func->start_address>>12);
+			PowerPC_block  * lfblk=blocks_get((last_func->end_address-4)>>12);
 			
 			if(!lfblk)
 			{
@@ -251,7 +261,7 @@ void dynarec(unsigned int address){
 			}
 			else
 			{
-				PowerPC_func * ffunc=find_func(&lfblk->funcs,last_func->start_address);
+				PowerPC_func * ffunc=find_func(&lfblk->funcs,last_func->end_address-4);
 
 				if(!ffunc)
 				{
@@ -368,24 +378,27 @@ unsigned int dyna_mem(unsigned int value, unsigned int addr,
 	switch(type)
 	{
 	case MEM_LW:
+		rdword = &reg[value];
 		read_word_in_memory();
-		reg[value] = (long long)((long)dyna_rdword);
+		sign_extended(reg[value]);
 		break;
 	case MEM_LWU:
 		rdword = &reg[value];
 		read_word_in_memory();
 		break;
 	case MEM_LH:
+		rdword = &reg[value];
 		read_hword_in_memory();
-		reg[value] = (long long)((short)dyna_rdword);
+		sign_extendedh(reg[value]);
 		break;
 	case MEM_LHU:
 		rdword = &reg[value];
 		read_hword_in_memory();
 		break;
 	case MEM_LB:
+		rdword = &reg[value];
 		read_byte_in_memory();
-		reg[value] = (long long)((signed char)dyna_rdword);
+		sign_extendedb(reg[value]);
 		break;
 	case MEM_LBU:
 		rdword = &reg[value];

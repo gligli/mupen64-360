@@ -39,7 +39,6 @@
 #include "Wrappers.h"
 #include "../../memory/memory.h"
 #include "memory/tlb.h"
-#include "r4300/ARAM-blocks.h"
 #include "r4300/Recomp-Cache.h"
 
 #include <debug.h>
@@ -3732,6 +3731,14 @@ extern char __attribute__((aligned(65536))) invalid_code[0x100000];
     EMIT_MTLR(0);
 
 static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
+
+	if(failsafeRec&FAILSAFE_REC_NO_VM)
+	{
+		flushRegisters();
+	}
+	
+	PowerPC_instr* preCall=NULL;
+	int not_fastmem_id=0;
 	
 	if(type==MEM_LWC1 || type==MEM_LDC1 || type==MEM_SWC1 || type==MEM_SDC1)
 	{
@@ -3749,167 +3756,170 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 
 	int base = mapRegister( rs_reg );
 
-	int rd = 5;
-	int addr = 6;
+	if(!(failsafeRec&FAILSAFE_REC_NO_VM))
+	{
+		int rd = 5;
+		int addr = 6;
 
-    EMIT_RLWINM(rd,base,0,2,31);
-    EMIT_ORIS(rd,rd,0x4000); // virtual mapping base address
-    
-	// Perform the actual load
-	switch (type)
-    {
-        case MEM_LB:
-        {
-            int r = mapRegisterNew( rt_reg );
-            EMIT_LBZ(r, immed, rd);
-            EMIT_EXTSB(r,r);
-            break;
-        }
-        case MEM_LBU:
-        {
-            int r = mapRegisterNew( rt_reg );
-            EMIT_LBZ(r, immed, rd);
-            break;
-        }
-        case MEM_LH:
-        {
-            int r = mapRegisterNew( rt_reg );
-            EMIT_LHA(r, immed, rd);
-            break;
-        }
-        case MEM_LHU:
-        {
-            int r = mapRegisterNew( rt_reg );
-            EMIT_LHZ(r, immed, rd)
-            break;
-        }
-        case MEM_LW:
-        {
-            int r = mapRegisterNew( rt_reg );
-            EMIT_LWZ(r, immed, rd);
-        	break;
-        }
-        case MEM_LWU:
-        {
-            // Create a mapping for this value
-            RegMapping r = mapRegister64New( rt_reg );
-            // Perform the actual load
-            EMIT_LWZ(r.lo, immed, rd);
-            // Zero out the upper word
-            EMIT_LI(r.hi, 0);
-            break;
-        }
-        case MEM_LD:
-        {
-            // Create a mapping for this value
-            RegMapping r = mapRegister64New( rt_reg );
-            // Perform the actual load
-            EMIT_LWZ(r.hi, immed, rd);
-            EMIT_LWZ(r.lo, immed+4, rd);
-            break;
-        }
-        case MEM_LWC1:
-        {
-            int r = 3;
-			EMIT_LWZ(r, immed, rd);
-            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
-            EMIT_STW(r, 0, addr);
-            break;
-        }
-        case MEM_LDC1:
-        {
-			int r = 3;
-			int r2 = 4;
-            EMIT_LWZ(r, immed, rd);
-            EMIT_LWZ(r2, immed+4, rd);
-            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
-            EMIT_STW(r, 0, addr);
-            EMIT_STW(r2, 4, addr);
-            break;
-        }
-		case MEM_LWL:
-        {
-			EMIT_ADDI(rd, rd, immed);
-			EMIT_RLWINM(0, rd, 0, 30, 31);	// r0 = addr & 3
-			EMIT_CMPI(0, 0, 1);
-			EMIT_BNE(1, 3, 0, 0); // /!\ branch to just after 'Skip over else'
+		EMIT_RLWINM(rd,base,0,2,31);
+		EMIT_ORIS(rd,rd,0x4000); // virtual mapping base address
 
-            int r = mapRegisterNew( rt_reg );
-            EMIT_LWZ(r, 0, rd);
-        	break;
-        }
-        case MEM_LWR:
-        {
-			EMIT_ADDI(rd, rd, immed);
-			EMIT_RLWINM(0, rd, 0, 30, 31);	// r0 = addr & 3
-			EMIT_CMPI(0, 3, 1);
-			EMIT_BNE(1, 4, 0, 0); // /!\ branch to just after 'Skip over else'
-			
-			EMIT_RLWINM(rd, rd, 0, 0, 29);	// addr &= 0xFFFFFFFC
+		// Perform the actual load
+		switch (type)
+		{
+			case MEM_LB:
+			{
+				int r = mapRegisterNew( rt_reg );
+				EMIT_LBZ(r, immed, rd);
+				EMIT_EXTSB(r,r);
+				break;
+			}
+			case MEM_LBU:
+			{
+				int r = mapRegisterNew( rt_reg );
+				EMIT_LBZ(r, immed, rd);
+				break;
+			}
+			case MEM_LH:
+			{
+				int r = mapRegisterNew( rt_reg );
+				EMIT_LHA(r, immed, rd);
+				break;
+			}
+			case MEM_LHU:
+			{
+				int r = mapRegisterNew( rt_reg );
+				EMIT_LHZ(r, immed, rd)
+				break;
+			}
+			case MEM_LW:
+			{
+				int r = mapRegisterNew( rt_reg );
+				EMIT_LWZ(r, immed, rd);
+				break;
+			}
+			case MEM_LWU:
+			{
+				// Create a mapping for this value
+				RegMapping r = mapRegister64New( rt_reg );
+				// Perform the actual load
+				EMIT_LWZ(r.lo, immed, rd);
+				// Zero out the upper word
+				EMIT_LI(r.hi, 0);
+				break;
+			}
+			case MEM_LD:
+			{
+				// Create a mapping for this value
+				RegMapping r = mapRegister64New( rt_reg );
+				// Perform the actual load
+				EMIT_LWZ(r.hi, immed, rd);
+				EMIT_LWZ(r.lo, immed+4, rd);
+				break;
+			}
+			case MEM_LWC1:
+			{
+				int r = 3;
+				EMIT_LWZ(r, immed, rd);
+				EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
+				EMIT_STW(r, 0, addr);
+				break;
+			}
+			case MEM_LDC1:
+			{
+				int r = 3;
+				int r2 = 4;
+				EMIT_LWZ(r, immed, rd);
+				EMIT_LWZ(r2, immed+4, rd);
+				EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
+				EMIT_STW(r, 0, addr);
+				EMIT_STW(r2, 4, addr);
+				break;
+			}
+			case MEM_LWL:
+			{
+				EMIT_ADDI(rd, rd, immed);
+				EMIT_RLWINM(0, rd, 0, 30, 31);	// r0 = addr & 3
+				EMIT_CMPI(0, 0, 1);
+				EMIT_BNE(1, 3, 0, 0); // /!\ branch to just after 'Skip over else'
 
-            int r = mapRegisterNew( rt_reg );
-            EMIT_LWZ(r, 0, rd);
-        	break;
-        }
-        case MEM_SB:
-        {
-            int r = mapRegister( rt_reg );
-            EMIT_STB(r, immed, rd);
-            CHECK_INVALID_CODE();
-            break;
-        }
-        case MEM_SH:
-        {
-            int r = mapRegister( rt_reg );
-            EMIT_STH(r, immed, rd);
-            CHECK_INVALID_CODE();
-            break;
-        }
-        case MEM_SW:
-        {
-            int r = mapRegister( rt_reg );
-            EMIT_STW(r, immed, rd);
-            CHECK_INVALID_CODE();
-            break;
-        }
-        case MEM_SD:
-        {
-            RegMapping r = mapRegister64( rt_reg );
-            EMIT_STW(r.hi, immed, rd);
-            EMIT_STW(r.lo, immed+4, rd);
-            CHECK_INVALID_CODE();
-            break;
-        }
-        case MEM_SWC1:
-        {
-			int r = 3;
-            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
-            EMIT_LWZ(r, 0, addr);
-            EMIT_STW(r, immed, rd);
-            CHECK_INVALID_CODE();
-            break;
-        }
-        case MEM_SDC1:
-        {
-            int r = 3;
-            int r2 = 4;
-            EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
-            EMIT_LWZ(r, 0, addr);
-            EMIT_LWZ(r2, 4, addr);
-            EMIT_STW(r, immed, rd);
-            EMIT_STW(r2, immed+4, rd);
-            CHECK_INVALID_CODE();
-            break;
-        }
-        default:
-            assert(0);
-    }
-    
-	// Skip over else
-	int not_fastmem_id = add_jump_special(1);
-	EMIT_B(not_fastmem_id, 0, 0);
-	PowerPC_instr* preCall = get_curr_dst();
+				int r = mapRegisterNew( rt_reg );
+				EMIT_LWZ(r, 0, rd);
+				break;
+			}
+			case MEM_LWR:
+			{
+				EMIT_ADDI(rd, rd, immed);
+				EMIT_RLWINM(0, rd, 0, 30, 31);	// r0 = addr & 3
+				EMIT_CMPI(0, 3, 1);
+				EMIT_BNE(1, 4, 0, 0); // /!\ branch to just after 'Skip over else'
 
+				EMIT_RLWINM(rd, rd, 0, 0, 29);	// addr &= 0xFFFFFFFC
+
+				int r = mapRegisterNew( rt_reg );
+				EMIT_LWZ(r, 0, rd);
+				break;
+			}
+			case MEM_SB:
+			{
+				int r = mapRegister( rt_reg );
+				EMIT_STB(r, immed, rd);
+				CHECK_INVALID_CODE();
+				break;
+			}
+			case MEM_SH:
+			{
+				int r = mapRegister( rt_reg );
+				EMIT_STH(r, immed, rd);
+				CHECK_INVALID_CODE();
+				break;
+			}
+			case MEM_SW:
+			{
+				int r = mapRegister( rt_reg );
+				EMIT_STW(r, immed, rd);
+				CHECK_INVALID_CODE();
+				break;
+			}
+			case MEM_SD:
+			{
+				RegMapping r = mapRegister64( rt_reg );
+				EMIT_STW(r.hi, immed, rd);
+				EMIT_STW(r.lo, immed+4, rd);
+				CHECK_INVALID_CODE();
+				break;
+			}
+			case MEM_SWC1:
+			{
+				int r = 3;
+				EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_32);
+				EMIT_LWZ(r, 0, addr);
+				EMIT_STW(r, immed, rd);
+				CHECK_INVALID_CODE();
+				break;
+			}
+			case MEM_SDC1:
+			{
+				int r = 3;
+				int r2 = 4;
+				EMIT_LWZ(addr, rt_reg*4, DYNAREG_FPR_64);
+				EMIT_LWZ(r, 0, addr);
+				EMIT_LWZ(r2, 4, addr);
+				EMIT_STW(r, immed, rd);
+				EMIT_STW(r2, immed+4, rd);
+				CHECK_INVALID_CODE();
+				break;
+			}
+			default:
+				assert(0);
+		}
+
+		// Skip over else
+		not_fastmem_id = add_jump_special(1);
+		EMIT_B(not_fastmem_id, 0, 0);
+		preCall = get_curr_dst();
+	}
+	
 	// load into rt
     if(type!=MEM_SW && type!=MEM_SH && type!=MEM_SB)
     {
@@ -3924,17 +3934,24 @@ static int genCallDynaMemVM(int rs_reg, int rt_reg, memType type, int immed){
 	
 	genCallDynaMem(type, base, immed);
 	
-	if(type==MEM_LW || type==MEM_LH || type==MEM_LB || type==MEM_LHU || type==MEM_LBU || type==MEM_LWL || type==MEM_LWR)
+	if(!(failsafeRec&FAILSAFE_REC_NO_VM))
 	{
-		reloadRegister( rt_reg );
-	}
-	else if(type==MEM_LWU || type==MEM_LD)
-	{
-		reloadRegister64( rt_reg );
-	}
+		if(type==MEM_LW || type==MEM_LH || type==MEM_LB || type==MEM_LHU || type==MEM_LBU || type==MEM_LWL || type==MEM_LWR)
+		{
+			reloadRegister( rt_reg );
+		}
+		else if(type==MEM_LWU || type==MEM_LD)
+		{
+			reloadRegister64( rt_reg );
+		}
 
-	int callSize = get_curr_dst() - preCall;
-	set_jump_special(not_fastmem_id, callSize+1);
+		int callSize = get_curr_dst() - preCall;
+		set_jump_special(not_fastmem_id, callSize+1);
+	}
+	else
+	{
+		invalidateRegisters();
+	}
 
 	return CONVERT_SUCCESS;
 }

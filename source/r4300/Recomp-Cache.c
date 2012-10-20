@@ -323,6 +323,15 @@ void RecompCache_Init(void){
 #endif	
 }
 
+unsigned int RecompCache_Allocated(void)
+{
+	heap_iblock ib;
+	
+	__lwp_heap_getinfo(cache,&ib);
+	
+	return ib.used_size;
+}
+
 void* MetaCache_Alloc(unsigned int size){
 #ifndef MALLOC_RECOMPMETA	
 	void* ptr = __lwp_heap_allocate(meta_cache, size);

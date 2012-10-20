@@ -29,6 +29,7 @@ void RecompCache_Link(PowerPC_func* src_func, PowerPC_instr* src_instr,
 
 void RecompCache_Init(void);
 
+unsigned int RecompCache_Allocated(void);
 
 void* MetaCache_Alloc(unsigned int size);
 void MetaCache_Free(void* ptr);

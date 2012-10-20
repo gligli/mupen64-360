@@ -42,6 +42,11 @@
 
 extern int noCheckInterrupt;
 
+extern int failsafeRec;
+
+#define FAILSAFE_REC_NO_LINK 1
+#define FAILSAFE_REC_NO_VM 2
+
 typedef enum { MEM_LW,   MEM_LH,   MEM_LB,   MEM_LD,
                MEM_LWU,  MEM_LHU,  MEM_LBU,
                MEM_LWC1, MEM_LDC1, MEM_LWL,	 MEM_LWR,

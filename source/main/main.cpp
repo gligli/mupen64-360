@@ -93,6 +93,7 @@ extern "C" {
 #include "Rice_GX_Xenos/Config.h"
 #include "Rice_GX_Xenos/Config.h"
 #include "xenon_input/input.h"
+#include "r4300/ppc/Wrappers.h"
 
 /* version number for Core config section */
 #define CONFIG_PARAM_VERSION 1.01
@@ -120,7 +121,8 @@ char txtbuffer[1024];
 
 int run_rom(char * romfile);
 
-void WaitNoButtonPress() {
+void WaitNoButtonPress()
+{
 	struct controller_data_s c = {0};
 
 	for(;;){
@@ -133,7 +135,8 @@ void WaitNoButtonPress() {
 	}
 }
 
-void ActionAbout(void * other) {
+void ActionAbout(void * other)
+{
 	struct controller_data_s ctrl = {0};
 	float x=0.2,y=-0.75,nl=0.1;
 	
@@ -175,8 +178,8 @@ void ActionAbout(void * other) {
 	WaitNoButtonPress();
 }
 
-void ActionLaunchFile(char * filename) {
-
+void ActionLaunchFile(char * filename)
+{
 	WaitNoButtonPress();
 
 	if( run_rom(filename) )
@@ -188,21 +191,25 @@ void ActionLaunchFile(char * filename) {
 	WaitNoButtonPress();
 }
 
-void ActionShutdown(void * unused) {
+void ActionShutdown(void * unused)
+{
     xenon_smc_power_shutdown();
 	for(;;);
 }
 
-void ActionReboot(void * unused) {
+void ActionReboot(void * unused)
+{
     xenon_smc_power_reboot();
 	for(;;);
 }
 
-void ActionXell(void * unused) {
+void ActionXell(void * unused)
+{
     exit(0);
 }
 
-void SetEnhName(){
+void SetEnhName()
+{
 #ifdef XENOS_GFX
 	if(cache.enable2xSaI)
         enh_action->name = "Texture enhancement: 2xSAI";
@@ -217,7 +224,8 @@ void SetEnhName(){
 #endif
 }
 
-void ActionToggleEnh(void * other) {
+void ActionToggleEnh(void * other)
+{
 #ifdef XENOS_GFX
 	cache.enable2xSaI=!cache.enable2xSaI;
 #else
@@ -227,14 +235,29 @@ void ActionToggleEnh(void * other) {
 	SetEnhName();
 }
 
-void SetCpuName(){
+void SetCpuName()
+{
 	switch(r4300emu)
 	{
 		case CORE_DYNAREC:
-	        cpu_action->name = "CPU core: Dynarec";
+	        switch(failsafeRec)
+			{
+			case 0:
+				cpu_action->name = "CPU core: Dynarec";
+				break;
+			case FAILSAFE_REC_NO_LINK:
+				cpu_action->name = "CPU core: Dynarec (No linking)";
+				break;
+			case FAILSAFE_REC_NO_VM:
+				cpu_action->name = "CPU core: Dynarec (No VM)";
+				break;
+			case FAILSAFE_REC_NO_VM|FAILSAFE_REC_NO_LINK:
+				cpu_action->name = "CPU core: Dynarec (No VM & no linking)";
+				break;
+			}
 			break;
 		case CORE_INTERPRETER:
-	        cpu_action->name = "CPU core: Interpreter (cached)";
+	        cpu_action->name = "CPU core: Interpreter (Cached)";
 			break;
 		case CORE_PURE_INTERPRETER:
 	        cpu_action->name = "CPU core: Interpreter";
@@ -242,30 +265,44 @@ void SetCpuName(){
 	}
 }
 
-void ActionToggleCpu(void * other) {
+void ActionToggleCpu(void * other)
+{
 	if (r4300emu==CORE_PURE_INTERPRETER)
+	{
 		r4300emu=CORE_DYNAREC;
+		failsafeRec=0;
+	}
+	else if (failsafeRec<3)
+	{
+		++failsafeRec;
+	}
 	else
+	{
 		r4300emu=CORE_PURE_INTERPRETER;
+		failsafeRec=0;
+	}
 	
 	SetCpuName();
 }
 
-void SetLimName(){
+void SetLimName()
+{
 	if(use_framelimit)
         lim_action->name = "Framerate limiting: Yes";
 	else
         lim_action->name = "Framerate limiting: No";
 }
 
-void ActionToggleLim(void * other) {
+void ActionToggleLim(void * other)
+{
 	use_framelimit=!use_framelimit;
 	
 	SetLimName();
 }
 
 
-void SetPadName(){
+void SetPadName()
+{
 	static char pm[256]="";
 	
 	strcpy(pm,"Controls (l->r): ");
@@ -274,20 +311,23 @@ void SetPadName(){
 	pad_action->name=pm;
 }
 
-void ActionTogglePad(void * other) {
+void ActionTogglePad(void * other)
+{
 	pad_mode=(pad_mode+1)%6;
 	
 	SetPadName();
 }
 
-void cls_GUI() {
+void cls_GUI()
+{
 	Browser.Begin();
 	ZLX::Draw::DrawColoredRect(-1,-1,2,2,0xff000000);
 	Xe_SetClearColor(ZLX::g_pVideoDevice,0xff000000);
 	Browser.End();
 }
 
-void do_GUI() {
+void do_GUI()
+{
 
 	tex_about = ZLX::loadPNGFromMemory(inc_about);
 	
