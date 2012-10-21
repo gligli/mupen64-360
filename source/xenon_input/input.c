@@ -109,8 +109,8 @@ void getKeys(int Control, BUTTONS *Keys)
 			b.L_DPAD=c->s1_x<-STICK_THRESHOLD;
 			b.R_DPAD=c->s1_x>STICK_THRESHOLD;
 
-			b.X_AXIS=(c->left?-128:0) + (c->right?128:0);
-			b.Y_AXIS=(c->up?-128:0) + (c->down?128:0);
+			b.X_AXIS=(c->left?-128:0) + (c->right?127:0);
+			b.Y_AXIS=(c->up?127:0) + (c->down?-128:0);
 
 			b.U_CBUTTON=c->s2_y>STICK_THRESHOLD;
 			b.D_CBUTTON=c->s2_y<-STICK_THRESHOLD;
@@ -151,8 +151,8 @@ void getKeys(int Control, BUTTONS *Keys)
 			b.L_CBUTTON=c->s1_x<-STICK_THRESHOLD;
 			b.R_CBUTTON=c->s1_x>STICK_THRESHOLD;
 
-			b.X_AXIS=(c->left?-128:0) + (c->right?128:0);
-			b.Y_AXIS=(c->up?-128:0) + (c->down?128:0);
+			b.X_AXIS=(c->left?-128:0) + (c->right?127:0);
+			b.Y_AXIS=(c->up?127:0) + (c->down?-128:0);
 
 			b.U_DPAD=c->s2_y>STICK_THRESHOLD;
 			b.D_DPAD=c->s2_y<-STICK_THRESHOLD;
