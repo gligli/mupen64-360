@@ -22,7 +22,7 @@
 **/
 
 #define MUPEN_NAME    "Mupen64-360"
-#define MUPEN_VERSION "0.99 beta 1"
+#define MUPEN_VERSION "0.992 beta"
 
 #define PLUGIN_NAME    "Rice"
 #define PLUGIN_VERSION "Xenos"
