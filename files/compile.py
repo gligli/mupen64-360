@@ -1,5 +1,7 @@
+#!/usr/bin/python3
+
 SCRIPT_NAME="Mass shader compiler by GliGli"
-SCRIPT_VERSION="0.04"
+SCRIPT_VERSION="0.07"
 
 # things you might want to change for a new project
 
@@ -22,18 +24,20 @@ SHADER_DEFS= \
 
 # things that shouldn't be changed  (code)
 
-from md5 import md5
-import os, tempfile, subprocess, time
+from hashlib import md5
+import os, tempfile, subprocess
 
-print "%s %s" % (SCRIPT_NAME,SCRIPT_VERSION)
+os.chdir(os.path.dirname(os.path.abspath(__file__))) # .py path in working dir
 
-asmfile=open(OUTPUT_ASM_FILE,"wb")
+print ("%s %s" % (SCRIPT_NAME,SCRIPT_VERSION))
+
+asmfile=open(OUTPUT_ASM_FILE,"w")
 
 for shader in SHADER_DEFS:
     
     # step 1 : generate shaders
 
-    print "* Compiling %s" % shader[0]
+    print ("* Compiling %s" % shader[0])
 
     fn,ext=os.path.splitext(shader[0])
 
@@ -49,16 +53,16 @@ for shader in SHADER_DEFS:
 
     while looping:
 
-        orifile=open(shader[0],"rb")
+        orifile=open(shader[0],"r")
 
-        tmpfile=open('__tmp__.hlsl',"wb")
+        tmpfile=open('__tmp__.hlsl',"w")
 
         outname=OUTPUT_DIR+'/'+fn
 
         if len(shader)>2:
             for i in range(len(varsvals)):
                 outname=outname+'_%d' % (shader[2][i][1][varsvals[i]])
-                tmpfile.write("#define %s %d \r\n" %(shader[2][i][0],shader[2][i][1][varsvals[i]]))
+                tmpfile.write("#define %s %d \r\n" % (shader[2][i][0],shader[2][i][1][varsvals[i]]))
 
         tmpfile.write(orifile.read())
 
@@ -67,7 +71,8 @@ for shader in SHADER_DEFS:
 
         absoutname=os.path.abspath(outname+'.bin')
 
-        out=os.tmpfile()
+        outi, outn=tempfile.mkstemp()
+        out = open(outi, "r")
 
         subprocess.call(SHADER_COMPILER+" \""+tmpfile.name+"\" "+shader[1]+" -o \""+absoutname+"\" ",stdout=out)
 
@@ -75,10 +80,10 @@ for shader in SHADER_DEFS:
         outs=out.read()
 
         if not '- Compiled!' in  outs: # can't find something better ...
-            print outs
+            print (outs)
             exit(1)
 
-        print outname
+        print (outname)
 
         shaderfiles.append(absoutname)
 
@@ -108,7 +113,7 @@ for shader in SHADER_DEFS:
 
     # step2 : remove duplicates
 
-    print "* Removing duplicates on %d shader(s)" % (len(shaderfiles))
+    print ("* Removing duplicates on %d shaders" % (len(shaderfiles)))
 
     indexlist=[]
     shaderdatalist=[]
@@ -127,11 +132,11 @@ for shader in SHADER_DEFS:
 
         sf.close()
 
-    print "- %d unique shader(s)" % (len(shaderdatalist))
+    print ("- %d unique shader(s)" % (len(shaderdatalist)))
 
     # step3 : generate ASM file
 
-    print "* Generating ASM file"
+    print ("* Generating ASM file")
 
         # data
     for i in range(len(shaderdatalist)):
@@ -141,9 +146,9 @@ for shader in SHADER_DEFS:
         j=0
         for c in shaderdatalist[i]:
             if (j % 16) == 0:
-                asmfile.write("\n\t.byte 0x%02x" % (ord(c)))
+                asmfile.write("\n\t.byte 0x%02x" % (c))
             else:
-                asmfile.write(", 0x%02x" % (ord(c)))
+                asmfile.write(", 0x%02x" % (c))
             j=j+1
 
         asmfile.write("\n\n")
@@ -182,10 +187,10 @@ for shader in SHADER_DEFS:
 
     asmfile.write("\n")
 
-    print "- ASM generated!"
+    print ("- ASM generated!")
 
 asmfile.close()
 
-print "- All done!"
+print ("- All done!")
 
 exit(0)
