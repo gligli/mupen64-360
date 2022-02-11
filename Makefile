@@ -29,7 +29,7 @@ INCLUDES	:=	files source
 
 MCHK = -Wl,-wrap,malloc  -Wl,-wrap,memalign -Wl,-wrap,realloc -Wl,-wrap,calloc -Wl,-wrap,free -DMCHK
 
-OPTIFLAGS = -g -Ofast -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -mcpu=cell -mtune=cell -flto=4 -fuse-linker-plugin 
+OPTIFLAGS = -Ofast -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -mcpu=cell -mtune=cell -flto -fuse-linker-plugin 
 #OPTIFLAGS = -g -Ofast -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -mcpu=cell -mtune=cell
 
 ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32
@@ -134,6 +134,6 @@ endif
 #	python genffs.py > source/ffs_content.c
 
 run: $(BUILD) $(OUTPUT).elf32
-	cp $(OUTPUT).elf32 /tftpboot/xenon
-	$(PREFIX)strip /tftpboot/xenon
+	cp $(OUTPUT).elf32 /mnt/hgfs/x360dev/tftp/xenon.elf
+	$(PREFIX)strip /mnt/hgfs/x360dev/tftp/xenon.elf
 #	/home/dev360/run

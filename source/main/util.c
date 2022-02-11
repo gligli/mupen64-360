@@ -51,7 +51,7 @@ static int file_cache_size=-1;
 file_status_t read_from_file(const char *filename, void *data, size_t size)
 {
 	// cache query
-	if(!stricmp(filename,file_cache_filename))
+	if(!strcasecmp(filename,file_cache_filename))
 	{
 //		printf("cached r %s %d\n",file_cache_filename,size);
 		if(file_cache_size<0)
@@ -103,7 +103,7 @@ file_status_t read_from_file(const char *filename, void *data, size_t size)
 file_status_t write_to_file(const char *filename, const void *data, size_t size)
 {
 	// cache query
-	if(!stricmp(filename,file_cache_filename) && size==file_cache_size && !memcmp(data,file_cache_buffer,size))
+	if(!strcasecmp(filename,file_cache_filename) && size==file_cache_size && !memcmp(data,file_cache_buffer,size))
 	{
 //		printf("cached w %s %d\n",file_cache_filename,size);
 		return file_ok;

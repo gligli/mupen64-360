@@ -26,8 +26,14 @@
 #include <xetypes.h>
 #include "ppc/Recompile.h"
 
-inline PowerPC_block* blocks_get(u32 addr);
-inline void blocks_set(u32 addr, PowerPC_block* ptr);
+static inline PowerPC_block* blocks_get(u32 addr){
+	return blocks[addr];
+}
+
+
+static inline void blocks_set(u32 addr, PowerPC_block* ptr){
+	blocks[addr] = ptr;
+}
 
 #endif
 
