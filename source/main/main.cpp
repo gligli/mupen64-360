@@ -108,8 +108,8 @@ ZLX::Font Font;
 char mupen_dir[PATH_MAX] = "uda0:/" MUPEN_DIR_NAME;
 
 /* Look for the mupen64-360 folder on every mounted device instead of
- * assuming uda0: (drive may mount under another name, e.g. on Winchester
- * consoles or when the files live on the HDD). */
+ * assuming uda0: (the USB drive may mount under another name, or the
+ * files may live on the HDD). */
 static void find_mupen_dir(void)
 {
 	char path[PATH_MAX];

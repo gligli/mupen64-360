@@ -94,7 +94,7 @@ scripts/package.sh mupen64-360.elf32 dist
 ---
 
 ## Estado y pendientes
-- [ ] Compilar con libxenon / GCC actuales (en curso)
+- [x] Compilar con libxenon / GCC actuales (GCC 16.2)
 - [ ] Arreglos de USB y particiones (escritos, falta probar en consola)
 - [ ] Confirmar video en Winchester (se sabe que la 0.993 beta2 de otro fork lo perdía; este fork parte de la 0.992)
 - [ ] Probar compatibilidad juego por juego
