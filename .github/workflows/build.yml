@@ -21,10 +21,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flex bison libgmp-dev libmpfr-dev libmpc-dev texinfo wget file
 
-      # The GCC cross toolchain takes ~1h to build, so it is cached.
-      - name: Cache xenon toolchain
+      # The GCC cross toolchain takes ~30 min to build, so it is cached.
+      # restore/save are separate so the cache is kept even if a later step fails.
+      - name: Restore xenon toolchain
         id: toolchain-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /usr/local/xenon
           key: xenon-toolchain-${{ env.LIBXENON_SHA }}-v1
@@ -38,16 +39,36 @@ jobs:
           cd /tmp/libxenon/toolchain
           PREFIX="$DEVKITXENON" ./build-xenon-toolchain toolchain || { tail -100 build.log; exit 1; }
 
+      - name: Save xenon toolchain
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /usr/local/xenon
+          key: xenon-toolchain-${{ env.LIBXENON_SHA }}-v1
+
       - name: Build libraries (patched libxenon, ZLX, filesystems...)
         run: |
           sudo chown -R "$USER" "$DEVKITXENON"
-          scripts/build-deps.sh
+          set -o pipefail
+          scripts/build-deps.sh 2>&1 | tee deps.log
 
       - name: Build mupen64-360
         run: |
           export PATH="$PATH:$DEVKITXENON/bin:$DEVKITXENON/usr/bin"
-          make -j"$(nproc)"
+          set -o pipefail
+          make -j"$(nproc)" 2>&1 | tee make.log
           file mupen64-360.elf32
+
+      # Surface the first errors as annotations so they show on the run page.
+      - name: Report errors
+        if: failure()
+        run: |
+          for f in deps.log make.log; do
+            [ -f "$f" ] || continue
+            grep -E "error|Error|No such file|undefined reference" "$f" | head -20 | while IFS= read -r l; do
+              echo "::error title=$f::${l:0:900}"
+            done
+          done
 
       - name: Package USB folder
         run: scripts/package.sh mupen64-360.elf32 dist
