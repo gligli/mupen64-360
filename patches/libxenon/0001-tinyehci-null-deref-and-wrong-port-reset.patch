@@ -1,0 +1,57 @@
+diff --git a/libxenon/drivers/usb/tinyehci/ehci.c b/libxenon/drivers/usb/tinyehci/ehci.c
+index 487b33c..c1e85af 100644
+--- a/libxenon/drivers/usb/tinyehci/ehci.c
++++ b/libxenon/drivers/usb/tinyehci/ehci.c
+@@ -332,6 +332,7 @@ qtd_fill(struct ehci_qtd *qtd, dma_addr_t buf,
+ static void qh_end_transfer(struct ehci_hcd * ehci) {
+ 	struct ehci_qtd *qtd;
+ 	struct ehci_qh *qh = ehci->asyncqh;
++	struct ehci_urb *urb = qh->qtd_head ? qh->qtd_head->urb : NULL;
+ 	u32 token;
+ 	int error = 0;
+ 	for (qtd = qh->qtd_head; qtd; qtd = qtd->next) {
+@@ -360,9 +361,11 @@ static void qh_end_transfer(struct ehci_hcd * ehci) {
+ 			error = -1;
+ 		}
+ 	}
+-	if (error) {
++	if (error && urb) {
++		/* qtd is NULL here (end of list): report the error on the URB
++		 * captured before the loop instead of dereferencing it. */
+ 		//dump_qh(ehci->asyncqh);
+-		qtd->urb->actual_length = error;
++		urb->actual_length = error;
+ 	}
+ 	ehci->qtd_used = 0;
+ }
+diff --git a/libxenon/drivers/usb/tinyehci/usbstorage.c b/libxenon/drivers/usb/tinyehci/usbstorage.c
+index a96cb6a..96ec1e2 100644
+--- a/libxenon/drivers/usb/tinyehci/usbstorage.c
++++ b/libxenon/drivers/usb/tinyehci/usbstorage.c
+@@ -1317,13 +1317,15 @@ int unplug_procedure(int device) {
+ 	int retval = 1;
+ 	if (unplug_device != 0) {
+ 
+-		if (_ehci_data[device].__usbfd.usb_fd)
+-			if (ehci_reset_port2(_ehci_data[device].__ehci, /*__usbfd.usb_fd->port*/0) >= 0) {
++		if (_ehci_data[device].__usbfd.usb_fd) {
++			/* reset the port the device is actually on, not always port 0 */
++			int port = _ehci_data[device].__usbfd.usb_fd->port;
++			if (ehci_reset_port2(_ehci_data[device].__ehci, port) >= 0) {
+ 				if (_ehci_data[device].__usbfd.buffer != NULL)
+ 					USB_Free(_ehci_data[device].__usbfd.buffer);
+ 				_ehci_data[device].__usbfd.buffer = NULL;
+ 
+-				if (ehci_reset_port(_ehci_data[device].__ehci, 0) >= 0) {
++				if (ehci_reset_port(_ehci_data[device].__ehci, port) >= 0) {
+ 					handshake_mode = 1;
+ 					if (USBStorage_Try_Device(&_ehci_data[device]) == 0) {
+ 						retval = 0;
+@@ -1332,6 +1334,7 @@ int unplug_procedure(int device) {
+ 					handshake_mode = 0;
+ 				}
+ 			}
++		}
+ 		ehci_msleep(100);
+ 	}
+ 

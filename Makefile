@@ -15,7 +15,7 @@ include $(DEVKITXENON)/rules
 # SOURCES is a list of directories containing source code
 # INCLUDES is a list of directories containing extra header files
 #---------------------------------------------------------------------------------
-TARGET		:=	$(notdir $(CURDIR))
+TARGET		:=	mupen64-360
 BUILD		:=	build
 SOURCES		:=	source source/osal source/api source/plugin source/main source/main/zip source/memory \
 			source/r4300 source/r4300/ppc source/r4300/ppc/disasm  \
