@@ -33,8 +33,10 @@ OPTIFLAGS = -Ofast -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer
 #OPTIFLAGS = -g -Ofast -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -mcpu=cell -mtune=cell
 
 ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32
-CFLAGS	= $(OPTIFLAGS) -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DM64P_BIG_ENDIAN -DUSE_RECOMP_CACHE -DFASTMEM -DNO_ASM -DUSE_EXPANSION # -D_DEBUG  -DDEBUG_
-CXXFLAGS	=	$(CFLAGS)
+COMMONFLAGS	= $(OPTIFLAGS) -Wall -Wno-format $(MACHDEP) $(INCLUDE) -DPPC_DYNAREC -D__BIG_ENDIAN__ -D_BIG_ENDIAN -DM64P_BIG_ENDIAN -DUSE_RECOMP_CACHE -DFASTMEM -DNO_ASM -DUSE_EXPANSION # -D_DEBUG  -DDEBUG_
+# Old C code: keep pre-C23 semantics (f() = unspecified args) on modern GCC
+CFLAGS	= $(COMMONFLAGS) -std=gnu17
+CXXFLAGS	=	$(COMMONFLAGS) -std=gnu++14
 
 #MACHDEP_LD =  -DXENON -m32 -maltivec -fno-pic -mhard-float -L$(DEVKITXENON)/xenon/lib/32
 LDFLAGS	= $(MACHDEP) $(OPTIFLAGS) -Wl,-Map,$(notdir $@).map

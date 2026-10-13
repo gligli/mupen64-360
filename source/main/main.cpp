@@ -105,7 +105,7 @@ XenosSurface * tex_about;
 
 ZLX::Font Font;
 
-extern "C" char mupen_dir[PATH_MAX] = "uda0:/" MUPEN_DIR_NAME;
+char mupen_dir[PATH_MAX] = "uda0:/" MUPEN_DIR_NAME;
 
 /* Look for the mupen64-360 folder on every mounted device instead of
  * assuming uda0: (drive may mount under another name, e.g. on Winchester
