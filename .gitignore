@@ -4,3 +4,5 @@ build
 netbeans/
 /files/compiled/*.bin
 *.elf32
+deps/
+dist/

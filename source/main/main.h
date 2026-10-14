@@ -19,7 +19,15 @@
 
 #define USE_THREADED_AUDIO
 
-#define MUPEN_DIR "uda0:/mupen64-360/"
+/* Folder holding config, saves and backgrounds. Detected at startup on any
+ * mounted device (USB, HDD...); defaults to the first USB drive. */
+#define MUPEN_DIR_NAME "mupen64-360/"
+#ifdef __cplusplus
+extern "C" char mupen_dir[];
+#else
+extern char mupen_dir[];
+#endif
+#define MUPEN_DIR mupen_dir
 
 #ifndef PATH_MAX
 #  define PATH_MAX 1024

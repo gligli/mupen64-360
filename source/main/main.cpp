@@ -78,6 +78,8 @@ extern "C" {
 #include <xenon_sound/sound.h>
 #include <xenon_smc/xenon_smc.h>
 #include <time/time.h>
+#include <sys/iosupport.h>
+#include <dirent.h>
 #include <xenos/xe.h>
 
 #undef MAX_PATH
@@ -102,6 +104,31 @@ extern unsigned char inc_about[];
 XenosSurface * tex_about;
 
 ZLX::Font Font;
+
+char mupen_dir[PATH_MAX] = "uda0:/" MUPEN_DIR_NAME;
+
+/* Look for the mupen64-360 folder on every mounted device instead of
+ * assuming uda0: (the USB drive may mount under another name, or the
+ * files may live on the HDD). */
+static void find_mupen_dir(void)
+{
+	char path[PATH_MAX];
+	for (int i = 3; i < STD_MAX; i++)
+	{
+		if (!devoptab_list[i] || !devoptab_list[i]->structSize || !devoptab_list[i]->name)
+			continue;
+		snprintf(path, sizeof(path), "%s:/" MUPEN_DIR_NAME, devoptab_list[i]->name);
+		DIR *d = opendir(path);
+		if (d)
+		{
+			closedir(d);
+			strcpy(mupen_dir, path);
+			printf("Using data folder %s\n", mupen_dir);
+			return;
+		}
+	}
+	printf("mupen64-360 folder not found, defaulting to %s\n", mupen_dir);
+}
 ZLX::Browser Browser;
 lpBrowserActionEntry enh_action;
 lpBrowserActionEntry cpu_action;
@@ -450,12 +477,16 @@ void new_vi()
 
 const char *get_savestatepath(void)
 {
-    return MUPEN_DIR"sstates/";
+    static char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%ssstates/", MUPEN_DIR);
+    return path;
 }
 
 const char *get_savesrampath(void)
 {
-    return MUPEN_DIR"saves/";
+    static char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%ssaves/", MUPEN_DIR);
+    return path;
 }
 
 void main_message(m64p_msg_level level, unsigned int corner, const char *format, ...)
@@ -691,6 +722,7 @@ int main ()
 
 	ZLX::Hw::SystemInit(ZLX::INIT_USB|ZLX::INIT_ATA|ZLX::INIT_ATAPI|ZLX::INIT_FILESYSTEM);
 	ZLX::Hw::SystemPoll();
+	find_mupen_dir();
 
 	r4300emu=CORE_DYNAREC;
 	
