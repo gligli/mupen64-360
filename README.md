@@ -8,6 +8,8 @@ Emulador de **Nintendo 64 para Xbox 360**. Está basado en [mupen64-360 de GliGl
 
 > ✅ **Probado en una Xbox 360 Winchester** (ABadAvatar → FreeMyXe → XeLL Reloaded v0.993, disco USB de 1 TB en FAT32): arranca, da video y corre Super Mario 64.
 >
+> ⚠️ **En Winchester la consola se sobrecalienta y puede encender la luz roja de advertencia.** Lee la sección de [sobrecalentamiento](#️-advertencia-sobrecalentamiento-en-winchester) antes de usarlo.
+>
 > Proyecto en desarrollo. Si algo falla, abre un *issue* con tu modelo de consola, la placa y lo que pasó.
 
 ---
@@ -20,6 +22,22 @@ Emulador de **Nintendo 64 para Xbox 360**. Está basado en [mupen64-360 de GliGl
 | Arreglo de un **puntero nulo** en el driver USB EHCI | `patches/libxenon/` | Al fallar una transferencia USB, el emulador se colgaba (pantalla de crash) |
 | La recuperación de USB **reseteaba el puerto 0** en vez del puerto real | `patches/libxenon/` | Si la USB estaba en otro puerto, al reconectarse no se recuperaba |
 | Build reproducible: dependencias con commit fijo y compilación automática en GitHub Actions | `scripts/`, `.github/workflows/` | Cualquiera puede descargar el binario compilado desde la pestaña **Actions** |
+
+---
+
+## ⚠️ Advertencia: sobrecalentamiento en Winchester
+
+En la Winchester de prueba la consola **se calienta de más** y puede encender la **luz roja de advertencia**. No es el "aro rojo de la muerte" (falla de hardware) de las Xbox 360 originales: es el aviso de temperatura alta de la consola.
+
+**Por qué pasa:** el emulador corre sobre XeLL/libxenon, que se diseñaron para las placas antiguas y no están bien adaptados a la Winchester. A diferencia del sistema oficial, libxenon no administra la temperatura: solo pone los ventiladores en un modo automático básico, no baja el consumo cuando el procesador está libre, y el emulador mantiene la CPU al 100 %.
+
+**Recomendaciones mientras se corrige:**
+- Juega en **sesiones cortas** y deja que la consola se enfríe entre partidas.
+- Deja **espacio libre** alrededor de las rejillas, sin muebles cerrados ni cosas encima.
+- **No dejes la consola encendida en el menú** del emulador si no estás jugando.
+- **Si aparece la luz roja, apaga la consola** de inmediato y espera a que se enfríe antes de volver a usarla.
+
+Úsalo bajo tu propio riesgo. Controlar los ventiladores desde el emulador está en la lista de pendientes.
 
 ---
 
@@ -100,6 +118,7 @@ scripts/package.sh mupen64-360.elf32 dist
 - [x] Arreglos del driver USB (probado en Winchester)
 - [x] Video en Winchester (probado)
 - [ ] Detección de USBs sin tabla de particiones: se quitó porque en un disco de 1 TB montaba mal la unidad; hay que rehacerla con una validación más estricta
+- [ ] **Controlar ventiladores y temperatura en Winchester** (sobrecalentamiento con luz roja de advertencia)
 - [ ] Probar compatibilidad juego por juego
 - [ ] Versión `.xex` para lanzarla desde el dashboard o Aurora sin XeLL (en investigación, con OpenXeChain)
 

@@ -7,6 +7,8 @@
 - Se quitó el parche de detección "superfloppy" de wf1: en el disco de 1 TB hacía que `uda0:` se montara en el sector equivocado (nombres de archivo basura, sin fondo).
 - Se mantienen la carpeta automática, los arreglos del driver USB y la compilación con GCC 16.
 
+**Problema conocido:** en Winchester la consola se **sobrecalienta** y puede encender la **luz roja de advertencia** (aviso de temperatura, no el "aro rojo de la muerte"). XeLL/libxenon no están bien adaptados a esta placa: no administran la temperatura como el sistema oficial y el emulador lleva la CPU al 100 %. Juega en sesiones cortas, con buena ventilación, y apaga la consola si aparece la luz roja.
+
 SHA-256 de `xenon.elf`: `0c8dd257f1e8eefed30983f3c71c798d9e0efb2492419705782f18087b751419`
 
 ## v0.992-wf1
