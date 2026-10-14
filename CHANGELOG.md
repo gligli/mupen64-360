@@ -1,8 +1,17 @@
 # Cambios
 
-## v0.992-wf1 (rama winchester-fixes)
+## v0.992-wf2 (rama winchester-fixes)
 
-⚠️ **Versión de prueba, todavía sin probar en consola real.** Si la pruebas, cuenta en un *issue* qué pasó (modelo, placa, si arrancó, si hubo video y sonido, qué juego).
+✅ **Probado en una Xbox 360 Winchester** (ABadAvatar → FreeMyXe → XeLL Reloaded v0.993, disco USB de 1 TB en FAT32): menú con video, lista de archivos correcta y Super Mario 64 jugable.
+
+- Se quitó el parche de detección "superfloppy" de wf1: en el disco de 1 TB hacía que `uda0:` se montara en el sector equivocado (nombres de archivo basura, sin fondo).
+- Se mantienen la carpeta automática, los arreglos del driver USB y la compilación con GCC 16.
+
+SHA-256 de `xenon.elf`: `0c8dd257f1e8eefed30983f3c71c798d9e0efb2492419705782f18087b751419`
+
+## v0.992-wf1
+
+❌ En la Winchester con disco de 1 TB la lista de archivos salía con basura (corregido en wf2).
 
 Compilado desde la rama `winchester-fixes` con GCC 16.2 y la libxenon actual.
 
